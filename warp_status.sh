@@ -1,0 +1,25 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+ROLE="${1:-server}"
+SERVICE_NAME="paqet-${ROLE}"
+
+echo "Service: ${SERVICE_NAME}"
+
+if command -v wg >/dev/null 2>&1; then
+  echo
+  echo "WireGuard (wgcf) status:"
+  wg show wgcf || echo "wgcf interface not active"
+else
+  echo "wg not available"
+fi
+
+echo
+echo "Policy routing rules:"
+ip rule show | grep -E "fwmark 51820" || echo "(no fwmark rule)"
+
+ip route show table 51820 || echo "(no routes in table 51820)"
+
+echo
+echo "iptables mark rules:"
+iptables -t mangle -S OUTPUT | grep -E "owner --uid-owner paqet|MARK --set-mark 51820" || echo "(no mark rules)"

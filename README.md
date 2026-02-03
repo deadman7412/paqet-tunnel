@@ -54,6 +54,9 @@ Options include:
 - **Restart scheduler** → cron‑based service restart schedule
 - **Health check** → auto‑restart if stuck (server/client)
 - **Health logs** → view/clear health check logs
+- **Enable WARP (policy routing)** → route paqet traffic through Cloudflare WARP (server)
+- **Disable WARP (policy routing)**
+- **WARP status**
 - **Show server info** → shows or recreates `~/paqet/server_info.txt`
 
 ### server_info.txt
@@ -111,6 +114,10 @@ Logs are written to:\n- `/var/log/paqet-health-server.log`\n- `/var/log/paqet-he
 
 Logs are auto‑rotated when they exceed **1MB** (current log is truncated and previous is saved to `.1`).
 
+## Cloudflare WARP (Policy Routing)
+
+This is the **3x‑ui style** setup: only paqet traffic is routed through WARP, not the whole server.\n\nFeatures:\n- Creates a WARP WireGuard profile using **wgcf**\n- Brings up `wgcf` interface\n- Adds **policy routing** for traffic from the `paqet` user\n- Does **not** affect SSH (traffic not owned by `paqet` stays on default route)\n\nYou can optionally enter a **WARP+ license key** during setup.\n\nNote: This config uses a systemd drop‑in to run `paqet-server` as user `paqet` with required capabilities.
+
 ## Systemd Services
 
 Services are created as:
@@ -155,6 +162,9 @@ Then optionally asks for **reboot**.
 - `health_check_scheduler.sh` – health check scheduler
 - `show_health_logs.sh` – view/clear health logs
 - `health_log_rotate.sh` – rotate health logs
+- `enable_warp_policy.sh` – enable WARP policy routing (server)
+- `disable_warp_policy.sh` – disable WARP policy routing
+- `warp_status.sh` – show WARP status
 - `uninstall_paqet.sh` – full uninstall
 
 ## Notes

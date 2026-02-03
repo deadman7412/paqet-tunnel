@@ -73,6 +73,9 @@ server_menu() {
     echo -e "${GREEN}8)${NC} Show server info"
     echo -e "${GREEN}9)${NC} Health check"
     echo -e "${GREEN}10)${NC} Health logs"
+    echo -e "${GREEN}11)${NC} Enable WARP (policy routing)"
+    echo -e "${GREEN}12)${NC} Disable WARP (policy routing)"
+    echo -e "${GREEN}13)${NC} WARP status"
     echo
     echo
     echo -e "${GREEN}0)${NC} Back to main menu"
@@ -159,6 +162,30 @@ server_menu() {
           run_action "${SCRIPT_DIR}/show_health_logs.sh" server
         else
           echo -e "${RED}Script not found or not executable:${NC} ${SCRIPT_DIR}/show_health_logs.sh" >&2
+        fi
+        pause
+        ;;
+      11)
+        if [ -x "${SCRIPT_DIR}/enable_warp_policy.sh" ]; then
+          run_action "${SCRIPT_DIR}/enable_warp_policy.sh" server
+        else
+          echo -e "${RED}Script not found or not executable:${NC} ${SCRIPT_DIR}/enable_warp_policy.sh" >&2
+        fi
+        pause
+        ;;
+      12)
+        if [ -x "${SCRIPT_DIR}/disable_warp_policy.sh" ]; then
+          run_action "${SCRIPT_DIR}/disable_warp_policy.sh" server
+        else
+          echo -e "${RED}Script not found or not executable:${NC} ${SCRIPT_DIR}/disable_warp_policy.sh" >&2
+        fi
+        pause
+        ;;
+      13)
+        if [ -x "${SCRIPT_DIR}/warp_status.sh" ]; then
+          run_action "${SCRIPT_DIR}/warp_status.sh" server
+        else
+          echo -e "${RED}Script not found or not executable:${NC} ${SCRIPT_DIR}/warp_status.sh" >&2
         fi
         pause
         ;;
