@@ -98,9 +98,13 @@ echo "Wrote ${INFO_FILE}"
 echo
 if [ -z "${SERVER_PUBLIC_IP:-}" ]; then
   if command -v curl >/dev/null 2>&1; then
-    SERVER_PUBLIC_IP="$(curl -fsS https://api.ipify.org || true)"
+    SERVER_PUBLIC_IP="$(curl -fsS --connect-timeout 3 --max-time 5 https://api.ipify.org || true)"
+    [ -z "${SERVER_PUBLIC_IP}" ] && SERVER_PUBLIC_IP="$(curl -fsS --connect-timeout 3 --max-time 5 https://ifconfig.me || true)"
+    [ -z "${SERVER_PUBLIC_IP}" ] && SERVER_PUBLIC_IP="$(curl -fsS --connect-timeout 3 --max-time 5 https://ipinfo.io/ip || true)"
   elif command -v wget >/dev/null 2>&1; then
-    SERVER_PUBLIC_IP="$(wget -qO- https://api.ipify.org || true)"
+    SERVER_PUBLIC_IP="$(wget -qO- --timeout=5 https://api.ipify.org || true)"
+    [ -z "${SERVER_PUBLIC_IP}" ] && SERVER_PUBLIC_IP="$(wget -qO- --timeout=5 https://ifconfig.me || true)"
+    [ -z "${SERVER_PUBLIC_IP}" ] && SERVER_PUBLIC_IP="$(wget -qO- --timeout=5 https://ipinfo.io/ip || true)"
   fi
 fi
 
@@ -111,3 +115,6 @@ echo "listen_port=${PORT}"
 echo "kcp_key=${KCP_KEY}"
 echo "server_public_ip=${SERVER_PUBLIC_IP:-REPLACE_WITH_SERVER_PUBLIC_IP}"
 echo "EOF"
+if [ -z "${SERVER_PUBLIC_IP:-}" ]; then
+  echo "Note: server_public_ip could not be detected. Update it manually." 
+fi

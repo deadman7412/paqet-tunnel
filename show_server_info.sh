@@ -34,9 +34,13 @@ if [ ! -f "${INFO_FILE}" ]; then
 
   SERVER_PUBLIC_IP=""
   if command -v curl >/dev/null 2>&1; then
-    SERVER_PUBLIC_IP="$(curl -fsS https://api.ipify.org || true)"
+    SERVER_PUBLIC_IP="$(curl -fsS --connect-timeout 3 --max-time 5 https://api.ipify.org || true)"
+    [ -z "${SERVER_PUBLIC_IP}" ] && SERVER_PUBLIC_IP="$(curl -fsS --connect-timeout 3 --max-time 5 https://ifconfig.me || true)"
+    [ -z "${SERVER_PUBLIC_IP}" ] && SERVER_PUBLIC_IP="$(curl -fsS --connect-timeout 3 --max-time 5 https://ipinfo.io/ip || true)"
   elif command -v wget >/dev/null 2>&1; then
-    SERVER_PUBLIC_IP="$(wget -qO- https://api.ipify.org || true)"
+    SERVER_PUBLIC_IP="$(wget -qO- --timeout=5 https://api.ipify.org || true)"
+    [ -z "${SERVER_PUBLIC_IP}" ] && SERVER_PUBLIC_IP="$(wget -qO- --timeout=5 https://ifconfig.me || true)"
+    [ -z "${SERVER_PUBLIC_IP}" ] && SERVER_PUBLIC_IP="$(wget -qO- --timeout=5 https://ipinfo.io/ip || true)"
   fi
 
   if [ -z "${PORT}" ] || [ -z "${KEY}" ]; then
@@ -64,3 +68,6 @@ echo "cat <<'EOF' > ${INFO_FILE}"
 grep -v '^#' "${INFO_FILE}"
 echo "EOF"
 echo "==========================================="
+if grep -q "server_public_ip=REPLACE_WITH_SERVER_PUBLIC_IP" "${INFO_FILE}"; then
+  echo "Note: server_public_ip could not be detected. Update it manually."
+fi
