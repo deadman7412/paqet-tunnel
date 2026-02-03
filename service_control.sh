@@ -1,6 +1,9 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+# Keep menu alive on Ctrl+C
+trap 'echo; echo "Returning to menu...";' INT
+
 ROLE="${1:-}"
 if [ -z "${ROLE}" ]; then
   echo "Role is required (server/client)." >&2
@@ -20,7 +23,7 @@ while true; do
   echo "2) Stop"
   echo "3) Restart"
   echo "4) Status"
-  echo "5) Reset failed"
+  echo "5) Reset failed (clear failure state)"
   echo "6) Enable"
   echo "7) Disable"
   echo "8) Live logs (tail 20)"
@@ -35,7 +38,7 @@ while true; do
     5) systemctl reset-failed "${SERVICE_NAME}.service" ;;
     6) systemctl enable "${SERVICE_NAME}.service" ;;
     7) systemctl disable "${SERVICE_NAME}.service" ;;
-    8) journalctl -u "${SERVICE_NAME}.service" -n 20 -f ;;
+    8) journalctl -u "${SERVICE_NAME}.service" -n 20 -f --no-pager ;;
     0) exit 0 ;;
     *) echo "Invalid option." >&2 ;;
   esac

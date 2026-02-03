@@ -44,7 +44,7 @@ while true; do
       else
         echo "No cron job found at ${CRON_FILE}"
       fi
-      continue
+      exit 0
       ;;
     0) exit 0 ;;
     *) echo "Invalid option." >&2; continue ;;
@@ -55,5 +55,6 @@ ${SCHEDULE} root /bin/systemctl restart ${SERVICE_NAME}.service
 CRON
   chmod 644 "${CRON_FILE}"
   echo "Installed cron job: ${SCHEDULE}"
+  exit 0
 
 done

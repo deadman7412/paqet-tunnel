@@ -104,7 +104,10 @@ if [ -z "${SERVER_PUBLIC_IP:-}" ]; then
   fi
 fi
 
-echo "If you cannot transfer files, create ${INFO_FILE} on the client VPS with this content:"
+echo "If you cannot transfer files, run these commands on the client VPS:"
+echo "  mkdir -p ${PAQET_DIR}"
+echo "  cat <<'EOF' > ${INFO_FILE}"
 echo "listen_port=${PORT}"
 echo "kcp_key=${KCP_KEY}"
 echo "server_public_ip=${SERVER_PUBLIC_IP:-REPLACE_WITH_SERVER_PUBLIC_IP}"
+echo "EOF"

@@ -23,19 +23,21 @@ esac
 
 if [ -z "${VERSION}" ]; then
   if command -v curl >/dev/null 2>&1; then
-    VERSION="$(curl -fsSL https://api.github.com/repos/hanselime/paqet/releases/latest | awk -F '\"' '/tag_name/{print $4; exit}')"
+    VERSION="$(curl -fsSL https://api.github.com/repos/hanselime/paqet/releases/latest 2>/dev/null | awk -F '\"' '/tag_name/{print $4; exit}' || true)"
   elif command -v wget >/dev/null 2>&1; then
-    VERSION="$(wget -qO- https://api.github.com/repos/hanselime/paqet/releases/latest | awk -F '\"' '/tag_name/{print $4; exit}')"
+    VERSION="$(wget -qO- https://api.github.com/repos/hanselime/paqet/releases/latest 2>/dev/null | awk -F '\"' '/tag_name/{print $4; exit}' || true)"
   fi
 fi
 
 if [ -z "${VERSION}" ]; then
-  echo "Failed to detect latest release tag. Set VERSION manually." >&2
+  echo "Failed to detect latest release tag from GitHub API." >&2
+  echo "Set VERSION manually (e.g., VERSION=v1.0.0-alpha.12) and re-run." >&2
   exit 1
 fi
 
 NAME="paqet-${OS}-${ARCH}-${VERSION}.tar.gz"
 URL="https://github.com/hanselime/paqet/releases/download/${VERSION}/${NAME}"
+TARBALL_PATH="${PAQET_DIR}/${NAME}"
 
 if [ -x "${BIN_PATH}" ]; then
   echo "paqet is already installed at ${BIN_PATH}"
@@ -56,15 +58,48 @@ fi
 
 mkdir -p "${PAQET_DIR}"
 cd "${PAQET_DIR}"
+echo "Install dir: ${PAQET_DIR}"
+echo "Tarball: ${NAME}"
+echo "URL: ${URL}"
 
-# Download (wget preferred, curl fallback)
-if command -v wget >/dev/null 2>&1; then
-  wget -q "${URL}" -O "${NAME}"
-elif command -v curl >/dev/null 2>&1; then
-  curl -fsSL "${URL}" -o "${NAME}"
+# Download (skip if tarball already exists)
+if [ -f "${TARBALL_PATH}" ]; then
+  echo "Found existing tarball: ${TARBALL_PATH}"
 else
-  echo "Neither wget nor curl is available." >&2
-  exit 1
+  if command -v wget >/dev/null 2>&1; then
+    if ! wget -q "${URL}" -O "${NAME}"; then
+      echo "Download failed." >&2
+      echo "Debug info:" >&2
+      pwd >&2
+      ls -la >&2
+      df -h . >&2
+      echo "Please download this file manually and place it in ${PAQET_DIR}:" >&2
+      echo "  ${NAME}" >&2
+      echo "URL: ${URL}" >&2
+      echo "Then re-run the installer." >&2
+      exit 1
+    fi
+  elif command -v curl >/dev/null 2>&1; then
+    if ! curl -fSL "${URL}" -o "${NAME}"; then
+      echo "Download failed." >&2
+      echo "Debug info:" >&2
+      pwd >&2
+      ls -la >&2
+      df -h . >&2
+      echo "Please download this file manually and place it in ${PAQET_DIR}:" >&2
+      echo "  ${NAME}" >&2
+      echo "URL: ${URL}" >&2
+      echo "Then re-run the installer." >&2
+      exit 1
+    fi
+  else
+    echo "Neither wget nor curl is available." >&2
+    echo "Please download this file manually and place it in ${PAQET_DIR}:" >&2
+    echo "  ${NAME}" >&2
+    echo "URL: ${URL}" >&2
+    echo "Then re-run the installer." >&2
+    exit 1
+  fi
 fi
 
 # Extract into this folder

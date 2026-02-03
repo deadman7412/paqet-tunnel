@@ -38,35 +38,19 @@ add_rule() {
   iptables -t "${table}" -A "$@"
 }
 
-echo "Select OS family for persistence:"
-echo "1) Debian/Ubuntu (iptables-persistent)"
-echo "2) RHEL/CentOS/Alma/Rocky (iptables-services)"
-read -r -p "Choose [1/2]: " OS_CHOICE
-
-case "${OS_CHOICE}" in
-  1)
-    if command -v apt-get >/dev/null 2>&1; then
-      apt-get update -y
-      DEBIAN_FRONTEND=noninteractive apt-get install -y iptables-persistent netfilter-persistent
-    else
-      echo "apt-get not found. Skipping package install." >&2
-    fi
-    ;;
-  2)
-    if command -v yum >/dev/null 2>&1; then
-      yum install -y iptables-services
-      systemctl enable --now iptables
-    elif command -v dnf >/dev/null 2>&1; then
-      dnf install -y iptables-services
-      systemctl enable --now iptables
-    else
-      echo "yum/dnf not found. Skipping package install." >&2
-    fi
-    ;;
-  *)
-    echo "Invalid choice. Skipping package install." >&2
-    ;;
-esac
+# Auto-detect OS family for persistence
+if command -v apt-get >/dev/null 2>&1; then
+  apt-get update -y
+  DEBIAN_FRONTEND=noninteractive apt-get install -y iptables-persistent netfilter-persistent
+elif command -v dnf >/dev/null 2>&1; then
+  dnf install -y iptables-services
+  systemctl enable --now iptables
+elif command -v yum >/dev/null 2>&1; then
+  yum install -y iptables-services
+  systemctl enable --now iptables
+else
+  echo "No supported package manager found. Skipping persistence install." >&2
+fi
 
 # Add required rules
 add_rule raw PREROUTING -p tcp --dport "${PORT}" -j NOTRACK
