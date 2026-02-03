@@ -61,6 +61,8 @@ cd "${PAQET_DIR}"
 echo "Install dir: ${PAQET_DIR}"
 echo "Tarball: ${NAME}"
 echo "URL: ${URL}"
+echo "Note: GitHub download is time-limited (connect 5s, total ~20s)."
+echo "If it fails, manually download the tarball and place it in ${PAQET_DIR}."
 
 # Download (skip if tarball already exists and is non-empty)
 if [ -s "${TARBALL_PATH}" ]; then
@@ -90,7 +92,7 @@ else
   fi
 
   if command -v wget >/dev/null 2>&1; then
-    if ! wget -q "${URL}" -O "${NAME}"; then
+    if ! wget -q --timeout=5 --tries=1 "${URL}" -O "${NAME}"; then
       echo "Download failed." >&2
       echo "Debug info:" >&2
       pwd >&2
@@ -103,7 +105,7 @@ else
       exit 1
     fi
   elif command -v curl >/dev/null 2>&1; then
-    if ! curl -fSL "${URL}" -o "${NAME}"; then
+    if ! curl -fSL --connect-timeout 5 --max-time 20 "${URL}" -o "${NAME}"; then
       echo "Download failed." >&2
       echo "Debug info:" >&2
       pwd >&2

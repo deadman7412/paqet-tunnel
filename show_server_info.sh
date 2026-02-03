@@ -56,3 +56,9 @@ fi
 
 echo "--- ${INFO_FILE} ---"
 cat "${INFO_FILE}"
+echo
+echo "If you cannot transfer files, run these commands on the client VPS:"
+echo "  mkdir -p ${PAQET_DIR}"
+echo "  cat <<'EOF' > ${INFO_FILE}"
+grep -v '^#' "${INFO_FILE}"
+echo "EOF"
