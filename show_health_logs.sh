@@ -18,6 +18,8 @@ if [ ! -f "${LOG_FILE}" ]; then
   exit 1
 fi
 
+trap 'echo; echo "Returning to menu...";' INT
+
 while true; do
   echo
   echo "Health Log: ${LOG_FILE}"
@@ -28,9 +30,24 @@ while true; do
   read -r -p "Select an option: " choice
 
   case "${choice}" in
-    1) tail -n 100 "${LOG_FILE}" ;;
-    2) tail -n 100 -f "${LOG_FILE}" ;;
-    3) : > "${LOG_FILE}"; echo "Cleared ${LOG_FILE}" ;;
+    1)
+      if [ ! -s "${LOG_FILE}" ]; then
+        echo "No log entries yet."
+      else
+        tail -n 100 "${LOG_FILE}"
+      fi
+      exit 0
+      ;;
+    2)
+      echo "Press Ctrl+C to return to menu."
+      tail -n 100 -f "${LOG_FILE}" || true
+      exit 0
+      ;;
+    3)
+      : > "${LOG_FILE}"
+      echo "Cleared ${LOG_FILE}"
+      exit 0
+      ;;
     0) exit 0 ;;
     *) echo "Invalid option." >&2 ;;
   esac

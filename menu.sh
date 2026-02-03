@@ -73,6 +73,8 @@ server_menu() {
     echo -e "${GREEN}8)${NC} Show server info"
     echo -e "${GREEN}9)${NC} Health check"
     echo -e "${GREEN}10)${NC} Health logs"
+    echo
+    echo
     echo -e "${GREEN}0)${NC} Back to main menu"
     echo
     read -r -p "Select an option: " choice
@@ -185,6 +187,8 @@ client_menu() {
     echo -e "${GREEN}8)${NC} Test connection"
     echo -e "${GREEN}9)${NC} Health check"
     echo -e "${GREEN}10)${NC} Health logs"
+    echo
+    echo
     echo -e "${GREEN}0)${NC} Back to main menu"
     echo
     read -r -p "Select an option: " choice
@@ -286,6 +290,8 @@ client_menu() {
     echo -e "${GREEN}2)${NC} Server configuration"
     echo -e "${GREEN}3)${NC} Client configuration"
     echo -e "${GREEN}6)${NC} Uninstall Paqet"
+    echo
+    echo
     echo -e "${GREEN}0)${NC} Exit"
   echo
   read -r -p "Select an option: " choice
