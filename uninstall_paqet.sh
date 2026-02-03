@@ -18,6 +18,8 @@ for svc in paqet-server paqet-client; do
   if [ -f "/etc/systemd/system/${svc}.service" ]; then
     echo "Removing /etc/systemd/system/${svc}.service"
     rm -f "/etc/systemd/system/${svc}.service"
+  else
+    echo "Service file not found: /etc/systemd/system/${svc}.service"
   fi
 done
 echo "Reloading systemd daemon..."
@@ -25,7 +27,19 @@ systemctl daemon-reload 2>/dev/null || true
 
 # Remove cron jobs created by this menu
 echo "Removing cron jobs (if present)..."
-rm -f /etc/cron.d/paqet-restart-paqet-server /etc/cron.d/paqet-restart-paqet-client 2>/dev/null || true
+if [ -f /etc/cron.d/paqet-restart-paqet-server ]; then
+  echo "Removing /etc/cron.d/paqet-restart-paqet-server"
+  rm -f /etc/cron.d/paqet-restart-paqet-server
+else
+  echo "Cron file not found: /etc/cron.d/paqet-restart-paqet-server"
+fi
+
+if [ -f /etc/cron.d/paqet-restart-paqet-client ]; then
+  echo "Removing /etc/cron.d/paqet-restart-paqet-client"
+  rm -f /etc/cron.d/paqet-restart-paqet-client
+else
+  echo "Cron file not found: /etc/cron.d/paqet-restart-paqet-client"
+fi
 
 # Remove paqet directory
 rm -rf "${PAQET_DIR}"

@@ -66,6 +66,25 @@ echo "URL: ${URL}"
 if [ -f "${TARBALL_PATH}" ]; then
   echo "Found existing tarball: ${TARBALL_PATH}"
 else
+  # Quick GitHub reachability check (avoid long hangs)
+  if command -v curl >/dev/null 2>&1; then
+    if ! curl -fsS --connect-timeout 3 --max-time 5 https://github.com/hanselime/paqet/releases/latest >/dev/null 2>&1; then
+      echo "GitHub is not reachable from this server." >&2
+      echo "Please download this file manually and place it in ${PAQET_DIR}:" >&2
+      echo "  ${NAME}" >&2
+      echo "Releases: https://github.com/hanselime/paqet/releases/latest" >&2
+      exit 1
+    fi
+  elif command -v wget >/dev/null 2>&1; then
+    if ! wget -q --timeout=5 --spider https://github.com/hanselime/paqet/releases/latest >/dev/null 2>&1; then
+      echo "GitHub is not reachable from this server." >&2
+      echo "Please download this file manually and place it in ${PAQET_DIR}:" >&2
+      echo "  ${NAME}" >&2
+      echo "Releases: https://github.com/hanselime/paqet/releases/latest" >&2
+      exit 1
+    fi
+  fi
+
   if command -v wget >/dev/null 2>&1; then
     if ! wget -q "${URL}" -O "${NAME}"; then
       echo "Download failed." >&2

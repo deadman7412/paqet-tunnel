@@ -3,6 +3,7 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 INSTALL_SCRIPT="${SCRIPT_DIR}/install_paqet.sh"
+PAQET_DIR="${PAQET_DIR:-$HOME/paqet}"
 
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -15,6 +16,28 @@ banner() {
   echo -e "${CYAN}=================================${NC}"
   echo -e "${CYAN}        Paqet Tunnel Menu        ${NC}"
   echo -e "${CYAN}=================================${NC}"
+}
+
+detect_arch() {
+  case "$(uname -m)" in
+    x86_64|amd64) echo "amd64" ;;
+    aarch64|arm64) echo "arm64" ;;
+    *) echo "unknown" ;;
+  esac
+}
+
+github_reachable() {
+  if command -v curl >/dev/null 2>&1; then
+    curl -fsS --connect-timeout 3 --max-time 5 https://github.com/hanselime/paqet/releases/latest >/dev/null 2>&1
+  elif command -v wget >/dev/null 2>&1; then
+    wget -q --timeout=5 --spider https://github.com/hanselime/paqet/releases/latest >/dev/null 2>&1
+  else
+    return 1
+  fi
+}
+
+tarball_present() {
+  ls "${PAQET_DIR}"/paqet-linux-*.tar.gz >/dev/null 2>&1
 }
 
 pause() {
@@ -132,6 +155,7 @@ client_menu() {
     echo -e "${GREEN}5)${NC} Remove systemd service"
     echo -e "${GREEN}6)${NC} Service control"
     echo -e "${GREEN}7)${NC} Restart scheduler"
+    echo -e "${GREEN}8)${NC} Test connection"
     echo -e "${GREEN}0)${NC} Back to main menu"
     echo
     read -r -p "Select an option: " choice
@@ -177,6 +201,14 @@ client_menu() {
         fi
         pause
         ;;
+      8)
+        if [ -x "${SCRIPT_DIR}/test_client_connection.sh" ]; then
+          run_action "${SCRIPT_DIR}/test_client_connection.sh"
+        else
+          echo -e "${RED}Script not found or not executable:${NC} ${SCRIPT_DIR}/test_client_connection.sh" >&2
+        fi
+        pause
+        ;;
       0)
         return 0
         ;;
@@ -191,6 +223,20 @@ client_menu() {
   while true; do
     clear
     banner
+    if [ ! -x "${PAQET_DIR}/paqet" ] && ! tarball_present; then
+      if ! github_reachable; then
+        ARCH_DETECTED="$(detect_arch)"
+        echo -e "${YELLOW}Notice:${NC} GitHub is not reachable from this server."
+        echo "Download the latest release tarball manually and place it in ${PAQET_DIR}."
+        if [ "${ARCH_DETECTED}" != "unknown" ]; then
+          echo "Look for a file named: paqet-linux-${ARCH_DETECTED}-<version>.tar.gz"
+        else
+          echo "Look for a file named: paqet-linux-<arch>-<version>.tar.gz"
+        fi
+        echo "Releases: https://github.com/hanselime/paqet/releases/latest"
+        echo
+      fi
+    fi
     echo -e "${GREEN}1)${NC} Install Paqet"
     echo -e "${GREEN}2)${NC} Server configuration"
     echo -e "${GREEN}3)${NC} Client configuration"
