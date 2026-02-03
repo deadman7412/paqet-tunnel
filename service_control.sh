@@ -38,7 +38,12 @@ while true; do
     5) systemctl reset-failed "${SERVICE_NAME}.service" ;;
     6) systemctl enable "${SERVICE_NAME}.service" ;;
     7) systemctl disable "${SERVICE_NAME}.service" ;;
-    8) journalctl -u "${SERVICE_NAME}.service" -n 20 -f --no-pager ;;
+    8)
+      echo
+      echo "Press Ctrl+C to return to menu."
+      echo
+      journalctl -u "${SERVICE_NAME}.service" -n 20 -f --no-pager || true
+      ;;
     0) exit 0 ;;
     *) echo "Invalid option." >&2 ;;
   esac

@@ -13,6 +13,9 @@ esac
 
 LOG_FILE="/var/log/paqet-health-${ROLE}.log"
 
+YELLOW='\033[1;33m'
+NC='\033[0m'
+
 if [ ! -f "${LOG_FILE}" ]; then
   echo "Log file not found: ${LOG_FILE}" >&2
   exit 1
@@ -32,20 +35,28 @@ while true; do
   case "${choice}" in
     1)
       if [ ! -s "${LOG_FILE}" ]; then
-        echo "No log entries yet."
+        echo
+        echo -e "${YELLOW}No log entries yet.${NC}"
+        echo
       else
+        echo
         tail -n 100 "${LOG_FILE}"
+        echo
       fi
       exit 0
       ;;
     2)
+      echo
       echo "Press Ctrl+C to return to menu."
+      echo
       tail -n 100 -f "${LOG_FILE}" || true
       exit 0
       ;;
     3)
       : > "${LOG_FILE}"
+      echo
       echo "Cleared ${LOG_FILE}"
+      echo
       exit 0
       ;;
     0) exit 0 ;;
