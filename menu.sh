@@ -70,6 +70,7 @@ server_menu() {
     echo -e "${GREEN}5)${NC} Remove systemd service"
     echo -e "${GREEN}6)${NC} Service control"
     echo -e "${GREEN}7)${NC} Restart scheduler"
+    echo -e "${GREEN}8)${NC} Show server info"
     echo -e "${GREEN}0)${NC} Back to main menu"
     echo
     read -r -p "Select an option: " choice
@@ -130,6 +131,14 @@ server_menu() {
           run_action "${SCRIPT_DIR}/cron_restart.sh" server
         else
           echo -e "${RED}Script not found or not executable:${NC} ${SCRIPT_DIR}/cron_restart.sh" >&2
+        fi
+        pause
+        ;;
+      8)
+        if [ -x "${SCRIPT_DIR}/show_server_info.sh" ]; then
+          run_action "${SCRIPT_DIR}/show_server_info.sh"
+        else
+          echo -e "${RED}Script not found or not executable:${NC} ${SCRIPT_DIR}/show_server_info.sh" >&2
         fi
         pause
         ;;

@@ -62,10 +62,14 @@ echo "Install dir: ${PAQET_DIR}"
 echo "Tarball: ${NAME}"
 echo "URL: ${URL}"
 
-# Download (skip if tarball already exists)
-if [ -f "${TARBALL_PATH}" ]; then
+# Download (skip if tarball already exists and is non-empty)
+if [ -s "${TARBALL_PATH}" ]; then
   echo "Found existing tarball: ${TARBALL_PATH}"
 else
+  if [ -f "${TARBALL_PATH}" ] && [ ! -s "${TARBALL_PATH}" ]; then
+    echo "Found empty tarball (0 bytes). Removing: ${TARBALL_PATH}"
+    rm -f "${TARBALL_PATH}"
+  fi
   # Quick GitHub reachability check (avoid long hangs)
   if command -v curl >/dev/null 2>&1; then
     if ! curl -fsS --connect-timeout 3 --max-time 5 https://github.com/hanselime/paqet/releases/latest >/dev/null 2>&1; then
@@ -123,7 +127,14 @@ fi
 
 # Extract into this folder
 if command -v tar >/dev/null 2>&1; then
-  tar -xvzf "${NAME}"
+  if ! tar -xvzf "${NAME}"; then
+    echo "Tarball extract failed (possibly corrupted): ${TARBALL_PATH}" >&2
+    rm -f "${TARBALL_PATH}"
+    echo "Please download this file manually and place it in ${PAQET_DIR}:" >&2
+    echo "  ${NAME}" >&2
+    echo "Releases: https://github.com/hanselime/paqet/releases/latest" >&2
+    exit 1
+  fi
 else
   echo "tar is not available." >&2
   exit 1
