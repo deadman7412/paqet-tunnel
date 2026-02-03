@@ -61,8 +61,12 @@ cd "${PAQET_DIR}"
 echo "Install dir: ${PAQET_DIR}"
 echo "Tarball: ${NAME}"
 echo "URL: ${URL}"
-echo "Note: GitHub download is time-limited (connect 5s, total ~20s)."
+echo
+echo "=== NOTICE ==="
+echo "GitHub download is time-limited (connect 5s, total ~20s)."
 echo "If it fails, manually download the tarball and place it in ${PAQET_DIR}."
+echo "============="
+echo
 
 # Download (skip if tarball already exists and is non-empty)
 if [ -s "${TARBALL_PATH}" ]; then
@@ -70,7 +74,12 @@ if [ -s "${TARBALL_PATH}" ]; then
 else
   if [ -f "${TARBALL_PATH}" ] && [ ! -s "${TARBALL_PATH}" ]; then
     echo "Found empty tarball (0 bytes). Removing: ${TARBALL_PATH}"
-    rm -f "${TARBALL_PATH}"
+    rm -f "${TARBALL_PATH}" || true
+    if [ -f "${TARBALL_PATH}" ]; then
+      echo "Empty tarball still exists. Please remove it with:" >&2
+      echo "  rm -f ${TARBALL_PATH}" >&2
+      exit 1
+    fi
   fi
   # Quick GitHub reachability check (avoid long hangs)
   if command -v curl >/dev/null 2>&1; then
@@ -94,34 +103,52 @@ else
   if command -v wget >/dev/null 2>&1; then
     if ! wget -q --timeout=5 --tries=1 "${URL}" -O "${NAME}"; then
       echo "Download failed." >&2
-      echo "Debug info:" >&2
+      if [ -f "${TARBALL_PATH}" ] && [ ! -s "${TARBALL_PATH}" ]; then
+        echo "Removing empty tarball created by failed download." >&2
+        rm -f "${TARBALL_PATH}" || true
+      fi
+      echo "---- DEBUG INFO ----" >&2
       pwd >&2
       ls -la >&2
       df -h . >&2
-      echo "Please download this file manually and place it in ${PAQET_DIR}:" >&2
+      echo "--------------------" >&2
+      echo >&2
+      echo "=== MANUAL DOWNLOAD ===" >&2
+      echo "Place this file in ${PAQET_DIR}:" >&2
       echo "  ${NAME}" >&2
       echo "URL: ${URL}" >&2
+      echo "=======================" >&2
       echo "Then re-run the installer." >&2
       exit 1
     fi
   elif command -v curl >/dev/null 2>&1; then
     if ! curl -fSL --connect-timeout 5 --max-time 20 "${URL}" -o "${NAME}"; then
       echo "Download failed." >&2
-      echo "Debug info:" >&2
+      if [ -f "${TARBALL_PATH}" ] && [ ! -s "${TARBALL_PATH}" ]; then
+        echo "Removing empty tarball created by failed download." >&2
+        rm -f "${TARBALL_PATH}" || true
+      fi
+      echo "---- DEBUG INFO ----" >&2
       pwd >&2
       ls -la >&2
       df -h . >&2
-      echo "Please download this file manually and place it in ${PAQET_DIR}:" >&2
+      echo "--------------------" >&2
+      echo >&2
+      echo "=== MANUAL DOWNLOAD ===" >&2
+      echo "Place this file in ${PAQET_DIR}:" >&2
       echo "  ${NAME}" >&2
       echo "URL: ${URL}" >&2
+      echo "=======================" >&2
       echo "Then re-run the installer." >&2
       exit 1
     fi
   else
     echo "Neither wget nor curl is available." >&2
-    echo "Please download this file manually and place it in ${PAQET_DIR}:" >&2
+    echo "=== MANUAL DOWNLOAD ===" >&2
+    echo "Place this file in ${PAQET_DIR}:" >&2
     echo "  ${NAME}" >&2
     echo "URL: ${URL}" >&2
+    echo "=======================" >&2
     echo "Then re-run the installer." >&2
     exit 1
   fi

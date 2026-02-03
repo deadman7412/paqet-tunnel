@@ -54,11 +54,13 @@ INFO
   echo "Recreated ${INFO_FILE}"
 fi
 
-echo "--- ${INFO_FILE} ---"
+echo "=== ${INFO_FILE} ==="
+echo
 cat "${INFO_FILE}"
 echo
-echo "If you cannot transfer files, run these commands on the client VPS:"
-echo "  mkdir -p ${PAQET_DIR}"
-echo "  cat <<'EOF' > ${INFO_FILE}"
+echo "===== COPY/PASTE COMMANDS (CLIENT VPS) ====="
+echo "mkdir -p ${PAQET_DIR}"
+echo "cat <<'EOF' > ${INFO_FILE}"
 grep -v '^#' "${INFO_FILE}"
 echo "EOF"
+echo "==========================================="
