@@ -3,21 +3,30 @@ set -euo pipefail
 
 PAQET_DIR="${PAQET_DIR:-$HOME/paqet}"
 INFO_FILE="${PAQET_DIR}/server_info.txt"
+CONFIG_FILE="${PAQET_DIR}/server.yaml"
 
-PORT_DEFAULT="9999"
-if [ -f "${INFO_FILE}" ]; then
-  # shellcheck disable=SC1090
-  source "${INFO_FILE}"
-  if [ -n "${listen_port:-}" ]; then
-    PORT_DEFAULT="${listen_port}"
-  fi
+PORT=""
+
+if [ -f "${CONFIG_FILE}" ]; then
+  PORT="$(awk '
+    $1 == "listen:" { inlisten=1; next }
+    inlisten && $1 == "addr:" {
+      gsub(/"/, "", $2);
+      sub(/^:/, "", $2);
+      print $2;
+      exit
+    }
+  ' "${CONFIG_FILE}")"
 fi
 
-read -r -p "Server listen port [${PORT_DEFAULT}]: " PORT
-PORT="${PORT:-${PORT_DEFAULT}}"
+if [ -z "${PORT}" ] && [ -f "${INFO_FILE}" ]; then
+  # shellcheck disable=SC1090
+  source "${INFO_FILE}"
+  PORT="${listen_port:-}"
+fi
 
 if [ -z "${PORT}" ]; then
-  echo "Port is required." >&2
+  echo "Could not determine listen port. Create server config first (${CONFIG_FILE})." >&2
   exit 1
 fi
 
