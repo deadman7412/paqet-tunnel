@@ -52,6 +52,8 @@ Options include:
 - **Remove systemd service** → removes the service
 - **Service control** → start/stop/restart/status/enable/disable/reset failed/logs
 - **Restart scheduler** → cron‑based service restart schedule
+- **Health check** → auto‑restart if stuck (server/client)
+- **Health logs** → view/clear health check logs
 - **Show server info** → shows or recreates `~/paqet/server_info.txt`
 
 ### server_info.txt
@@ -77,6 +79,8 @@ Options include:
 - **Service control**
 - **Restart scheduler**
 - **Test connection** → runs curl with SOCKS5
+- **Health check**
+- **Health logs**
 
 ### Client Config Defaults
 If `~/paqet/server_info.txt` is present, the client config auto‑fills:
@@ -91,6 +95,21 @@ Creates a cron job in `/etc/cron.d/` to restart the service at fixed intervals:
 - 1, 2, 4, 8, 12, 24 hours
 
 Selecting a schedule overwrites the previous one.
+
+## Health Checks (Cron)
+
+Health checks run via cron and **restart the service only when needed**, with a safety cap of **max 5 restarts per hour**.
+
+### Client health logic
+- If service is not active → restart\n+- SOCKS5 test fails → restart
+
+### Server health logic
+- If service is not active → restart\n+- Recent logs include `connection lost`, `timeout`, or `reconnect` → restart\n+- No logs for 10 minutes → restart
+
+### Health logs
+Logs are written to:\n- `/var/log/paqet-health-server.log`\n- `/var/log/paqet-health-client.log`
+
+Logs are auto‑rotated when they exceed **1MB** (current log is truncated and previous is saved to `.1`).
 
 ## Systemd Services
 
@@ -132,6 +151,10 @@ Then optionally asks for **reboot**.
 - `cron_restart.sh` – restart scheduler
 - `test_client_connection.sh` – SOCKS5 test
 - `show_server_info.sh` – show/recreate server_info.txt
+- `health_check.sh` – server/client health check logic
+- `health_check_scheduler.sh` – health check scheduler
+- `show_health_logs.sh` – view/clear health logs
+- `health_log_rotate.sh` – rotate health logs
 - `uninstall_paqet.sh` – full uninstall
 
 ## Notes
@@ -139,4 +162,3 @@ Then optionally asks for **reboot**.
 - Scripts are designed for **Linux** VPS only.
 - All scripts are auto‑chmod’d on menu start.
 - The menu does not close on errors; it returns to the menu.
-

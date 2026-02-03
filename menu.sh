@@ -71,6 +71,8 @@ server_menu() {
     echo -e "${GREEN}6)${NC} Service control"
     echo -e "${GREEN}7)${NC} Restart scheduler"
     echo -e "${GREEN}8)${NC} Show server info"
+    echo -e "${GREEN}9)${NC} Health check"
+    echo -e "${GREEN}10)${NC} Health logs"
     echo -e "${GREEN}0)${NC} Back to main menu"
     echo
     read -r -p "Select an option: " choice
@@ -142,6 +144,22 @@ server_menu() {
         fi
         pause
         ;;
+      9)
+        if [ -x "${SCRIPT_DIR}/health_check_scheduler.sh" ]; then
+          run_action "${SCRIPT_DIR}/health_check_scheduler.sh" server
+        else
+          echo -e "${RED}Script not found or not executable:${NC} ${SCRIPT_DIR}/health_check_scheduler.sh" >&2
+        fi
+        pause
+        ;;
+      10)
+        if [ -x "${SCRIPT_DIR}/show_health_logs.sh" ]; then
+          run_action "${SCRIPT_DIR}/show_health_logs.sh" server
+        else
+          echo -e "${RED}Script not found or not executable:${NC} ${SCRIPT_DIR}/show_health_logs.sh" >&2
+        fi
+        pause
+        ;;
       0)
         return 0
         ;;
@@ -165,6 +183,8 @@ client_menu() {
     echo -e "${GREEN}6)${NC} Service control"
     echo -e "${GREEN}7)${NC} Restart scheduler"
     echo -e "${GREEN}8)${NC} Test connection"
+    echo -e "${GREEN}9)${NC} Health check"
+    echo -e "${GREEN}10)${NC} Health logs"
     echo -e "${GREEN}0)${NC} Back to main menu"
     echo
     read -r -p "Select an option: " choice
@@ -215,6 +235,22 @@ client_menu() {
           run_action "${SCRIPT_DIR}/test_client_connection.sh"
         else
           echo -e "${RED}Script not found or not executable:${NC} ${SCRIPT_DIR}/test_client_connection.sh" >&2
+        fi
+        pause
+        ;;
+      9)
+        if [ -x "${SCRIPT_DIR}/health_check_scheduler.sh" ]; then
+          run_action "${SCRIPT_DIR}/health_check_scheduler.sh" client
+        else
+          echo -e "${RED}Script not found or not executable:${NC} ${SCRIPT_DIR}/health_check_scheduler.sh" >&2
+        fi
+        pause
+        ;;
+      10)
+        if [ -x "${SCRIPT_DIR}/show_health_logs.sh" ]; then
+          run_action "${SCRIPT_DIR}/show_health_logs.sh" client
+        else
+          echo -e "${RED}Script not found or not executable:${NC} ${SCRIPT_DIR}/show_health_logs.sh" >&2
         fi
         pause
         ;;
