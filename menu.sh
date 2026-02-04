@@ -201,10 +201,12 @@ server_menu() {
         pause
         ;;
       15)
-        if [ -x "${SCRIPTS_DIR}/test_warp.sh" ]; then
+        if [ -x "${SCRIPTS_DIR}/test_warp_full.sh" ]; then
+          run_action "${SCRIPTS_DIR}/test_warp_full.sh"
+        elif [ -x "${SCRIPTS_DIR}/test_warp.sh" ]; then
           run_action "${SCRIPTS_DIR}/test_warp.sh" server
         else
-          echo -e "${RED}Script not found or not executable:${NC} ${SCRIPTS_DIR}/test_warp.sh" >&2
+          echo -e "${RED}Script not found or not executable:${NC} ${SCRIPTS_DIR}/test_warp_full.sh" >&2
         fi
         pause
         ;;

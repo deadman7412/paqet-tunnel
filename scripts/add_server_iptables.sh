@@ -38,16 +38,36 @@ add_rule() {
   iptables -t "${table}" -A "$@"
 }
 
+# Detect backend for persistence
+BACKEND="legacy"
+if iptables -V 2>/dev/null | grep -qi nf_tables; then
+  BACKEND="nft"
+fi
+
 # Auto-detect OS family for persistence
 if command -v apt-get >/dev/null 2>&1; then
   apt-get update -y
-  DEBIAN_FRONTEND=noninteractive apt-get install -y iptables-persistent netfilter-persistent
+  if [ "${BACKEND}" = "legacy" ]; then
+    DEBIAN_FRONTEND=noninteractive apt-get install -y iptables-persistent netfilter-persistent
+  else
+    DEBIAN_FRONTEND=noninteractive apt-get install -y nftables
+  fi
 elif command -v dnf >/dev/null 2>&1; then
-  dnf install -y iptables-services
-  systemctl enable --now iptables
+  if [ "${BACKEND}" = "legacy" ]; then
+    dnf install -y iptables-services
+    systemctl enable --now iptables
+  else
+    dnf install -y nftables
+    systemctl enable --now nftables
+  fi
 elif command -v yum >/dev/null 2>&1; then
-  yum install -y iptables-services
-  systemctl enable --now iptables
+  if [ "${BACKEND}" = "legacy" ]; then
+    yum install -y iptables-services
+    systemctl enable --now iptables
+  else
+    yum install -y nftables
+    systemctl enable --now nftables
+  fi
 else
   echo "No supported package manager found. Skipping persistence install." >&2
 fi
@@ -61,18 +81,26 @@ add_rule mangle OUTPUT -p tcp --sport "${PORT}" --tcp-flags RST RST -j DROP
 add_rule filter INPUT -p tcp --dport "${PORT}" -j ACCEPT
 add_rule filter OUTPUT -p tcp --sport "${PORT}" -j ACCEPT
 
-# Persist rules
-if command -v netfilter-persistent >/dev/null 2>&1; then
-  netfilter-persistent save
-elif command -v iptables-save >/dev/null 2>&1; then
-  if [ -d /etc/iptables ]; then
-    iptables-save > /etc/iptables/rules.v4
-    echo "Saved to /etc/iptables/rules.v4"
-  else
-    echo "iptables-save available but /etc/iptables not found; skipping save." >&2
+# Persist rules (handle nft vs legacy safely)
+if [ "${BACKEND}" = "nft" ]; then
+  # nft backend: avoid netfilter-persistent iptables-save errors
+  if command -v nft >/dev/null 2>&1; then
+    nft list ruleset > /etc/nftables.conf || true
+    systemctl enable --now nftables >/dev/null 2>&1 || true
   fi
-elif command -v service >/dev/null 2>&1; then
-  service iptables save || true
+else
+  if command -v netfilter-persistent >/dev/null 2>&1; then
+    netfilter-persistent save || true
+  elif command -v iptables-save >/dev/null 2>&1; then
+    if [ -d /etc/iptables ]; then
+      iptables-save > /etc/iptables/rules.v4 || true
+      echo "Saved to /etc/iptables/rules.v4"
+    else
+      echo "iptables-save available but /etc/iptables not found; skipping save." >&2
+    fi
+  elif command -v service >/dev/null 2>&1; then
+    service iptables save || true
+  fi
 fi
 
 echo "Server iptables rules added for port ${PORT}."

@@ -6,8 +6,8 @@ INFO_FILE="${PAQET_DIR}/server_info.txt"
 SERVER_CFG="${PAQET_DIR}/server.yaml"
 CLIENT_CFG="${PAQET_DIR}/client.yaml"
 
-if [ ! -f "${SERVER_CFG}" ]; then
-  echo "Server config not found: ${SERVER_CFG}" >&2
+if [ ! -f "${SERVER_CFG}" ] && [ ! -f "${CLIENT_CFG}" ]; then
+  echo "No server or client config found in ${PAQET_DIR}." >&2
   exit 1
 fi
 
@@ -15,14 +15,15 @@ echo "MTU affects packet fragmentation. If you see SSL errors, try 1200."
 read -r -p "MTU [1350]: " MTU
 MTU="${MTU:-1350}"
 
-# Update server config
-if grep -q "^[[:space:]]*mtu:" "${SERVER_CFG}"; then
-  sed -i "s/^[[:space:]]*mtu:.*/    mtu: ${MTU}/" "${SERVER_CFG}"
-else
-  sed -i "/^[[:space:]]*kcp:/a\    mtu: ${MTU}" "${SERVER_CFG}"
+# Update server config if present
+if [ -f "${SERVER_CFG}" ]; then
+  if grep -q "^[[:space:]]*mtu:" "${SERVER_CFG}"; then
+    sed -i "s/^[[:space:]]*mtu:.*/    mtu: ${MTU}/" "${SERVER_CFG}"
+  else
+    sed -i "/^[[:space:]]*kcp:/a\    mtu: ${MTU}" "${SERVER_CFG}"
+  fi
+  echo "Updated ${SERVER_CFG}"
 fi
-
-echo "Updated ${SERVER_CFG}"
 
 # Update client config if present
 if [ -f "${CLIENT_CFG}" ]; then
@@ -45,8 +46,12 @@ if [ -f "${INFO_FILE}" ]; then
 fi
 
 echo "Restarting services to apply changes..."
-systemctl restart paqet-server.service 2>/dev/null || true
-systemctl restart paqet-client.service 2>/dev/null || true
+if [ -f "${SERVER_CFG}" ]; then
+  systemctl restart paqet-server.service 2>/dev/null || true
+fi
+if [ -f "${CLIENT_CFG}" ]; then
+  systemctl restart paqet-client.service 2>/dev/null || true
+fi
 
 # Keep WARP MTU in sync (if enabled)
 WGCF_CONF="/etc/wireguard/wgcf.conf"

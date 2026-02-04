@@ -1,16 +1,18 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-ROLE="${1:-server}"
-SERVICE_NAME="paqet-${ROLE}"
-
-if ! id -u paqet >/dev/null 2>&1; then
-  echo "User 'paqet' not found. WARP policy routing may not be enabled." >&2
-  exit 1
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+if [ -x "${SCRIPT_DIR}/test_warp_full.sh" ]; then
+  exec "${SCRIPT_DIR}/test_warp_full.sh"
 fi
 
+echo "test_warp_full.sh not found. Running basic test..." >&2
 if ! command -v curl >/dev/null 2>&1; then
   echo "curl is required." >&2
+  exit 1
+fi
+if ! id -u paqet >/dev/null 2>&1; then
+  echo "User 'paqet' not found. WARP policy routing may not be enabled." >&2
   exit 1
 fi
 

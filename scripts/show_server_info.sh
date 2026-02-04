@@ -69,10 +69,6 @@ INFO
   echo "Recreated ${INFO_FILE}"
 fi
 
-echo "=== ${INFO_FILE} ==="
-echo
-cat "${INFO_FILE}"
-echo
 if grep -q "server_public_ip=REPLACE_WITH_SERVER_PUBLIC_IP" "${INFO_FILE}"; then
   # Try to auto-detect again
   AUTO_IP=""
@@ -89,20 +85,12 @@ if grep -q "server_public_ip=REPLACE_WITH_SERVER_PUBLIC_IP" "${INFO_FILE}"; then
   if [ -n "${AUTO_IP}" ]; then
     sed -i "s/^server_public_ip=.*/server_public_ip=${AUTO_IP}/" "${INFO_FILE}"
     echo "Auto-detected server public IP: ${AUTO_IP}"
-    echo
-    echo "=== ${INFO_FILE} (updated) ==="
-    echo
-    cat "${INFO_FILE}"
   else
     echo "Note: server_public_ip could not be detected."
     read -r -p "Enter server public IP (or leave empty to skip): " MANUAL_IP
     if [ -n "${MANUAL_IP}" ]; then
       sed -i "s/^server_public_ip=.*/server_public_ip=${MANUAL_IP}/" "${INFO_FILE}"
       echo "Updated server_public_ip in ${INFO_FILE}"
-      echo
-      echo "=== ${INFO_FILE} (updated) ==="
-      echo
-      cat "${INFO_FILE}"
     else
       echo "Update it manually when ready."
     fi
@@ -121,6 +109,12 @@ if ! grep -q "^mtu=" "${INFO_FILE}"; then
   fi
   echo "mtu=${MTU_EXISTING}" >> "${INFO_FILE}"
 fi
+
+echo
+echo "=== ${INFO_FILE} ==="
+echo
+cat "${INFO_FILE}"
+echo
 
 echo
 echo "===== COPY/PASTE COMMANDS (CLIENT VPS) ====="

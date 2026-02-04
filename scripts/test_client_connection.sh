@@ -41,4 +41,5 @@ if curl -fsSL --connect-timeout 5 --max-time 10 http://httpbin.org/ip --proxy "s
 fi
 
 echo "Failed: proxy test did not succeed." >&2
+echo "Hint: If you see SSL errors/timeouts, try lowering MTU to 1200 via the Change MTU menu option." >&2
 exit 1

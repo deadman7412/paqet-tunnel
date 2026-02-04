@@ -47,7 +47,9 @@ if [ -n "${local_tarball}" ]; then
 
   if [ -n "${latest}" ] && [ "${latest}" != "${VERSION}" ]; then
     echo
-    echo -e "\033[1;33m=== NEWER VERSION AVAILABLE ===\033[0m"
+    echo -e "\033[1;31m====================================\033[0m"
+    echo -e "\033[1;31m  NEWER VERSION AVAILABLE\033[0m"
+    echo -e "\033[1;31m====================================\033[0m"
     echo -e "\033[1;33mLatest:\033[0m ${latest}"
     echo -e "\033[1;33mLocal:\033[0m  ${VERSION}"
     echo
@@ -56,6 +58,7 @@ if [ -n "${local_tarball}" ]; then
       y|Y)
         echo
         echo "Using local version: ${VERSION}"
+        echo
         echo -e "\033[1;31mWARNING:\033[0m Ensure BOTH server and client use the same paqet version."
         echo
         ;;
@@ -157,6 +160,10 @@ else
       if [ -f "${TARBALL_PATH}" ] && [ ! -s "${TARBALL_PATH}" ]; then
         echo "Removing empty tarball created by failed download." >&2
         rm -f "${TARBALL_PATH}" || true
+        if [ -f "${TARBALL_PATH}" ]; then
+          echo "Empty tarball still exists. Please remove it with:" >&2
+          echo "  rm -f ${TARBALL_PATH}" >&2
+        fi
       fi
       echo "---- DEBUG INFO ----" >&2
       pwd >&2
@@ -178,6 +185,10 @@ else
       if [ -f "${TARBALL_PATH}" ] && [ ! -s "${TARBALL_PATH}" ]; then
         echo "Removing empty tarball created by failed download." >&2
         rm -f "${TARBALL_PATH}" || true
+        if [ -f "${TARBALL_PATH}" ]; then
+          echo "Empty tarball still exists. Please remove it with:" >&2
+          echo "  rm -f ${TARBALL_PATH}" >&2
+        fi
       fi
       echo "---- DEBUG INFO ----" >&2
       pwd >&2

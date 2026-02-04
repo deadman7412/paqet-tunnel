@@ -58,6 +58,20 @@ if [ -z "${KCP_KEY}" ]; then
   echo "Generated KCP key: ${KCP_KEY}"
 fi
 
+# Detect public IP (best-effort)
+SERVER_PUBLIC_IP="${SERVER_PUBLIC_IP:-}"
+if [ -z "${SERVER_PUBLIC_IP}" ]; then
+  if command -v curl >/dev/null 2>&1; then
+    SERVER_PUBLIC_IP="$(curl -fsS --connect-timeout 3 --max-time 5 https://api.ipify.org || true)"
+    [ -z "${SERVER_PUBLIC_IP}" ] && SERVER_PUBLIC_IP="$(curl -fsS --connect-timeout 3 --max-time 5 https://ifconfig.me || true)"
+    [ -z "${SERVER_PUBLIC_IP}" ] && SERVER_PUBLIC_IP="$(curl -fsS --connect-timeout 3 --max-time 5 https://ipinfo.io/ip || true)"
+  elif command -v wget >/dev/null 2>&1; then
+    SERVER_PUBLIC_IP="$(wget -qO- --timeout=5 https://api.ipify.org || true)"
+    [ -z "${SERVER_PUBLIC_IP}" ] && SERVER_PUBLIC_IP="$(wget -qO- --timeout=5 https://ifconfig.me || true)"
+    [ -z "${SERVER_PUBLIC_IP}" ] && SERVER_PUBLIC_IP="$(wget -qO- --timeout=5 https://ipinfo.io/ip || true)"
+  fi
+fi
+
 mkdir -p "${PAQET_DIR}"
 
 cat <<YAML > "${OUT_FILE}"
@@ -102,18 +116,6 @@ INFO
 
 echo "Wrote ${INFO_FILE}"
 echo
-if [ -z "${SERVER_PUBLIC_IP:-}" ]; then
-  if command -v curl >/dev/null 2>&1; then
-    SERVER_PUBLIC_IP="$(curl -fsS --connect-timeout 3 --max-time 5 https://api.ipify.org || true)"
-    [ -z "${SERVER_PUBLIC_IP}" ] && SERVER_PUBLIC_IP="$(curl -fsS --connect-timeout 3 --max-time 5 https://ifconfig.me || true)"
-    [ -z "${SERVER_PUBLIC_IP}" ] && SERVER_PUBLIC_IP="$(curl -fsS --connect-timeout 3 --max-time 5 https://ipinfo.io/ip || true)"
-  elif command -v wget >/dev/null 2>&1; then
-    SERVER_PUBLIC_IP="$(wget -qO- --timeout=5 https://api.ipify.org || true)"
-    [ -z "${SERVER_PUBLIC_IP}" ] && SERVER_PUBLIC_IP="$(wget -qO- --timeout=5 https://ifconfig.me || true)"
-    [ -z "${SERVER_PUBLIC_IP}" ] && SERVER_PUBLIC_IP="$(wget -qO- --timeout=5 https://ipinfo.io/ip || true)"
-  fi
-fi
-
 echo "If you cannot transfer files, run these commands on the client VPS:"
 echo "  mkdir -p ${PAQET_DIR}"
 echo "  cat <<'EOF' > ${INFO_FILE}"

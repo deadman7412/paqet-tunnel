@@ -30,17 +30,18 @@ if [ -f "${DROPIN_DIR}/10-warp.conf" ]; then
   systemctl restart "${SERVICE_NAME}.service" || true
 fi
 
-# Save iptables if persistence is installed
-if command -v netfilter-persistent >/dev/null 2>&1; then
-  netfilter-persistent save
-elif command -v service >/dev/null 2>&1; then
-  service iptables save || true
-fi
-
-# Persist nft rule removal
-if command -v nft >/dev/null 2>&1 && [ -f /etc/nftables.conf ]; then
-  nft list ruleset > /etc/nftables.conf || true
-  systemctl enable --now nftables >/dev/null 2>&1 || true
+# Persist firewall changes
+if iptables -V 2>/dev/null | grep -qi nf_tables; then
+  if command -v nft >/dev/null 2>&1; then
+    nft list ruleset > /etc/nftables.conf || true
+    systemctl enable --now nftables >/dev/null 2>&1 || true
+  fi
+else
+  if command -v netfilter-persistent >/dev/null 2>&1; then
+    netfilter-persistent save || true
+  elif command -v service >/dev/null 2>&1; then
+    service iptables save || true
+  fi
 fi
 
 echo "WARP policy routing disabled for ${SERVICE_NAME}."

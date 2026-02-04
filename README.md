@@ -14,7 +14,8 @@ This folder contains a menu‑driven setup for installing, configuring, and oper
 ## What Gets Installed Where
 
 - Paqet binaries and configs live in: `~/paqet`
-- Menu scripts live in: `~/paqet_tunnel`
+- Menu script lives in: `~/paqet_tunnel/menu.sh`
+- Helper scripts live in: `~/paqet_tunnel/scripts`
 
 The installer always uses `~/paqet` regardless of the current directory.
 
@@ -57,6 +58,7 @@ Options include:
 - **Enable WARP (policy routing)** → route paqet traffic through Cloudflare WARP (server)
 - **Disable WARP (policy routing)**
 - **WARP status**
+- **Test WARP** → full diagnostics (wg, routing, iptables/nft, curl tests)
 - **Show server info** → shows or recreates `~/paqet/server_info.txt`
 
 ### server_info.txt
@@ -70,6 +72,7 @@ This contains:
 - `listen_port`
 - `kcp_key`
 - `server_public_ip`
+- `mtu`
 
 If file transfer is not possible, **Show server info** prints a ready-to-paste command block to recreate it on the client.
 
@@ -148,6 +151,7 @@ Service runs:
 ```
 ~/paqet/paqet run -c ~/paqet/<role>.yaml
 ```
+When WARP is enabled, the service runs as user `paqet` from `/opt/paqet` so it can be policy‑routed safely.
 
 ## Logs
 
@@ -161,6 +165,7 @@ Uninstall removes:
 - `~/paqet` directory
 - systemd services
 - cron jobs created by the menu
+- WARP files (wgcf, wgcf.conf, routing, firewall marks)
 
 Then optionally asks for **reboot**.
 
@@ -185,6 +190,7 @@ Then optionally asks for **reboot**.
 - `scripts/enable_warp_policy.sh` – enable WARP policy routing (server)
 - `scripts/disable_warp_policy.sh` – disable WARP policy routing
 - `scripts/warp_status.sh` – show WARP status
+- `scripts/test_warp_full.sh` – full WARP diagnostics
 - `scripts/uninstall_paqet.sh` – full uninstall
 
 ## Notes

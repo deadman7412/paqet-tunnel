@@ -40,15 +40,22 @@ iptables -t filter -D OUTPUT -p tcp --sport "${PORT}" -j ACCEPT 2>/dev/null || t
 echo "Removed iptables rules for port ${PORT}."
 
 # Persist rules removal
-if command -v netfilter-persistent >/dev/null 2>&1; then
-  netfilter-persistent save
-elif command -v iptables-save >/dev/null 2>&1; then
-  if [ -d /etc/iptables ]; then
-    iptables-save > /etc/iptables/rules.v4
-    echo "Saved to /etc/iptables/rules.v4"
+if iptables -V 2>/dev/null | grep -qi nf_tables; then
+  if command -v nft >/dev/null 2>&1; then
+    nft list ruleset > /etc/nftables.conf || true
+    systemctl enable --now nftables >/dev/null 2>&1 || true
   fi
-elif command -v service >/dev/null 2>&1; then
-  service iptables save || true
+else
+  if command -v netfilter-persistent >/dev/null 2>&1; then
+    netfilter-persistent save || true
+  elif command -v iptables-save >/dev/null 2>&1; then
+    if [ -d /etc/iptables ]; then
+      iptables-save > /etc/iptables/rules.v4
+      echo "Saved to /etc/iptables/rules.v4"
+    fi
+  elif command -v service >/dev/null 2>&1; then
+    service iptables save || true
+  fi
 fi
 
 # Optional: remove persistence packages

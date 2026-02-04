@@ -188,8 +188,15 @@ fi
 TABLE_ID=51820
 MARK=51820
 
+# Ensure route table name exists (avoids "FIB table does not exist")
+if [ -f /etc/iproute2/rt_tables ]; then
+  if ! grep -qE "^[[:space:]]*${TABLE_ID}[[:space:]]+wgcf\$" /etc/iproute2/rt_tables; then
+    echo "${TABLE_ID} wgcf" >> /etc/iproute2/rt_tables
+  fi
+fi
+
 # Add route table
-if ! ip route show table ${TABLE_ID} | grep -q default; then
+if ! ip route show table ${TABLE_ID} 2>/dev/null | grep -q default; then
   ip route add default dev wgcf table ${TABLE_ID}
 fi
 
@@ -213,15 +220,15 @@ if ! iptables -t mangle -C OUTPUT -m owner --uid-owner paqet -j MARK --set-mark 
   if command -v nft >/dev/null 2>&1; then
     nft list table inet mangle >/dev/null 2>&1 || nft add table inet mangle
     nft list chain inet mangle output >/dev/null 2>&1 || nft add chain inet mangle output '{ type filter hook output priority mangle; policy accept; }'
-    nft delete rule inet mangle output meta skuid \"paqet\" meta mark set ${MARK} 2>/dev/null || true
-    nft add rule inet mangle output meta skuid \"paqet\" meta mark set ${MARK}
+    nft delete rule inet mangle output meta skuid "paqet" meta mark set ${MARK} 2>/dev/null || true
+    nft add rule inet mangle output meta skuid "paqet" meta mark set ${MARK}
   fi
 fi
 
 # Verify rule exists via iptables or nft
 if ! iptables -t mangle -C OUTPUT -m owner --uid-owner paqet -j MARK --set-mark ${MARK} 2>/dev/null; then
   if command -v nft >/dev/null 2>&1; then
-    if ! nft list chain inet mangle output 2>/dev/null | grep -q \"skuid \\\"paqet\\\".*mark set ${MARK}\"; then
+    if ! nft list chain inet mangle output 2>/dev/null | grep -q 'skuid "paqet".*mark set '"${MARK}"; then
       echo "Failed to add mark rule for paqet user (iptables/nft)." >&2
       exit 1
     fi
@@ -231,19 +238,20 @@ if ! iptables -t mangle -C OUTPUT -m owner --uid-owner paqet -j MARK --set-mark 
   fi
 fi
 
-# Save iptables if persistence is installed
-if command -v netfilter-persistent >/dev/null 2>&1; then
-  netfilter-persistent save
-elif [ -d /etc/iptables ]; then
-  iptables-save > /etc/iptables/rules.v4 || true
-elif command -v service >/dev/null 2>&1; then
-  service iptables save || true
-fi
-
-# Persist nft rule if nftables service exists
-if command -v nft >/dev/null 2>&1 && [ -f /etc/nftables.conf ]; then
-  nft list ruleset > /etc/nftables.conf || true
-  systemctl enable --now nftables >/dev/null 2>&1 || true
+# Persist firewall changes
+if iptables -V 2>/dev/null | grep -qi nf_tables; then
+  if command -v nft >/dev/null 2>&1; then
+    nft list ruleset > /etc/nftables.conf || true
+    systemctl enable --now nftables >/dev/null 2>&1 || true
+  fi
+else
+  if command -v netfilter-persistent >/dev/null 2>&1; then
+    netfilter-persistent save || true
+  elif [ -d /etc/iptables ]; then
+    iptables-save > /etc/iptables/rules.v4 || true
+  elif command -v service >/dev/null 2>&1; then
+    service iptables save || true
+  fi
 fi
 
 echo "WARP policy routing enabled for ${SERVICE_NAME}."

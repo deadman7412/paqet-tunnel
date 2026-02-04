@@ -56,7 +56,7 @@ fi
 # Save firewall changes (handle nft vs legacy safely)
 if iptables -V 2>/dev/null | grep -qi nf_tables; then
   # nft backend: avoid netfilter-persistent iptables-save errors
-  if command -v nft >/dev/null 2>&1 && [ -f /etc/nftables.conf ]; then
+  if command -v nft >/dev/null 2>&1; then
     nft list ruleset > /etc/nftables.conf || true
     systemctl enable --now nftables >/dev/null 2>&1 || true
   fi
