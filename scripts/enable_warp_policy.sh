@@ -127,6 +127,8 @@ wg-quick up wgcf
 if ! id -u paqet >/dev/null 2>&1; then
   useradd --system --no-create-home --shell /usr/sbin/nologin paqet
 fi
+PAQET_UID="$(id -u paqet)"
+MARK_HEX="$(printf '0x%08x' "${MARK}")"
 
 # Ensure paqet binary/config are accessible to paqet user
 PAQET_SRC_DIR="/root/paqet"
@@ -213,22 +215,27 @@ else
   echo "iptables backend: legacy"
 fi
 iptables -t mangle -D OUTPUT -m owner --uid-owner paqet -j MARK --set-mark ${MARK} 2>/dev/null || true
-iptables -t mangle -A OUTPUT -m owner --uid-owner paqet -j MARK --set-mark ${MARK} 2>/dev/null || true
+if ! iptables -t mangle -A OUTPUT -m owner --uid-owner paqet -j MARK --set-mark ${MARK} 2>/dev/null; then
+  echo "iptables owner-mark rule failed (will try nft fallback)."
+fi
 
 if ! iptables -t mangle -C OUTPUT -m owner --uid-owner paqet -j MARK --set-mark ${MARK} 2>/dev/null; then
   # Fallback to nft if iptables owner match isn't effective
   if command -v nft >/dev/null 2>&1; then
     nft list table inet mangle >/dev/null 2>&1 || nft add table inet mangle
     nft list chain inet mangle output >/dev/null 2>&1 || nft add chain inet mangle output '{ type filter hook output priority mangle; policy accept; }'
-    nft delete rule inet mangle output meta skuid "paqet" meta mark set ${MARK} 2>/dev/null || true
-    nft add rule inet mangle output meta skuid "paqet" meta mark set ${MARK}
+    # Remove any existing mark rules for this UID (avoid duplicates)
+    while read -r handle; do
+      [ -n "${handle}" ] && nft delete rule inet mangle output handle "${handle}" 2>/dev/null || true
+    done < <(nft -a list chain inet mangle output 2>/dev/null | awk -v uid="${PAQET_UID}" '/skuid/ && /mark set/ && $0 ~ ("skuid " uid) {for(i=1;i<=NF;i++) if($i=="handle"){print $(i+1)}}')
+    nft add rule inet mangle output meta skuid ${PAQET_UID} meta mark set ${MARK}
   fi
 fi
 
 # Verify rule exists via iptables or nft
 if ! iptables -t mangle -C OUTPUT -m owner --uid-owner paqet -j MARK --set-mark ${MARK} 2>/dev/null; then
   if command -v nft >/dev/null 2>&1; then
-    if ! nft list chain inet mangle output 2>/dev/null | grep -q 'skuid "paqet".*mark set '"${MARK}"; then
+    if ! nft list chain inet mangle output 2>/dev/null | grep -Eq "skuid ${PAQET_UID}.*mark set (${MARK_HEX}|${MARK})"; then
       echo "Failed to add mark rule for paqet user (iptables/nft)." >&2
       exit 1
     fi

@@ -12,7 +12,14 @@ iptables -t mangle -D OUTPUT -m owner --uid-owner paqet -j MARK --set-mark ${MAR
 
 # Remove nft mark rule if present
 if command -v nft >/dev/null 2>&1; then
-  nft delete rule inet mangle output meta skuid \"paqet\" meta mark set ${MARK} 2>/dev/null || true
+  if id -u paqet >/dev/null 2>&1; then
+    PAQET_UID="$(id -u paqet)"
+    while read -r handle; do
+      [ -n "${handle}" ] && nft delete rule inet mangle output handle "${handle}" 2>/dev/null || true
+    done < <(nft -a list chain inet mangle output 2>/dev/null | awk -v uid="${PAQET_UID}" '/skuid/ && /mark set/ && $0 ~ ("skuid " uid) {for(i=1;i<=NF;i++) if($i=="handle"){print $(i+1)}}')
+  else
+    nft delete rule inet mangle output meta skuid "paqet" meta mark set ${MARK} 2>/dev/null || true
+  fi
 fi
 
 # Remove ip rule and route table

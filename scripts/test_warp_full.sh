@@ -34,7 +34,12 @@ iptables -t mangle -L OUTPUT -n -v | grep -E 'MARK.*51820|uid-owner paqet' || ec
 # 5) nft mark rule
 if command -v nft >/dev/null 2>&1; then
   echo "\n[5] nft mark rule"
-  nft list chain inet mangle output 2>/dev/null | grep -E 'skuid "paqet"|mark set 51820' || echo "(no nft mark rule)"
+  if id -u paqet >/dev/null 2>&1; then
+    PAQET_UID="$(id -u paqet)"
+    nft list chain inet mangle output 2>/dev/null | grep -E "skuid ${PAQET_UID}.*mark set" || echo "(no nft mark rule)"
+  else
+    echo "(user paqet not found)"
+  fi
 fi
 
 # 6) WARP egress direct

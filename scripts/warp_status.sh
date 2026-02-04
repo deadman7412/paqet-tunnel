@@ -48,9 +48,14 @@ fi
 if command -v nft >/dev/null 2>&1; then
   echo
   echo "nft mark rules:"
-  if nft list chain inet mangle output 2>/dev/null | grep -q "skuid \"paqet\".*mark set 51820"; then
-    nft list chain inet mangle output 2>/dev/null | grep "skuid \"paqet\".*mark set 51820"
+  if id -u paqet >/dev/null 2>&1; then
+    PAQET_UID="$(id -u paqet)"
+    if nft list chain inet mangle output 2>/dev/null | grep -q "skuid ${PAQET_UID}.*mark set"; then
+      nft list chain inet mangle output 2>/dev/null | grep "skuid ${PAQET_UID}.*mark set"
+    else
+      echo "(no nft mark rules)"
+    fi
   else
-    echo "(no nft mark rules)"
+    echo "(user paqet not found)"
   fi
 fi
