@@ -4,6 +4,11 @@ set -euo pipefail
 ROLE="${1:-server}"
 SERVICE_NAME="paqet-${ROLE}"
 
+# Policy routing constants (defined early for use throughout script)
+TABLE_ID=51820
+MARK=51820
+MARK_HEX="$(printf '0x%08x' "${MARK}")"
+
 ARCH_RAW="$(uname -m)"
 case "${ARCH_RAW}" in
   x86_64|amd64) ARCH="amd64" ;;
@@ -186,10 +191,6 @@ CONF
   systemctl restart "${SERVICE_NAME}.service" || true
 fi
 
-# Policy routing
-TABLE_ID=51820
-MARK=51820
-
 # Ensure route table name exists (avoids "FIB table does not exist")
 if [ -f /etc/iproute2/rt_tables ]; then
   if ! grep -qE "^[[:space:]]*${TABLE_ID}[[:space:]]+wgcf\$" /etc/iproute2/rt_tables; then
@@ -234,8 +235,15 @@ fi
 
 # Verify rule exists via iptables or nft
 if ! iptables -t mangle -C OUTPUT -m owner --uid-owner paqet -j MARK --set-mark ${MARK} 2>/dev/null; then
+  echo "iptables mark rule not detected; checking nft..."
   if command -v nft >/dev/null 2>&1; then
     if ! nft list chain inet mangle output 2>/dev/null | grep -Eq "skuid ${PAQET_UID}.*mark set (${MARK_HEX}|${MARK})"; then
+      echo "Debug:"
+      echo "  PAQET_UID=${PAQET_UID}"
+      echo "  MARK=${MARK}"
+      echo "  MARK_HEX=${MARK_HEX}"
+      echo "  nft chain output:"
+      nft -a list chain inet mangle output 2>/dev/null || true
       echo "Failed to add mark rule for paqet user (iptables/nft)." >&2
       exit 1
     fi
