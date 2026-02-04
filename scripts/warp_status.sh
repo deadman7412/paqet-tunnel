@@ -16,10 +16,10 @@ fi
 
 WGCF_CONF="/etc/wireguard/wgcf.conf"
 if [ -f "${WGCF_CONF}" ]; then
-  MTU_CONF="$(awk -F '=' '/^MTU[[:space:]]*=/ {gsub(/[[:space:]]/,\"\",$2); print $2; exit}' "${WGCF_CONF}")"
-  if [ -n "${MTU_CONF}" ]; then
+  MTU_CONF="$(awk -F '=' 'BEGIN{OFS=\"\"} /^MTU[[:space:]]*=/ {gsub(/[[:space:]]/, \"\", $2); print $2; exit}' \"${WGCF_CONF}\")"
+  if [ -n \"${MTU_CONF}\" ]; then
     echo
-    echo "wgcf.conf MTU: ${MTU_CONF}"
+    echo \"wgcf.conf MTU: ${MTU_CONF}\"
   fi
 fi
 
@@ -31,4 +31,8 @@ ip route show table 51820 || echo "(no routes in table 51820)"
 
 echo
 echo "iptables mark rules:"
-iptables -t mangle -S OUTPUT | grep -E "owner --uid-owner paqet|MARK --set-mark 51820" || echo "(no mark rules)"
+if iptables -t mangle -S OUTPUT | grep -E "owner --uid-owner paqet|MARK --set-mark 51820" >/dev/null; then
+  iptables -t mangle -S OUTPUT | grep -E "owner --uid-owner paqet|MARK --set-mark 51820"
+else
+  echo "(no mark rules) - WARP will NOT route paqet traffic"
+fi

@@ -198,10 +198,9 @@ if ! ip rule show | grep -q "fwmark ${MARK}.*lookup ${TABLE_ID}"; then
   ip rule add fwmark ${MARK} table ${TABLE_ID}
 fi
 
-# iptables mark rules for paqet user
-if ! iptables -t mangle -C OUTPUT -m owner --uid-owner paqet -j MARK --set-mark ${MARK} 2>/dev/null; then
-  iptables -t mangle -A OUTPUT -m owner --uid-owner paqet -j MARK --set-mark ${MARK}
-fi
+# iptables mark rules for paqet user (ensure exists)
+iptables -t mangle -D OUTPUT -m owner --uid-owner paqet -j MARK --set-mark ${MARK} 2>/dev/null || true
+iptables -t mangle -A OUTPUT -m owner --uid-owner paqet -j MARK --set-mark ${MARK}
 
 # Save iptables if persistence is installed
 if command -v netfilter-persistent >/dev/null 2>&1; then

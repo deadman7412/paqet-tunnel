@@ -78,6 +78,7 @@ server_menu() {
     echo -e "${GREEN}12)${NC} Enable WARP (policy routing)"
     echo -e "${GREEN}13)${NC} Disable WARP (policy routing)"
     echo -e "${GREEN}14)${NC} WARP status"
+    echo -e "${GREEN}15)${NC} Test WARP"
     echo
     echo
     echo -e "${GREEN}0)${NC} Back to main menu"
@@ -196,6 +197,14 @@ server_menu() {
           run_action "${SCRIPTS_DIR}/warp_status.sh" server
         else
           echo -e "${RED}Script not found or not executable:${NC} ${SCRIPTS_DIR}/warp_status.sh" >&2
+        fi
+        pause
+        ;;
+      15)
+        if [ -x "${SCRIPTS_DIR}/test_warp.sh" ]; then
+          run_action "${SCRIPTS_DIR}/test_warp.sh" server
+        else
+          echo -e "${RED}Script not found or not executable:${NC} ${SCRIPTS_DIR}/test_warp.sh" >&2
         fi
         pause
         ;;
