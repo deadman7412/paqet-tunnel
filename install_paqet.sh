@@ -21,23 +21,68 @@ case "${ARCH_RAW}" in
     ;;
 esac
 
-if [ -z "${VERSION}" ]; then
+local_tarball=""
+if [ -d "${PAQET_DIR}" ]; then
+  for f in $(ls -1 "${PAQET_DIR}"/paqet-${OS}-${ARCH}-v*.tar.gz 2>/dev/null | sort -V); do
+    if [ -s "${f}" ]; then
+      local_tarball="${f}"
+    fi
+  done
+fi
+
+if [ -n "${local_tarball}" ]; then
+  NAME="$(basename "${local_tarball}")"
+  VERSION="$(echo "${NAME}" | sed -n 's/^paqet-'"${OS}"'-'"${ARCH}"'-\(v[^.]*\..*\)\.tar\.gz$/\1/p')"
+  URL="https://github.com/hanselime/paqet/releases/download/${VERSION}/${NAME}"
+  TARBALL_PATH="${PAQET_DIR}/${NAME}"
+  echo "Found local tarball: ${TARBALL_PATH}"
+
+  # Check for newer version on GitHub
+  latest=""
   if command -v curl >/dev/null 2>&1; then
-    VERSION="$(curl -fsSL https://api.github.com/repos/hanselime/paqet/releases/latest 2>/dev/null | awk -F '\"' '/tag_name/{print $4; exit}' || true)"
+    latest="$(curl -fsSL --connect-timeout 5 --max-time 10 https://api.github.com/repos/hanselime/paqet/releases/latest 2>/dev/null | awk -F '\"' '/tag_name/{print $4; exit}' || true)"
   elif command -v wget >/dev/null 2>&1; then
-    VERSION="$(wget -qO- https://api.github.com/repos/hanselime/paqet/releases/latest 2>/dev/null | awk -F '\"' '/tag_name/{print $4; exit}' || true)"
+    latest="$(wget -qO- --timeout=10 https://api.github.com/repos/hanselime/paqet/releases/latest 2>/dev/null | awk -F '\"' '/tag_name/{print $4; exit}' || true)"
   fi
-fi
 
-if [ -z "${VERSION}" ]; then
-  echo "Failed to detect latest release tag from GitHub API." >&2
-  echo "Set VERSION manually (e.g., VERSION=v1.0.0-alpha.12) and re-run." >&2
-  exit 1
-fi
+  if [ -n "${latest}" ] && [ "${latest}" != "${VERSION}" ]; then
+    echo
+    echo "A newer version is available: ${latest}"
+    echo "Local version: ${VERSION}"
+    read -r -p "Use local version anyway? [y/N]: " USE_LOCAL
+    case "${USE_LOCAL}" in
+      y|Y)
+        echo "Using local version: ${VERSION}"
+        echo "Warning: Ensure BOTH server and client use the same paqet version."
+        ;;
+      *)
+        VERSION="${latest}"
+        NAME="paqet-${OS}-${ARCH}-${VERSION}.tar.gz"
+        URL="https://github.com/hanselime/paqet/releases/download/${VERSION}/${NAME}"
+        TARBALL_PATH="${PAQET_DIR}/${NAME}"
+        echo "Using latest version: ${VERSION}"
+        ;;
+    esac
+  fi
+else
+  if [ -z "${VERSION}" ]; then
+    if command -v curl >/dev/null 2>&1; then
+      VERSION="$(curl -fsSL https://api.github.com/repos/hanselime/paqet/releases/latest 2>/dev/null | awk -F '\"' '/tag_name/{print $4; exit}' || true)"
+    elif command -v wget >/dev/null 2>&1; then
+      VERSION="$(wget -qO- https://api.github.com/repos/hanselime/paqet/releases/latest 2>/dev/null | awk -F '\"' '/tag_name/{print $4; exit}' || true)"
+    fi
+  fi
 
-NAME="paqet-${OS}-${ARCH}-${VERSION}.tar.gz"
-URL="https://github.com/hanselime/paqet/releases/download/${VERSION}/${NAME}"
-TARBALL_PATH="${PAQET_DIR}/${NAME}"
+  if [ -z "${VERSION}" ]; then
+    echo "Failed to detect latest release tag from GitHub API." >&2
+    echo "Set VERSION manually (e.g., VERSION=v1.0.0-alpha.12) and re-run." >&2
+    exit 1
+  fi
+
+  NAME="paqet-${OS}-${ARCH}-${VERSION}.tar.gz"
+  URL="https://github.com/hanselime/paqet/releases/download/${VERSION}/${NAME}"
+  TARBALL_PATH="${PAQET_DIR}/${NAME}"
+fi
 
 if [ -x "${BIN_PATH}" ]; then
   echo "paqet is already installed at ${BIN_PATH}"
