@@ -41,8 +41,32 @@ else
   echo "Cron file not found: /etc/cron.d/paqet-restart-paqet-client"
 fi
 
+# Remove WARP-related files
+echo "Removing WARP files (if present)..."
+if [ -d /root/wgcf ]; then
+  echo "Removing /root/wgcf"
+  rm -rf /root/wgcf
+else
+  echo "WARP folder not found: /root/wgcf"
+fi
+
+if [ -f /etc/wireguard/wgcf.conf ]; then
+  echo "Removing /etc/wireguard/wgcf.conf"
+  rm -f /etc/wireguard/wgcf.conf
+else
+  echo "WARP config not found: /etc/wireguard/wgcf.conf"
+fi
+
+if [ -x /usr/local/bin/wgcf ]; then
+  echo "Removing /usr/local/bin/wgcf"
+  rm -f /usr/local/bin/wgcf
+else
+  echo "wgcf binary not found: /usr/local/bin/wgcf"
+fi
+
 # Remove paqet directory
 rm -rf "${PAQET_DIR}"
+rm -rf /opt/paqet 2>/dev/null || true
 
 echo "Uninstalled paqet from ${PAQET_DIR}"
 
