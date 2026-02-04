@@ -47,4 +47,17 @@ fi
 echo "Restarting services to apply changes..."
 systemctl restart paqet-server.service 2>/dev/null || true
 systemctl restart paqet-client.service 2>/dev/null || true
+
+# Keep WARP MTU in sync (if enabled)
+WGCF_CONF="/etc/wireguard/wgcf.conf"
+if [ -f "${WGCF_CONF}" ]; then
+  sed -i '/^MTU[[:space:]]*=.*/d' "${WGCF_CONF}"
+  if grep -q '^\[Interface\]' "${WGCF_CONF}"; then
+    sed -i "/^\\[Interface\\]/a MTU = ${MTU}" "${WGCF_CONF}"
+    wg-quick down wgcf >/dev/null 2>&1 || true
+    wg-quick up wgcf >/dev/null 2>&1 || true
+    echo "WARP MTU set to ${MTU}"
+  fi
+fi
+
 echo "Done."

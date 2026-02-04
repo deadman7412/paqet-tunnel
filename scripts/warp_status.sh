@@ -14,6 +14,15 @@ else
   echo "wg not available"
 fi
 
+WGCF_CONF="/etc/wireguard/wgcf.conf"
+if [ -f "${WGCF_CONF}" ]; then
+  MTU_CONF="$(awk -F '=' '/^MTU[[:space:]]*=/ {gsub(/[[:space:]]/,\"\",$2); print $2; exit}' "${WGCF_CONF}")"
+  if [ -n "${MTU_CONF}" ]; then
+    echo
+    echo "wgcf.conf MTU: ${MTU_CONF}"
+  fi
+fi
+
 echo
 echo "Policy routing rules:"
 ip rule show | grep -E "fwmark 51820" || echo "(no fwmark rule)"

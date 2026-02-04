@@ -103,6 +103,22 @@ else
   sed -i '1i [Interface]\nTable = off' "${WGCF_CONF}"
 fi
 
+# Apply MTU (use same value as paqet if available)
+MTU_VALUE=""
+if [ -f "/root/paqet/server_info.txt" ]; then
+  # shellcheck disable=SC1090
+  source /root/paqet/server_info.txt
+  MTU_VALUE="${mtu:-}"
+fi
+if [ -z "${MTU_VALUE}" ]; then
+  MTU_VALUE="1280"
+fi
+sed -i '/^MTU[[:space:]]*=.*/d' "${WGCF_CONF}"
+if grep -q '^\[Interface\]' "${WGCF_CONF}"; then
+  sed -i "/^\\[Interface\\]/a MTU = ${MTU_VALUE}" "${WGCF_CONF}"
+fi
+echo "WARP MTU set to ${MTU_VALUE}"
+
 # Bring up wgcf
 wg-quick down wgcf >/dev/null 2>&1 || true
 wg-quick up wgcf
