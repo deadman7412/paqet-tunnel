@@ -10,6 +10,11 @@ MARK=51820
 # Remove iptables mark rule
 iptables -t mangle -D OUTPUT -m owner --uid-owner paqet -j MARK --set-mark ${MARK} 2>/dev/null || true
 
+# Remove nft mark rule if present
+if command -v nft >/dev/null 2>&1; then
+  nft delete rule inet mangle output meta skuid \"paqet\" meta mark set ${MARK} 2>/dev/null || true
+fi
+
 # Remove ip rule and route table
 ip rule del fwmark ${MARK} table ${TABLE_ID} 2>/dev/null || true
 ip route flush table ${TABLE_ID} 2>/dev/null || true
@@ -30,6 +35,12 @@ if command -v netfilter-persistent >/dev/null 2>&1; then
   netfilter-persistent save
 elif command -v service >/dev/null 2>&1; then
   service iptables save || true
+fi
+
+# Persist nft rule removal
+if command -v nft >/dev/null 2>&1 && [ -f /etc/nftables.conf ]; then
+  nft list ruleset > /etc/nftables.conf || true
+  systemctl enable --now nftables >/dev/null 2>&1 || true
 fi
 
 echo "WARP policy routing disabled for ${SERVICE_NAME}."

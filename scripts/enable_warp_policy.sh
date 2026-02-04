@@ -198,12 +198,32 @@ if ! ip rule show | grep -q "fwmark ${MARK}.*lookup ${TABLE_ID}"; then
   ip rule add fwmark ${MARK} table ${TABLE_ID}
 fi
 
-# iptables mark rules for paqet user (ensure exists)
+# iptables/nft mark rules for paqet user (ensure exists)
+modprobe xt_owner 2>/dev/null || true
 iptables -t mangle -D OUTPUT -m owner --uid-owner paqet -j MARK --set-mark ${MARK} 2>/dev/null || true
-iptables -t mangle -A OUTPUT -m owner --uid-owner paqet -j MARK --set-mark ${MARK}
+iptables -t mangle -A OUTPUT -m owner --uid-owner paqet -j MARK --set-mark ${MARK} 2>/dev/null || true
+
 if ! iptables -t mangle -C OUTPUT -m owner --uid-owner paqet -j MARK --set-mark ${MARK} 2>/dev/null; then
-  echo "Failed to add iptables mark rule for paqet user." >&2
-  exit 1
+  # Fallback to nft if iptables owner match isn't effective
+  if command -v nft >/dev/null 2>&1; then
+    nft list table inet mangle >/dev/null 2>&1 || nft add table inet mangle
+    nft list chain inet mangle output >/dev/null 2>&1 || nft add chain inet mangle output '{ type filter hook output priority mangle; policy accept; }'
+    nft delete rule inet mangle output meta skuid \"paqet\" meta mark set ${MARK} 2>/dev/null || true
+    nft add rule inet mangle output meta skuid \"paqet\" meta mark set ${MARK}
+  fi
+fi
+
+# Verify rule exists via iptables or nft
+if ! iptables -t mangle -C OUTPUT -m owner --uid-owner paqet -j MARK --set-mark ${MARK} 2>/dev/null; then
+  if command -v nft >/dev/null 2>&1; then
+    if ! nft list chain inet mangle output 2>/dev/null | grep -q \"skuid \\\"paqet\\\".*mark set ${MARK}\"; then
+      echo "Failed to add mark rule for paqet user (iptables/nft)." >&2
+      exit 1
+    fi
+  else
+    echo "Failed to add mark rule for paqet user (iptables)." >&2
+    exit 1
+  fi
 fi
 
 # Save iptables if persistence is installed
@@ -213,6 +233,12 @@ elif [ -d /etc/iptables ]; then
   iptables-save > /etc/iptables/rules.v4 || true
 elif command -v service >/dev/null 2>&1; then
   service iptables save || true
+fi
+
+# Persist nft rule if nftables service exists
+if command -v nft >/dev/null 2>&1 && [ -f /etc/nftables.conf ]; then
+  nft list ruleset > /etc/nftables.conf || true
+  systemctl enable --now nftables >/dev/null 2>&1 || true
 fi
 
 echo "WARP policy routing enabled for ${SERVICE_NAME}."

@@ -16,10 +16,10 @@ fi
 
 WGCF_CONF="/etc/wireguard/wgcf.conf"
 if [ -f "${WGCF_CONF}" ]; then
-  MTU_CONF="$(awk -F '=' 'BEGIN{OFS=\"\"} /^MTU[[:space:]]*=/ {gsub(/[[:space:]]/, \"\", $2); print $2; exit}' \"${WGCF_CONF}\")"
-  if [ -n \"${MTU_CONF}\" ]; then
+  MTU_CONF="$(sed -n 's/^MTU[[:space:]]*=[[:space:]]*//p' "${WGCF_CONF}" | head -n1)"
+  if [ -n "${MTU_CONF}" ]; then
     echo
-    echo \"wgcf.conf MTU: ${MTU_CONF}\"
+    echo "wgcf.conf MTU: ${MTU_CONF}"
   fi
 fi
 
@@ -35,4 +35,14 @@ if iptables -t mangle -S OUTPUT | grep -E "owner --uid-owner paqet|MARK --set-ma
   iptables -t mangle -S OUTPUT | grep -E "owner --uid-owner paqet|MARK --set-mark 51820"
 else
   echo "(no mark rules) - WARP will NOT route paqet traffic"
+fi
+
+if command -v nft >/dev/null 2>&1; then
+  echo
+  echo "nft mark rules:"
+  if nft list chain inet mangle output 2>/dev/null | grep -q "skuid \"paqet\".*mark set 51820"; then
+    nft list chain inet mangle output 2>/dev/null | grep "skuid \"paqet\".*mark set 51820"
+  else
+    echo "(no nft mark rules)"
+  fi
 fi
