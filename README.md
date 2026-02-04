@@ -1,5 +1,67 @@
 # Paqet Tunnel Scripts
 
+## Install & Setup (Quick Guide)
+
+These steps assume **server first**, then **client**. Tested on **Ubuntu 24.04**.
+
+### Server (Destination VPS)
+1. **Get the scripts**
+   - Option A: `git clone <REPO_URL>` (replace when ready).
+   - Option B: download the source and upload it to the server.
+2. **Place in the correct folder**
+   ```bash
+   mv <source-folder> ~/paqet_tunnel
+   cd ~/paqet_tunnel
+   chmod +x menu.sh
+   ./menu.sh
+   ```
+3. **Install Paqet**
+   - Menu → **Install Paqet**
+4. **Create server config**
+   - Menu → **Server configuration → Create server config**
+   - **Copy the printed command** and run it on the client VPS (this creates `server_info.txt`).
+5. **Apply iptables + systemd**
+   - Menu → **Add iptable rules**
+   - Menu → **Install systemd service**
+6. **Optional scheduling**
+   - Menu → **Restart scheduler** (cron restart)
+   - Menu → **Health check** (auto‑restart if needed)
+7. **Optional WARP**
+   - Menu → **Enable WARP (policy routing)**
+   - Menu → **Test WARP** (confirm `warp=on` for paqet traffic)
+
+### Client (Local VPS)
+1. **If GitHub is blocked**, download the release tarball manually:
+   - Use the **same paqet version** as the server.
+   - Place the tarball in `~/paqet` before running Install.
+2. **Install Paqet**
+   - Menu → **Install Paqet**
+3. **Create client config**
+   - Menu → **Client configuration → Create client config**
+   - If you ran the server’s copy/paste command, values auto‑fill.
+4. **Install systemd + optional schedules**
+   - Menu → **Install systemd service**
+   - Menu → **Restart scheduler** and/or **Health check**
+5. **Test connection**
+   - Menu → **Test connection** (shows proxy IP)
+
+### Logs & Status
+- **Service logs:** Menu → **Service control → Live logs**
+  - Press **Ctrl+C** to return.
+- **Health logs:** Menu → **Health logs**
+
+### Using the Tunnel With 3x‑ui (Client VPS)
+1. Install **3x‑ui** on the client server.
+2. Create **Outbound** → SOCKS:
+   - Address: `127.0.0.1`
+   - Port: `1080`
+3. Create **Inbound** (simple **VLESS TCP** is enough).
+4. Go to **Xray Settings → Routing**:
+   - Add a rule linking the new inbound → new outbound.
+5. Save and restart Xray.
+
+Now your traffic routes through the paqet tunnel.
+
 This folder contains a menu‑driven setup for installing, configuring, and operating **paqet** on Linux VPS servers (server and client). It automates the common steps from the paqet README and adds operational tooling (systemd, restart scheduler, logs, uninstall).
 
 ## Quick Start
