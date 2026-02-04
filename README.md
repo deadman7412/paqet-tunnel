@@ -129,6 +129,11 @@ Features:
 - Adds **policy routing** for traffic from the `paqet` user
 - Does **not** affect SSH (traffic not owned by `paqet` stays on default route)
 
+### Ubuntu 24.04 vs 22.04 notes
+- Ubuntu **24.04** uses **nftables** by default (iptables-nft).
+- Ubuntu **22.04** may use **iptables-legacy** or **nft** depending on setup.
+- Scripts automatically detect the backend and install the mark rule via **iptables** or **nft** as needed.
+
 You can optionally enter a **WARP+ license key** during setup.
 
 Note: This config uses a systemd drop‑in to run `paqet-server` as user `paqet` with required capabilities.

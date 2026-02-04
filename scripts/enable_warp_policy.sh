@@ -200,6 +200,11 @@ fi
 
 # iptables/nft mark rules for paqet user (ensure exists)
 modprobe xt_owner 2>/dev/null || true
+if iptables -V 2>/dev/null | grep -qi nf_tables; then
+  echo "iptables backend: nft"
+else
+  echo "iptables backend: legacy"
+fi
 iptables -t mangle -D OUTPUT -m owner --uid-owner paqet -j MARK --set-mark ${MARK} 2>/dev/null || true
 iptables -t mangle -A OUTPUT -m owner --uid-owner paqet -j MARK --set-mark ${MARK} 2>/dev/null || true
 

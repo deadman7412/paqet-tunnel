@@ -14,6 +14,14 @@ else
   echo "wg not available"
 fi
 
+if iptables -V 2>/dev/null | grep -qi nf_tables; then
+  echo
+  echo "iptables backend: nft"
+else
+  echo
+  echo "iptables backend: legacy"
+fi
+
 WGCF_CONF="/etc/wireguard/wgcf.conf"
 if [ -f "${WGCF_CONF}" ]; then
   MTU_CONF="$(sed -n 's/^MTU[[:space:]]*=[[:space:]]*//p' "${WGCF_CONF}" | head -n1)"
