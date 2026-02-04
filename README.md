@@ -20,6 +20,7 @@ These steps assume **server first**, then **client**. Tested on **Ubuntu 24.04**
 4. **Create server config**
    - Menu → **Server configuration → Create server config**
    - **Copy the printed command** and run it on the client VPS (this creates `server_info.txt`).
+   - You can leave the port blank to **auto‑randomize** a high port.
 5. **Apply iptables + systemd**
    - Menu → **Add iptable rules**
    - Menu → **Install systemd service**

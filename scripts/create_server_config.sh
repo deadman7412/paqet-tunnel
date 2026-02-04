@@ -41,8 +41,27 @@ fi
 read -r -p "Gateway MAC [${GW_MAC_DEFAULT}]: " GW_MAC
 GW_MAC="${GW_MAC:-${GW_MAC_DEFAULT}}"
 
-read -r -p "Listen port [9999]: " PORT
-PORT="${PORT:-9999}"
+random_port() {
+  local port=""
+  while true; do
+    port="$(shuf -i 20000-60000 -n 1 2>/dev/null || awk 'BEGIN{srand(); print int(20000+rand()*40001)}')"
+    if command -v ss >/dev/null 2>&1; then
+      if ! ss -ltn 2>/dev/null | awk '{print $4}' | grep -q ":${port}$"; then
+        echo "${port}"
+        return
+      fi
+    else
+      echo "${port}"
+      return
+    fi
+  done
+}
+
+read -r -p "Listen port [random]: " PORT
+if [ -z "${PORT}" ]; then
+  PORT="$(random_port)"
+  echo "Selected random port: ${PORT}"
+fi
 
 echo "MTU affects packet fragmentation. If you see SSL errors, try 1200."
 read -r -p "MTU [1350]: " MTU
