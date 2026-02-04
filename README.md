@@ -1,5 +1,7 @@
 # Paqet Tunnel Scripts
 
+**Notice:** This project is intended for personal experimentation and learning. Do not use it for unlawful activities or in production systems.
+
 ## Install & Setup (Quick Guide)
 
 These steps assume **server first**, then **client**. Tested on **Ubuntu 24.04**.
@@ -62,6 +64,22 @@ These steps assume **server first**, then **client**. Tested on **Ubuntu 24.04**
 5. Save and restart Xray.
 
 Now your traffic routes through the paqet tunnel.
+
+## Versioning (Automatic via Git)
+
+This project uses **git tags** + `git describe` for automatic versions.
+The menu will show the current version if the repo has tags.
+
+Example output:
+```
+v0.6.2-14-g3a9b8c1
+```
+
+To create a release tag:
+```bash
+git tag -a v0.1.0 -m "Release v0.1.0"
+git push --tags
+```
 
 This folder contains a menu‑driven setup for installing, configuring, and operating **paqet** on Linux VPS servers (server and client). It automates the common steps from the paqet README and adds operational tooling (systemd, restart scheduler, logs, uninstall).
 
@@ -219,6 +237,7 @@ The firewall option adds safe rules and enables UFW:
 - Detects SSH ports from `sshd_config` and allows them.
 - **Server:** asks for the **client public IPv4** and only allows that IP to the paqet port.
 - **Client:** reads `server_public_ip` from `server_info.txt` (or prompts) and only allows outbound TCP to that IP/port.
+- Avoids adding duplicate UFW rules.
 
 Disable firewall removes the rules added by the script and disables UFW.
 
