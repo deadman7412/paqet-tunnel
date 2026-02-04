@@ -51,7 +51,7 @@ if command -v nft >/dev/null 2>&1; then
   if id -u paqet >/dev/null 2>&1; then
     PAQET_UID="$(id -u paqet)"
     if nft list chain inet mangle output 2>/dev/null | grep -q "skuid ${PAQET_UID}.*mark set"; then
-      nft list chain inet mangle output 2>/dev/null | grep "skuid ${PAQET_UID}.*mark set"
+      nft -a list chain inet mangle output 2>/dev/null | grep "skuid ${PAQET_UID}.*mark set"
     else
       echo "(no nft mark rules)"
     fi

@@ -20,7 +20,11 @@ fi
 
 # 2) Policy routing
 echo "\n[2] Policy routing"
-ip rule show | grep 51820 || echo "(no fwmark rule)"
+if ip rule show | grep -q "fwmark"; then
+  ip rule show | grep "fwmark"
+else
+  echo "(no fwmark rule)"
+fi
 ip route show table 51820 || echo "(no routes in table 51820)"
 
 # 3) iptables mark rule
@@ -36,7 +40,7 @@ if command -v nft >/dev/null 2>&1; then
   echo "\n[5] nft mark rule"
   if id -u paqet >/dev/null 2>&1; then
     PAQET_UID="$(id -u paqet)"
-    nft list chain inet mangle output 2>/dev/null | grep -E "skuid ${PAQET_UID}.*mark set" || echo "(no nft mark rule)"
+    nft -a list chain inet mangle output 2>/dev/null | grep -E "skuid ${PAQET_UID}.*mark set" || echo "(no nft mark rule)"
   else
     echo "(user paqet not found)"
   fi
