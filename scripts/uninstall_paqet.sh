@@ -49,6 +49,14 @@ ip rule del fwmark 51820 table 51820 2>/dev/null || true
 ip route flush table 51820 2>/dev/null || true
 iptables -t mangle -D OUTPUT -m owner --uid-owner paqet -j MARK --set-mark 51820 2>/dev/null || true
 iptables -t mangle -D OUTPUT -m owner --uid-owner paqet -j MARK --set-mark 51820 2>/dev/null || true
+# Save iptables changes if persistence is installed
+if command -v netfilter-persistent >/dev/null 2>&1; then
+  netfilter-persistent save
+elif [ -d /etc/iptables ]; then
+  iptables-save > /etc/iptables/rules.v4 || true
+elif command -v service >/dev/null 2>&1; then
+  service iptables save || true
+fi
 
 if [ -d /etc/systemd/system/paqet-server.service.d ]; then
   if [ -f /etc/systemd/system/paqet-server.service.d/10-warp.conf ]; then

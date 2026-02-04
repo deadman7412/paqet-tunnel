@@ -201,10 +201,16 @@ fi
 # iptables mark rules for paqet user (ensure exists)
 iptables -t mangle -D OUTPUT -m owner --uid-owner paqet -j MARK --set-mark ${MARK} 2>/dev/null || true
 iptables -t mangle -A OUTPUT -m owner --uid-owner paqet -j MARK --set-mark ${MARK}
+if ! iptables -t mangle -C OUTPUT -m owner --uid-owner paqet -j MARK --set-mark ${MARK} 2>/dev/null; then
+  echo "Failed to add iptables mark rule for paqet user." >&2
+  exit 1
+fi
 
 # Save iptables if persistence is installed
 if command -v netfilter-persistent >/dev/null 2>&1; then
   netfilter-persistent save
+elif [ -d /etc/iptables ]; then
+  iptables-save > /etc/iptables/rules.v4 || true
 elif command -v service >/dev/null 2>&1; then
   service iptables save || true
 fi
