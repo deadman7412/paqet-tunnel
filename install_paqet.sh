@@ -47,20 +47,26 @@ if [ -n "${local_tarball}" ]; then
 
   if [ -n "${latest}" ] && [ "${latest}" != "${VERSION}" ]; then
     echo
-    echo "A newer version is available: ${latest}"
-    echo "Local version: ${VERSION}"
+    echo -e "\033[1;33m=== NEWER VERSION AVAILABLE ===\033[0m"
+    echo -e "\033[1;33mLatest:\033[0m ${latest}"
+    echo -e "\033[1;33mLocal:\033[0m  ${VERSION}"
+    echo
     read -r -p "Use local version anyway? [y/N]: " USE_LOCAL
     case "${USE_LOCAL}" in
       y|Y)
+        echo
         echo "Using local version: ${VERSION}"
-        echo "Warning: Ensure BOTH server and client use the same paqet version."
+        echo -e "\033[1;31mWARNING:\033[0m Ensure BOTH server and client use the same paqet version."
+        echo
         ;;
       *)
         VERSION="${latest}"
         NAME="paqet-${OS}-${ARCH}-${VERSION}.tar.gz"
         URL="https://github.com/hanselime/paqet/releases/download/${VERSION}/${NAME}"
         TARBALL_PATH="${PAQET_DIR}/${NAME}"
+        echo
         echo "Using latest version: ${VERSION}"
+        echo
         ;;
     esac
   fi

@@ -112,6 +112,25 @@ if ! id -u paqet >/dev/null 2>&1; then
   useradd --system --no-create-home --shell /usr/sbin/nologin paqet
 fi
 
+# Ensure paqet binary/config are accessible to paqet user
+PAQET_SRC_DIR="/root/paqet"
+PAQET_DST_DIR="/opt/paqet"
+PAQET_BIN_SRC="${PAQET_SRC_DIR}/paqet"
+PAQET_CFG_SRC="${PAQET_SRC_DIR}/server.yaml"
+PAQET_BIN_DST="${PAQET_DST_DIR}/paqet"
+PAQET_CFG_DST="${PAQET_DST_DIR}/server.yaml"
+
+if [ -x "${PAQET_BIN_SRC}" ] && [ -f "${PAQET_CFG_SRC}" ]; then
+  mkdir -p "${PAQET_DST_DIR}"
+  cp -f "${PAQET_BIN_SRC}" "${PAQET_BIN_DST}"
+  cp -f "${PAQET_CFG_SRC}" "${PAQET_CFG_DST}"
+  chown root:paqet "${PAQET_BIN_DST}" "${PAQET_CFG_DST}"
+  chmod 750 "${PAQET_BIN_DST}"
+  chmod 640 "${PAQET_CFG_DST}"
+else
+  echo "Warning: paqet binary/config not found at ${PAQET_SRC_DIR}. Service may fail to start." >&2
+fi
+
 # Ensure setcap is available
 if ! command -v setcap >/dev/null 2>&1; then
   if command -v apt-get >/dev/null 2>&1; then
@@ -124,8 +143,8 @@ if ! command -v setcap >/dev/null 2>&1; then
 fi
 
 # Apply capabilities to paqet binary (if present)
-if [ -x "/root/paqet/paqet" ] && command -v setcap >/dev/null 2>&1; then
-  setcap cap_net_raw,cap_net_admin=ep /root/paqet/paqet || true
+if [ -x "${PAQET_BIN_DST}" ] && command -v setcap >/dev/null 2>&1; then
+  setcap cap_net_raw,cap_net_admin=ep "${PAQET_BIN_DST}" || true
 fi
 
 # systemd drop-in to run as paqet with caps (if service exists)
@@ -140,6 +159,10 @@ Group=paqet
 AmbientCapabilities=CAP_NET_RAW CAP_NET_ADMIN
 CapabilityBoundingSet=CAP_NET_RAW CAP_NET_ADMIN
 NoNewPrivileges=true
+WorkingDirectory=${PAQET_DST_DIR}
+# Override ExecStart to use accessible path
+ExecStart=
+ExecStart=${PAQET_BIN_DST} run -c ${PAQET_CFG_DST}
 CONF
   systemctl daemon-reload
   systemctl restart "${SERVICE_NAME}.service" || true

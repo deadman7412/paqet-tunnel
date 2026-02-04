@@ -69,5 +69,16 @@ grep -v '^#' "${INFO_FILE}"
 echo "EOF"
 echo "==========================================="
 if grep -q "server_public_ip=REPLACE_WITH_SERVER_PUBLIC_IP" "${INFO_FILE}"; then
-  echo "Note: server_public_ip could not be detected. Update it manually."
+  echo "Note: server_public_ip could not be detected."
+  read -r -p "Enter server public IP (or leave empty to skip): " MANUAL_IP
+  if [ -n "${MANUAL_IP}" ]; then
+    sed -i "s/^server_public_ip=.*/server_public_ip=${MANUAL_IP}/" "${INFO_FILE}"
+    echo "Updated server_public_ip in ${INFO_FILE}"
+    echo
+    echo "=== ${INFO_FILE} (updated) ==="
+    echo
+    cat "${INFO_FILE}"
+  else
+    echo "Update it manually when ready."
+  fi
 fi
