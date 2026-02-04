@@ -93,6 +93,10 @@ mkdir -p /etc/wireguard
 cp -f "${WGCF_PROFILE}" "${WGCF_CONF}"
 # Avoid DNS/resolvconf issues on minimal VPS (prevents wg-quick from calling resolvconf)
 sed -i '/^DNS/d' "${WGCF_CONF}"
+# Prevent wg-quick from changing system routes (protects SSH)
+if ! grep -q '^Table = off' "${WGCF_CONF}"; then
+  sed -i '1i Table = off' "${WGCF_CONF}"
+fi
 
 # Bring up wgcf
 wg-quick down wgcf >/dev/null 2>&1 || true
