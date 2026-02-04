@@ -44,4 +44,7 @@ if [ -f "${INFO_FILE}" ]; then
   echo "Updated ${INFO_FILE}"
 fi
 
-echo "Done. Restart services to apply changes."
+echo "Restarting services to apply changes..."
+systemctl restart paqet-server.service 2>/dev/null || true
+systemctl restart paqet-client.service 2>/dev/null || true
+echo "Done."
