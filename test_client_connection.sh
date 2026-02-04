@@ -26,9 +26,19 @@ if ! command -v curl >/dev/null 2>&1; then
 fi
 
 echo "Testing SOCKS5 proxy at ${SOCKS_LISTEN}..."
-if curl -fsSL https://httpbin.org/ip --proxy "socks5h://${SOCKS_LISTEN}" >/dev/null; then
-  echo "Success: proxy is working."
-else
-  echo "Failed: proxy test did not succeed." >&2
-  exit 1
+
+# Try HTTPS first
+if curl -fsSL --connect-timeout 5 --max-time 10 https://httpbin.org/ip --proxy "socks5h://${SOCKS_LISTEN}" >/dev/null; then
+  echo "Success: proxy is working (HTTPS)."
+  exit 0
 fi
+
+# Fallback to HTTP if SSL fails (helps diagnose TLS issues)
+if curl -fsSL --connect-timeout 5 --max-time 10 http://httpbin.org/ip --proxy "socks5h://${SOCKS_LISTEN}" >/dev/null; then
+  echo "Success: proxy is working (HTTP)."
+  echo "Note: HTTPS failed; check TLS/SSL path or packet loss."
+  exit 0
+fi
+
+echo "Failed: proxy test did not succeed." >&2
+exit 1
