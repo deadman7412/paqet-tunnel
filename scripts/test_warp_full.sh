@@ -25,6 +25,11 @@ if ip rule show | grep -q "fwmark"; then
 else
   echo "(no fwmark rule)"
 fi
+if ip rule show | grep -q "uidrange"; then
+  ip rule show | grep "uidrange"
+else
+  echo "(no uidrange rule)"
+fi
 ip route show table 51820 || echo "(no routes in table 51820)"
 
 # 3) iptables mark rule

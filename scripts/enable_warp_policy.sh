@@ -217,6 +217,15 @@ else
   ip rule show | grep -E "fwmark (0x0*ca6c|0x0000ca6c|${MARK}).*lookup (${TABLE_ID}|wgcf)" || true
 fi
 
+# Fallback: uidrange rule (forces routing for paqet user, avoids mark timing issues)
+if ! ip rule show | grep -Eq "uidrange ${PAQET_UID}-${PAQET_UID}.*lookup (${TABLE_ID}|wgcf)"; then
+  if ip rule add uidrange ${PAQET_UID}-${PAQET_UID} table ${TABLE_ID} 2>/dev/null; then
+    echo "uidrange rule added for paqet user (${PAQET_UID})."
+  else
+    echo "Warning: uidrange rule not supported or failed to add." >&2
+  fi
+fi
+
 # iptables/nft mark rules for paqet user (ensure exists)
 modprobe xt_owner 2>/dev/null || true
 if iptables -V 2>/dev/null | grep -qi nf_tables; then
@@ -246,19 +255,17 @@ fi
 if ! iptables -t mangle -C OUTPUT -m owner --uid-owner paqet -j MARK --set-mark ${MARK} 2>/dev/null; then
   echo "iptables mark rule not detected; checking nft..."
   if command -v nft >/dev/null 2>&1; then
-    if ! nft list chain inet mangle output 2>/dev/null | grep -Eq "skuid ${PAQET_UID}.*mark set"; then
+    if ! nft -a list chain inet mangle output 2>/dev/null | grep -Eq "skuid ${PAQET_UID}.*mark set"; then
+      echo "Warning: could not verify nft mark rule (continuing)." >&2
       echo "Debug:"
       echo "  PAQET_UID=${PAQET_UID}"
       echo "  MARK=${MARK}"
       echo "  MARK_HEX=${MARK_HEX}"
       echo "  nft chain output:"
       nft -a list chain inet mangle output 2>/dev/null || true
-      echo "Failed to add mark rule for paqet user (iptables/nft)." >&2
-      exit 1
     fi
   else
-    echo "Failed to add mark rule for paqet user (iptables)." >&2
-    exit 1
+    echo "Warning: iptables mark rule not present and nft not available (continuing)." >&2
   fi
 fi
 

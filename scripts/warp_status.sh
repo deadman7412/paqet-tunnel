@@ -33,7 +33,16 @@ fi
 
 echo
 echo "Policy routing rules:"
-ip rule show | grep -E "fwmark 51820" || echo "(no fwmark rule)"
+if ip rule show | grep -q "fwmark"; then
+  ip rule show | grep "fwmark"
+else
+  echo "(no fwmark rule)"
+fi
+if ip rule show | grep -q "uidrange"; then
+  ip rule show | grep "uidrange"
+else
+  echo "(no uidrange rule)"
+fi
 
 ip route show table 51820 || echo "(no routes in table 51820)"
 

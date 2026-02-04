@@ -24,6 +24,10 @@ fi
 
 # Remove ip rule and route table
 ip rule del fwmark ${MARK} table ${TABLE_ID} 2>/dev/null || true
+if id -u paqet >/dev/null 2>&1; then
+  PAQET_UID="$(id -u paqet)"
+  ip rule del uidrange ${PAQET_UID}-${PAQET_UID} table ${TABLE_ID} 2>/dev/null || true
+fi
 ip route flush table ${TABLE_ID} 2>/dev/null || true
 
 # Bring down wgcf
