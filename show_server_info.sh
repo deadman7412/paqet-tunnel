@@ -69,16 +69,37 @@ grep -v '^#' "${INFO_FILE}"
 echo "EOF"
 echo "==========================================="
 if grep -q "server_public_ip=REPLACE_WITH_SERVER_PUBLIC_IP" "${INFO_FILE}"; then
-  echo "Note: server_public_ip could not be detected."
-  read -r -p "Enter server public IP (or leave empty to skip): " MANUAL_IP
-  if [ -n "${MANUAL_IP}" ]; then
-    sed -i "s/^server_public_ip=.*/server_public_ip=${MANUAL_IP}/" "${INFO_FILE}"
-    echo "Updated server_public_ip in ${INFO_FILE}"
+  # Try to auto-detect again
+  AUTO_IP=""
+  if command -v curl >/dev/null 2>&1; then
+    AUTO_IP="$(curl -fsS --connect-timeout 3 --max-time 5 https://api.ipify.org || true)"
+    [ -z "${AUTO_IP}" ] && AUTO_IP="$(curl -fsS --connect-timeout 3 --max-time 5 https://ifconfig.me || true)"
+    [ -z "${AUTO_IP}" ] && AUTO_IP="$(curl -fsS --connect-timeout 3 --max-time 5 https://ipinfo.io/ip || true)"
+  elif command -v wget >/dev/null 2>&1; then
+    AUTO_IP="$(wget -qO- --timeout=5 https://api.ipify.org || true)"
+    [ -z "${AUTO_IP}" ] && AUTO_IP="$(wget -qO- --timeout=5 https://ifconfig.me || true)"
+    [ -z "${AUTO_IP}" ] && AUTO_IP="$(wget -qO- --timeout=5 https://ipinfo.io/ip || true)"
+  fi
+
+  if [ -n "${AUTO_IP}" ]; then
+    sed -i "s/^server_public_ip=.*/server_public_ip=${AUTO_IP}/" "${INFO_FILE}"
+    echo "Auto-detected server public IP: ${AUTO_IP}"
     echo
     echo "=== ${INFO_FILE} (updated) ==="
     echo
     cat "${INFO_FILE}"
   else
-    echo "Update it manually when ready."
+    echo "Note: server_public_ip could not be detected."
+    read -r -p "Enter server public IP (or leave empty to skip): " MANUAL_IP
+    if [ -n "${MANUAL_IP}" ]; then
+      sed -i "s/^server_public_ip=.*/server_public_ip=${MANUAL_IP}/" "${INFO_FILE}"
+      echo "Updated server_public_ip in ${INFO_FILE}"
+      echo
+      echo "=== ${INFO_FILE} (updated) ==="
+      echo
+      cat "${INFO_FILE}"
+    else
+      echo "Update it manually when ready."
+    fi
   fi
 fi

@@ -43,6 +43,20 @@ fi
 
 # Remove WARP-related files
 echo "Removing WARP files (if present)..."
+echo "Disabling WARP interface and routing (if present)..."
+wg-quick down wgcf >/dev/null 2>&1 || true
+ip rule del fwmark 51820 table 51820 2>/dev/null || true
+ip route flush table 51820 2>/dev/null || true
+iptables -t mangle -D OUTPUT -m owner --uid-owner paqet -j MARK --set-mark 51820 2>/dev/null || true
+iptables -t mangle -D OUTPUT -m owner --uid-owner paqet -j MARK --set-mark 51820 2>/dev/null || true
+
+if [ -d /etc/systemd/system/paqet-server.service.d ]; then
+  if [ -f /etc/systemd/system/paqet-server.service.d/10-warp.conf ]; then
+    echo "Removing /etc/systemd/system/paqet-server.service.d/10-warp.conf"
+    rm -f /etc/systemd/system/paqet-server.service.d/10-warp.conf
+    systemctl daemon-reload 2>/dev/null || true
+  fi
+fi
 if [ -d /root/wgcf ]; then
   echo "Removing /root/wgcf"
   rm -rf /root/wgcf

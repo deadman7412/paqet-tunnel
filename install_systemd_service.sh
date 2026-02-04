@@ -17,8 +17,20 @@ CONFIG_PATH="${CONFIG_PATH:-${PAQET_DIR}/${ROLE}.yaml}"
 SERVICE_NAME="${SERVICE_NAME:-paqet-${ROLE}}"
 
 if [ ! -x "${BIN_PATH}" ]; then
-  echo "Binary not found or not executable: ${BIN_PATH}" >&2
-  exit 1
+  if [ -f "${BIN_PATH}" ]; then
+    chmod +x "${BIN_PATH}" || true
+  fi
+fi
+
+if [ ! -x "${BIN_PATH}" ]; then
+  # If WARP policy routing is enabled, prefer /opt/paqet
+  if [ -x "/opt/paqet/paqet" ]; then
+    BIN_PATH="/opt/paqet/paqet"
+    CONFIG_PATH="/opt/paqet/${ROLE}.yaml"
+  else
+    echo "Binary not found or not executable: ${BIN_PATH}" >&2
+    exit 1
+  fi
 fi
 
 if [ ! -f "${CONFIG_PATH}" ]; then
