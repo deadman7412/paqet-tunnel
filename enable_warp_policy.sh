@@ -94,8 +94,13 @@ cp -f "${WGCF_PROFILE}" "${WGCF_CONF}"
 # Avoid DNS/resolvconf issues on minimal VPS (prevents wg-quick from calling resolvconf)
 sed -i '/^DNS/d' "${WGCF_CONF}"
 # Prevent wg-quick from changing system routes (protects SSH)
-if ! grep -q '^Table = off' "${WGCF_CONF}"; then
-  sed -i '1i Table = off' "${WGCF_CONF}"
+# Must be inside [Interface] section so wg-quick recognizes it.
+sed -i '/^Table[[:space:]]*=.*/d' "${WGCF_CONF}"
+if grep -q '^\[Interface\]' "${WGCF_CONF}"; then
+  sed -i '/^\[Interface\]/a Table = off' "${WGCF_CONF}"
+else
+  # Fallback: prepend if malformed file
+  sed -i '1i [Interface]\nTable = off' "${WGCF_CONF}"
 fi
 
 # Bring up wgcf
