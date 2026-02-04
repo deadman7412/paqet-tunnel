@@ -71,14 +71,23 @@ if ! command -v ufw >/dev/null 2>&1; then
   esac
 fi
 
+# Set safe defaults
+ufw default deny incoming
+ufw default allow outgoing
+ufw allow in on lo comment 'paqet-loopback' || true
+
 # Detect SSH ports from sshd config
 SSH_PORTS="$(grep -Rsh '^[[:space:]]*Port[[:space:]]\+[0-9]\+' /etc/ssh/sshd_config /etc/ssh/sshd_config.d/*.conf 2>/dev/null | awk '{print $2}' | sort -u)"
 if [ -z "${SSH_PORTS}" ]; then
   SSH_PORTS="22"
 fi
 
+echo "SSH ports detected: ${SSH_PORTS}"
+echo "Adding SSH allow rules to UFW..."
 for p in ${SSH_PORTS}; do
-  ufw allow "${p}/tcp" comment 'paqet-ssh' || true
+  if ! ufw status | grep -qE "\\b${p}/tcp\\b.*ALLOW IN"; then
+    ufw allow "${p}/tcp" comment 'paqet-ssh' || true
+  fi
 done
 
 if [ "${ROLE}" = "server" ]; then
@@ -87,7 +96,9 @@ if [ "${ROLE}" = "server" ]; then
     echo "Client IP is required to restrict the paqet port." >&2
     exit 1
   fi
-  ufw allow from "${CLIENT_IP}" to any port "${PORT}" proto tcp comment 'paqet-tunnel' || true
+  if ! ufw status | grep -qE "${CLIENT_IP}.*${PORT}/tcp.*ALLOW IN"; then
+    ufw allow from "${CLIENT_IP}" to any port "${PORT}" proto tcp comment 'paqet-tunnel' || true
+  fi
 else
   SERVER_IP=""
   INFO_FILE="${PAQET_DIR}/server_info.txt"
@@ -105,7 +116,9 @@ else
     echo "Server IP is required to restrict the paqet port." >&2
     exit 1
   fi
-  ufw allow out to "${SERVER_IP}" port "${PORT}" proto tcp comment 'paqet-tunnel' || true
+  if ! ufw status | grep -qE "${SERVER_IP}.*${PORT}/tcp.*ALLOW OUT"; then
+    ufw allow out to "${SERVER_IP}" port "${PORT}" proto tcp comment 'paqet-tunnel' || true
+  fi
 fi
 
 ufw --force enable
