@@ -286,3 +286,17 @@ else
 fi
 
 echo "WARP policy routing enabled for ${SERVICE_NAME}."
+
+# Quick verification (best-effort)
+if command -v curl >/dev/null 2>&1 && id -u paqet >/dev/null 2>&1; then
+  echo "Verifying WARP for paqet traffic..."
+  PAQET_TRACE="$(sudo -u paqet curl -s --connect-timeout 5 --max-time 10 https://1.1.1.1/cdn-cgi/trace || true)"
+  if echo "${PAQET_TRACE}" | grep -q "warp=on"; then
+    echo "WARP verification: OK (paqet traffic uses WARP)"
+  else
+    echo "WARP verification: NOT CONFIRMED (paqet traffic shows warp=off)"
+    echo "Run Test WARP for full diagnostics."
+  fi
+else
+  echo "WARP verification: skipped (curl or user 'paqet' missing)"
+fi

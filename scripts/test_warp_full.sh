@@ -53,14 +53,36 @@ fi
 
 # 6) WARP egress direct
 echo "\n[6] curl --interface wgcf"
-curl -v --interface wgcf --connect-timeout 5 --max-time 10 https://1.1.1.1/cdn-cgi/trace || true
+WGCF_TRACE="$(curl --interface wgcf -s --connect-timeout 5 --max-time 10 https://1.1.1.1/cdn-cgi/trace || true)"
+echo "${WGCF_TRACE}"
 
 # 7) WARP egress as paqet
+PAQET_TRACE=""
 if id -u paqet >/dev/null 2>&1; then
   echo "\n[7] curl as user 'paqet'"
-  sudo -u paqet curl -v --connect-timeout 5 --max-time 10 https://1.1.1.1/cdn-cgi/trace || true
+  PAQET_TRACE="$(sudo -u paqet curl -s --connect-timeout 5 --max-time 10 https://1.1.1.1/cdn-cgi/trace || true)"
+  echo "${PAQET_TRACE}"
 else
   echo "\n[7] user 'paqet' not found"
+fi
+
+# Summary
+echo "\n[9] Summary"
+if echo "${WGCF_TRACE}" | grep -q "warp=on"; then
+  echo "WARP interface: OK (warp=on)"
+else
+  echo "WARP interface: NOT OK (warp=off or no response)"
+fi
+
+if [ -n "${PAQET_TRACE}" ]; then
+  if echo "${PAQET_TRACE}" | grep -q "warp=on"; then
+    echo "paqet traffic: OK (warp=on)"
+  else
+    echo "paqet traffic: NOT using WARP (warp=off)"
+    echo "Note: If uidrange rule is missing or unsupported, paqet may bypass WARP."
+  fi
+else
+  echo "paqet traffic: NOT TESTED (user missing or curl failed)"
 fi
 
 # 8) MTU checks
