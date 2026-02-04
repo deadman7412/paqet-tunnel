@@ -58,7 +58,7 @@ Options include:
 - **Enable WARP (policy routing)** → route paqet traffic through Cloudflare WARP (server)
 - **Disable WARP (policy routing)**
 - **WARP status**
-- **Test WARP** → full diagnostics (wg, routing, iptables/nft, curl tests)
+- **Test WARP** → full diagnostics (wg, routing, iptables/nft, curl tests + summary)
 - **Show server info** → shows or recreates `~/paqet/server_info.txt`
 
 ### server_info.txt
@@ -84,7 +84,8 @@ Options include:
 - **Remove systemd service**
 - **Service control**
 - **Restart scheduler**
-- **Test connection** → runs curl with SOCKS5
+- **Test connection** → runs curl with SOCKS5 and prints the IP response
+- **Change MTU** → updates client MTU (and restarts client service)
 - **Health check**
 - **Health logs**
 
@@ -93,6 +94,7 @@ If `~/paqet/server_info.txt` is present, the client config auto‑fills:
 - Server port
 - KCP key
 - Server public IP (if present)
+- MTU
 
 ## Restart Scheduler (Cron)
 
@@ -130,16 +132,19 @@ Features:
 - Creates a WARP WireGuard profile using **wgcf**
 - Brings up `wgcf` interface
 - Adds **policy routing** for traffic from the `paqet` user
+- Adds a **uidrange rule** (stronger than marks) for reliability
 - Does **not** affect SSH (traffic not owned by `paqet` stays on default route)
 
 ### Ubuntu 24.04 vs 22.04 notes
 - Ubuntu **24.04** uses **nftables** by default (iptables-nft).
 - Ubuntu **22.04** may use **iptables-legacy** or **nft** depending on setup.
 - Scripts automatically detect the backend and install the mark rule via **iptables** or **nft** as needed.
+- On nft backends, `iptables -t mangle` may print errors; this is expected and does not affect nft rules.
 
 You can optionally enter a **WARP+ license key** during setup.
 
 Note: This config uses a systemd drop‑in to run `paqet-server` as user `paqet` with required capabilities.
+Enable WARP performs a quick verification and warns if `paqet` traffic is not using WARP.
 
 ## Systemd Services
 
@@ -182,6 +187,7 @@ Then optionally asks for **reboot**.
 - `scripts/service_control.sh` – systemd control + logs
 - `scripts/cron_restart.sh` – restart scheduler
 - `scripts/test_client_connection.sh` – SOCKS5 test
+- `scripts/change_mtu.sh` – update MTU (server/client + WARP)
 - `scripts/show_server_info.sh` – show/recreate server_info.txt
 - `scripts/health_check.sh` – server/client health check logic
 - `scripts/health_check_scheduler.sh` – health check scheduler
