@@ -62,12 +62,6 @@ echo "=== ${INFO_FILE} ==="
 echo
 cat "${INFO_FILE}"
 echo
-echo "===== COPY/PASTE COMMANDS (CLIENT VPS) ====="
-echo "mkdir -p ${PAQET_DIR}"
-echo "cat <<'EOF' > ${INFO_FILE}"
-grep -v '^#' "${INFO_FILE}"
-echo "EOF"
-echo "==========================================="
 if grep -q "server_public_ip=REPLACE_WITH_SERVER_PUBLIC_IP" "${INFO_FILE}"; then
   # Try to auto-detect again
   AUTO_IP=""
@@ -103,3 +97,11 @@ if grep -q "server_public_ip=REPLACE_WITH_SERVER_PUBLIC_IP" "${INFO_FILE}"; then
     fi
   fi
 fi
+
+echo
+echo "===== COPY/PASTE COMMANDS (CLIENT VPS) ====="
+echo "mkdir -p ${PAQET_DIR}"
+echo "cat <<'EOF' > ${INFO_FILE}"
+grep -v '^#' "${INFO_FILE}"
+echo "EOF"
+echo "==========================================="

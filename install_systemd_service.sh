@@ -22,15 +22,26 @@ if [ ! -x "${BIN_PATH}" ]; then
   fi
 fi
 
-if [ ! -x "${BIN_PATH}" ]; then
-  # If WARP policy routing is enabled, prefer /opt/paqet
+WARP_DROPIN="/etc/systemd/system/${SERVICE_NAME}.service.d/10-warp.conf"
+if [ -f "${WARP_DROPIN}" ] || id -u paqet >/dev/null 2>&1; then
+  # Ensure /opt/paqet exists and is accessible to paqet user
+  if [ -x "/root/paqet/paqet" ] && [ -f "/root/paqet/${ROLE}.yaml" ]; then
+    mkdir -p /opt/paqet
+    cp -f "/root/paqet/paqet" "/opt/paqet/paqet"
+    cp -f "/root/paqet/${ROLE}.yaml" "/opt/paqet/${ROLE}.yaml"
+    chown root:paqet "/opt/paqet/paqet" "/opt/paqet/${ROLE}.yaml" 2>/dev/null || true
+    chmod 750 "/opt/paqet/paqet" || true
+    chmod 640 "/opt/paqet/${ROLE}.yaml" || true
+  fi
   if [ -x "/opt/paqet/paqet" ]; then
     BIN_PATH="/opt/paqet/paqet"
     CONFIG_PATH="/opt/paqet/${ROLE}.yaml"
-  else
-    echo "Binary not found or not executable: ${BIN_PATH}" >&2
-    exit 1
   fi
+fi
+
+if [ ! -x "${BIN_PATH}" ]; then
+  echo "Binary not found or not executable: ${BIN_PATH}" >&2
+  exit 1
 fi
 
 if [ ! -f "${CONFIG_PATH}" ]; then
