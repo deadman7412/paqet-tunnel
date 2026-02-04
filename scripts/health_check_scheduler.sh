@@ -13,8 +13,8 @@ esac
 
 SERVICE_NAME="paqet-${ROLE}"
 CRON_FILE="/etc/cron.d/paqet-health-${SERVICE_NAME}"
-SCRIPT_PATH="/root/paqet_tunnel/health_check.sh"
-ROTATE_PATH="/root/paqet_tunnel/health_log_rotate.sh"
+SCRIPT_PATH="/root/paqet_tunnel/scripts/health_check.sh"
+ROTATE_PATH="/root/paqet_tunnel/scripts/health_log_rotate.sh"
 
 while true; do
   echo

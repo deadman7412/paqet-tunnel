@@ -44,6 +44,10 @@ GW_MAC="${GW_MAC:-${GW_MAC_DEFAULT}}"
 read -r -p "Listen port [9999]: " PORT
 PORT="${PORT:-9999}"
 
+echo "MTU affects packet fragmentation. If you see SSL errors, try 1200."
+read -r -p "MTU [1350]: " MTU
+MTU="${MTU:-1350}"
+
 read -r -p "KCP secret key (leave empty to auto-generate): " KCP_KEY
 if [ -z "${KCP_KEY}" ]; then
   if command -v openssl >/dev/null 2>&1; then
@@ -82,6 +86,7 @@ transport:
 
   kcp:
     mode: "fast"
+    mtu: ${MTU}
     key: "${KCP_KEY}"
 YAML
 
@@ -91,6 +96,7 @@ cat <<INFO > "${INFO_FILE}"
 # Copy this file to the client VPS and place it at ${INFO_FILE}
 listen_port=${PORT}
 kcp_key=${KCP_KEY}
+mtu=${MTU}
 server_public_ip=${SERVER_PUBLIC_IP:-REPLACE_WITH_SERVER_PUBLIC_IP}
 INFO
 
@@ -113,6 +119,7 @@ echo "  mkdir -p ${PAQET_DIR}"
 echo "  cat <<'EOF' > ${INFO_FILE}"
 echo "listen_port=${PORT}"
 echo "kcp_key=${KCP_KEY}"
+echo "mtu=${MTU}"
 echo "server_public_ip=${SERVER_PUBLIC_IP:-REPLACE_WITH_SERVER_PUBLIC_IP}"
 echo "EOF"
 if [ -z "${SERVER_PUBLIC_IP:-}" ]; then

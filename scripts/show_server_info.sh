@@ -32,6 +32,16 @@ if [ ! -f "${INFO_FILE}" ]; then
     }
   ' "${CONFIG_FILE}")"
 
+  MTU="$(awk '
+    $1 == "kcp:" { inkcp=1; next }
+    inkcp && $1 == "mtu:" {
+      gsub(/"/, "", $2);
+      print $2;
+      exit
+    }
+  ' "${CONFIG_FILE}")"
+  [ -z "${MTU}" ] && MTU="1350"
+
   SERVER_PUBLIC_IP=""
   if command -v curl >/dev/null 2>&1; then
     SERVER_PUBLIC_IP="$(curl -fsS --connect-timeout 3 --max-time 5 https://api.ipify.org || true)"
@@ -52,6 +62,7 @@ if [ ! -f "${INFO_FILE}" ]; then
 # Copy this file to the client VPS and place it at ${INFO_FILE}
 listen_port=${PORT}
 kcp_key=${KEY}
+mtu=${MTU}
 server_public_ip=${SERVER_PUBLIC_IP:-REPLACE_WITH_SERVER_PUBLIC_IP}
 INFO
 
@@ -96,6 +107,19 @@ if grep -q "server_public_ip=REPLACE_WITH_SERVER_PUBLIC_IP" "${INFO_FILE}"; then
       echo "Update it manually when ready."
     fi
   fi
+fi
+
+# Ensure mtu is present in existing file
+if ! grep -q "^mtu=" "${INFO_FILE}"; then
+  MTU_EXISTING="1350"
+  if [ -f "${CONFIG_FILE}" ]; then
+    MTU_EXISTING="$(awk '
+      $1 == "kcp:" { inkcp=1; next }
+      inkcp && $1 == "mtu:" { gsub(/\"/, \"\", $2); print $2; exit }
+    ' "${CONFIG_FILE}")"
+    [ -z "${MTU_EXISTING}" ] && MTU_EXISTING="1350"
+  fi
+  echo "mtu=${MTU_EXISTING}" >> "${INFO_FILE}"
 fi
 
 echo

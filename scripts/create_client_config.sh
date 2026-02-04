@@ -43,6 +43,7 @@ GW_MAC="${GW_MAC:-${GW_MAC_DEFAULT}}"
 
 PORT_DEFAULT="9999"
 KCP_KEY_DEFAULT=""
+MTU_DEFAULT=""
 
 if [ -f "${INFO_FILE}" ]; then
   # shellcheck disable=SC1090
@@ -52,6 +53,9 @@ if [ -f "${INFO_FILE}" ]; then
   fi
   if [ -n "${kcp_key:-}" ]; then
     KCP_KEY_DEFAULT="${kcp_key}"
+  fi
+  if [ -n "${mtu:-}" ]; then
+    MTU_DEFAULT="${mtu}"
   fi
   if [ -n "${server_public_ip:-}" ] && [ "${server_public_ip}" != "REPLACE_WITH_SERVER_PUBLIC_IP" ]; then
     SERVER_IP_DEFAULT="${server_public_ip}"
@@ -75,6 +79,10 @@ PORT="${PORT:-${PORT_DEFAULT}}"
 
 read -r -p "SOCKS5 listen [127.0.0.1:1080]: " SOCKS_LISTEN
 SOCKS_LISTEN="${SOCKS_LISTEN:-127.0.0.1:1080}"
+
+echo "MTU affects packet fragmentation. If you see SSL errors, try 1200."
+read -r -p "MTU [${MTU_DEFAULT:-1350}]: " MTU
+MTU="${MTU:-${MTU_DEFAULT:-1350}}"
 
 read -r -p "KCP secret key [${KCP_KEY_DEFAULT}]: " KCP_KEY
 KCP_KEY="${KCP_KEY:-${KCP_KEY_DEFAULT}}"
@@ -117,6 +125,7 @@ transport:
 
   kcp:
     mode: "fast"
+    mtu: ${MTU}
     key: "${KCP_KEY}"
 YAML
 

@@ -2,7 +2,8 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-INSTALL_SCRIPT="${SCRIPT_DIR}/install_paqet.sh"
+SCRIPTS_DIR="${SCRIPT_DIR}/scripts"
+INSTALL_SCRIPT="${SCRIPTS_DIR}/install_paqet.sh"
 PAQET_DIR="${PAQET_DIR:-$HOME/paqet}"
 
 RED='\033[0;31m'
@@ -46,7 +47,7 @@ pause() {
 }
 
 ensure_executable_scripts() {
-  chmod +x "${SCRIPT_DIR}"/*.sh 2>/dev/null || true
+  chmod +x "${SCRIPTS_DIR}"/*.sh 2>/dev/null || true
 }
 
 ensure_executable_scripts
@@ -71,11 +72,12 @@ server_menu() {
     echo -e "${GREEN}6)${NC} Service control"
     echo -e "${GREEN}7)${NC} Restart scheduler"
     echo -e "${GREEN}8)${NC} Show server info"
-    echo -e "${GREEN}9)${NC} Health check"
-    echo -e "${GREEN}10)${NC} Health logs"
-    echo -e "${GREEN}11)${NC} Enable WARP (policy routing)"
-    echo -e "${GREEN}12)${NC} Disable WARP (policy routing)"
-    echo -e "${GREEN}13)${NC} WARP status"
+    echo -e "${GREEN}9)${NC} Change MTU"
+    echo -e "${GREEN}10)${NC} Health check"
+    echo -e "${GREEN}11)${NC} Health logs"
+    echo -e "${GREEN}12)${NC} Enable WARP (policy routing)"
+    echo -e "${GREEN}13)${NC} Disable WARP (policy routing)"
+    echo -e "${GREEN}14)${NC} WARP status"
     echo
     echo
     echo -e "${GREEN}0)${NC} Back to main menu"
@@ -85,7 +87,7 @@ server_menu() {
     case "${choice}" in
       1)
         if [ -x "${SCRIPT_DIR}/create_server_config.sh" ]; then
-          run_action "${SCRIPT_DIR}/create_server_config.sh"
+          run_action "${SCRIPTS_DIR}/create_server_config.sh"
           echo
           echo -e "${BLUE}Next:${NC} Copy ~/paqet/server_info.txt to the client VPS (same path) before creating client config."
         else
@@ -95,7 +97,7 @@ server_menu() {
         ;;
       2)
         if [ -x "${SCRIPT_DIR}/add_server_iptables.sh" ]; then
-          run_action "${SCRIPT_DIR}/add_server_iptables.sh"
+          run_action "${SCRIPTS_DIR}/add_server_iptables.sh"
         else
           echo -e "${RED}Script not found or not executable:${NC} ${SCRIPT_DIR}/add_server_iptables.sh" >&2
         fi
@@ -103,7 +105,7 @@ server_menu() {
         ;;
       3)
         if [ -x "${SCRIPT_DIR}/install_systemd_service.sh" ]; then
-          run_action "${SCRIPT_DIR}/install_systemd_service.sh" server
+          run_action "${SCRIPTS_DIR}/install_systemd_service.sh" server
         else
           echo -e "${RED}Script not found or not executable:${NC} ${SCRIPT_DIR}/install_systemd_service.sh" >&2
         fi
@@ -111,7 +113,7 @@ server_menu() {
         ;;
       4)
         if [ -x "${SCRIPT_DIR}/remove_server_iptables.sh" ]; then
-          run_action "${SCRIPT_DIR}/remove_server_iptables.sh"
+          run_action "${SCRIPTS_DIR}/remove_server_iptables.sh"
         else
           echo -e "${RED}Script not found or not executable:${NC} ${SCRIPT_DIR}/remove_server_iptables.sh" >&2
         fi
@@ -119,7 +121,7 @@ server_menu() {
         ;;
       5)
         if [ -x "${SCRIPT_DIR}/remove_systemd_service.sh" ]; then
-          run_action "${SCRIPT_DIR}/remove_systemd_service.sh" server
+          run_action "${SCRIPTS_DIR}/remove_systemd_service.sh" server
         else
           echo -e "${RED}Script not found or not executable:${NC} ${SCRIPT_DIR}/remove_systemd_service.sh" >&2
         fi
@@ -127,7 +129,7 @@ server_menu() {
         ;;
       6)
         if [ -x "${SCRIPT_DIR}/service_control.sh" ]; then
-          run_action "${SCRIPT_DIR}/service_control.sh" server
+          run_action "${SCRIPTS_DIR}/service_control.sh" server
         else
           echo -e "${RED}Script not found or not executable:${NC} ${SCRIPT_DIR}/service_control.sh" >&2
         fi
@@ -135,7 +137,7 @@ server_menu() {
         ;;
       7)
         if [ -x "${SCRIPT_DIR}/cron_restart.sh" ]; then
-          run_action "${SCRIPT_DIR}/cron_restart.sh" server
+          run_action "${SCRIPTS_DIR}/cron_restart.sh" server
         else
           echo -e "${RED}Script not found or not executable:${NC} ${SCRIPT_DIR}/cron_restart.sh" >&2
         fi
@@ -143,47 +145,55 @@ server_menu() {
         ;;
       8)
         if [ -x "${SCRIPT_DIR}/show_server_info.sh" ]; then
-          run_action "${SCRIPT_DIR}/show_server_info.sh"
+          run_action "${SCRIPTS_DIR}/show_server_info.sh"
         else
           echo -e "${RED}Script not found or not executable:${NC} ${SCRIPT_DIR}/show_server_info.sh" >&2
         fi
         pause
         ;;
       9)
+        if [ -x "${SCRIPT_DIR}/change_mtu.sh" ]; then
+          run_action "${SCRIPTS_DIR}/change_mtu.sh"
+        else
+          echo -e "${RED}Script not found or not executable:${NC} ${SCRIPT_DIR}/change_mtu.sh" >&2
+        fi
+        pause
+        ;;
+      10)
         if [ -x "${SCRIPT_DIR}/health_check_scheduler.sh" ]; then
-          run_action "${SCRIPT_DIR}/health_check_scheduler.sh" server
+          run_action "${SCRIPTS_DIR}/health_check_scheduler.sh" server
         else
           echo -e "${RED}Script not found or not executable:${NC} ${SCRIPT_DIR}/health_check_scheduler.sh" >&2
         fi
         pause
         ;;
-      10)
+      11)
         if [ -x "${SCRIPT_DIR}/show_health_logs.sh" ]; then
-          run_action "${SCRIPT_DIR}/show_health_logs.sh" server
+          run_action "${SCRIPTS_DIR}/show_health_logs.sh" server
         else
           echo -e "${RED}Script not found or not executable:${NC} ${SCRIPT_DIR}/show_health_logs.sh" >&2
         fi
         pause
         ;;
-      11)
+      12)
         if [ -x "${SCRIPT_DIR}/enable_warp_policy.sh" ]; then
-          run_action "${SCRIPT_DIR}/enable_warp_policy.sh" server
+          run_action "${SCRIPTS_DIR}/enable_warp_policy.sh" server
         else
           echo -e "${RED}Script not found or not executable:${NC} ${SCRIPT_DIR}/enable_warp_policy.sh" >&2
         fi
         pause
         ;;
-      12)
+      13)
         if [ -x "${SCRIPT_DIR}/disable_warp_policy.sh" ]; then
-          run_action "${SCRIPT_DIR}/disable_warp_policy.sh" server
+          run_action "${SCRIPTS_DIR}/disable_warp_policy.sh" server
         else
           echo -e "${RED}Script not found or not executable:${NC} ${SCRIPT_DIR}/disable_warp_policy.sh" >&2
         fi
         pause
         ;;
-      13)
+      14)
         if [ -x "${SCRIPT_DIR}/warp_status.sh" ]; then
-          run_action "${SCRIPT_DIR}/warp_status.sh" server
+          run_action "${SCRIPTS_DIR}/warp_status.sh" server
         else
           echo -e "${RED}Script not found or not executable:${NC} ${SCRIPT_DIR}/warp_status.sh" >&2
         fi
@@ -223,7 +233,7 @@ client_menu() {
     case "${choice}" in
       1)
         if [ -x "${SCRIPT_DIR}/create_client_config.sh" ]; then
-          run_action "${SCRIPT_DIR}/create_client_config.sh"
+          run_action "${SCRIPTS_DIR}/create_client_config.sh"
         else
           echo -e "${RED}Script not found or not executable:${NC} ${SCRIPT_DIR}/create_client_config.sh" >&2
         fi
@@ -231,7 +241,7 @@ client_menu() {
         ;;
       3)
         if [ -x "${SCRIPT_DIR}/install_systemd_service.sh" ]; then
-          run_action "${SCRIPT_DIR}/install_systemd_service.sh" client
+          run_action "${SCRIPTS_DIR}/install_systemd_service.sh" client
         else
           echo -e "${RED}Script not found or not executable:${NC} ${SCRIPT_DIR}/install_systemd_service.sh" >&2
         fi
@@ -239,7 +249,7 @@ client_menu() {
         ;;
       5)
         if [ -x "${SCRIPT_DIR}/remove_systemd_service.sh" ]; then
-          run_action "${SCRIPT_DIR}/remove_systemd_service.sh" client
+          run_action "${SCRIPTS_DIR}/remove_systemd_service.sh" client
         else
           echo -e "${RED}Script not found or not executable:${NC} ${SCRIPT_DIR}/remove_systemd_service.sh" >&2
         fi
@@ -247,7 +257,7 @@ client_menu() {
         ;;
       6)
         if [ -x "${SCRIPT_DIR}/service_control.sh" ]; then
-          run_action "${SCRIPT_DIR}/service_control.sh" client
+          run_action "${SCRIPTS_DIR}/service_control.sh" client
         else
           echo -e "${RED}Script not found or not executable:${NC} ${SCRIPT_DIR}/service_control.sh" >&2
         fi
@@ -255,7 +265,7 @@ client_menu() {
         ;;
       7)
         if [ -x "${SCRIPT_DIR}/cron_restart.sh" ]; then
-          run_action "${SCRIPT_DIR}/cron_restart.sh" client
+          run_action "${SCRIPTS_DIR}/cron_restart.sh" client
         else
           echo -e "${RED}Script not found or not executable:${NC} ${SCRIPT_DIR}/cron_restart.sh" >&2
         fi
@@ -263,7 +273,7 @@ client_menu() {
         ;;
       8)
         if [ -x "${SCRIPT_DIR}/test_client_connection.sh" ]; then
-          run_action "${SCRIPT_DIR}/test_client_connection.sh"
+          run_action "${SCRIPTS_DIR}/test_client_connection.sh"
         else
           echo -e "${RED}Script not found or not executable:${NC} ${SCRIPT_DIR}/test_client_connection.sh" >&2
         fi
@@ -271,7 +281,7 @@ client_menu() {
         ;;
       9)
         if [ -x "${SCRIPT_DIR}/health_check_scheduler.sh" ]; then
-          run_action "${SCRIPT_DIR}/health_check_scheduler.sh" client
+          run_action "${SCRIPTS_DIR}/health_check_scheduler.sh" client
         else
           echo -e "${RED}Script not found or not executable:${NC} ${SCRIPT_DIR}/health_check_scheduler.sh" >&2
         fi
@@ -279,7 +289,7 @@ client_menu() {
         ;;
       10)
         if [ -x "${SCRIPT_DIR}/show_health_logs.sh" ]; then
-          run_action "${SCRIPT_DIR}/show_health_logs.sh" client
+          run_action "${SCRIPTS_DIR}/show_health_logs.sh" client
         else
           echo -e "${RED}Script not found or not executable:${NC} ${SCRIPT_DIR}/show_health_logs.sh" >&2
         fi
@@ -340,7 +350,7 @@ client_menu() {
         ;;
       6)
         if [ -x "${SCRIPT_DIR}/uninstall_paqet.sh" ]; then
-          run_action "${SCRIPT_DIR}/uninstall_paqet.sh"
+          run_action "${SCRIPTS_DIR}/uninstall_paqet.sh"
         else
           echo -e "${RED}Script not found or not executable:${NC} ${SCRIPT_DIR}/uninstall_paqet.sh" >&2
         fi

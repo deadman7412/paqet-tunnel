@@ -104,19 +104,34 @@ Selecting a schedule overwrites the previous one.
 Health checks run via cron and **restart the service only when needed**, with a safety cap of **max 5 restarts per hour**.
 
 ### Client health logic
-- If service is not active → restart\n+- SOCKS5 test fails → restart
+- If service is not active → restart
+- SOCKS5 test fails → restart
 
 ### Server health logic
-- If service is not active → restart\n+- Recent logs include `connection lost`, `timeout`, or `reconnect` → restart\n+- No logs for 10 minutes → restart
+- If service is not active → restart
+- Recent logs include `connection lost`, `timeout`, or `reconnect` → restart
+- No logs for 10 minutes → restart
 
 ### Health logs
-Logs are written to:\n- `/var/log/paqet-health-server.log`\n- `/var/log/paqet-health-client.log`
+Logs are written to:
+- `/var/log/paqet-health-server.log`
+- `/var/log/paqet-health-client.log`
 
 Logs are auto‑rotated when they exceed **1MB** (current log is truncated and previous is saved to `.1`).
 
 ## Cloudflare WARP (Policy Routing)
 
-This is the **3x‑ui style** setup: only paqet traffic is routed through WARP, not the whole server.\n\nFeatures:\n- Creates a WARP WireGuard profile using **wgcf**\n- Brings up `wgcf` interface\n- Adds **policy routing** for traffic from the `paqet` user\n- Does **not** affect SSH (traffic not owned by `paqet` stays on default route)\n\nYou can optionally enter a **WARP+ license key** during setup.\n\nNote: This config uses a systemd drop‑in to run `paqet-server` as user `paqet` with required capabilities.
+This is the **3x‑ui style** setup: only paqet traffic is routed through WARP, not the whole server.
+
+Features:
+- Creates a WARP WireGuard profile using **wgcf**
+- Brings up `wgcf` interface
+- Adds **policy routing** for traffic from the `paqet` user
+- Does **not** affect SSH (traffic not owned by `paqet` stays on default route)
+
+You can optionally enter a **WARP+ license key** during setup.
+
+Note: This config uses a systemd drop‑in to run `paqet-server` as user `paqet` with required capabilities.
 
 ## Systemd Services
 
@@ -147,25 +162,25 @@ Then optionally asks for **reboot**.
 ## Files Included
 
 - `menu.sh` – main menu
-- `install_paqet.sh` – installer + dependency setup
-- `create_server_config.sh` – server config generator
-- `create_client_config.sh` – client config generator
-- `add_server_iptables.sh` – server iptables rules
-- `remove_server_iptables.sh` – remove iptables rules
-- `install_systemd_service.sh` – create service
-- `remove_systemd_service.sh` – remove service
-- `service_control.sh` – systemd control + logs
-- `cron_restart.sh` – restart scheduler
-- `test_client_connection.sh` – SOCKS5 test
-- `show_server_info.sh` – show/recreate server_info.txt
-- `health_check.sh` – server/client health check logic
-- `health_check_scheduler.sh` – health check scheduler
-- `show_health_logs.sh` – view/clear health logs
-- `health_log_rotate.sh` – rotate health logs
-- `enable_warp_policy.sh` – enable WARP policy routing (server)
-- `disable_warp_policy.sh` – disable WARP policy routing
-- `warp_status.sh` – show WARP status
-- `uninstall_paqet.sh` – full uninstall
+- `scripts/install_paqet.sh` – installer + dependency setup
+- `scripts/create_server_config.sh` – server config generator
+- `scripts/create_client_config.sh` – client config generator
+- `scripts/add_server_iptables.sh` – server iptables rules
+- `scripts/remove_server_iptables.sh` – remove iptables rules
+- `scripts/install_systemd_service.sh` – create service
+- `scripts/remove_systemd_service.sh` – remove service
+- `scripts/service_control.sh` – systemd control + logs
+- `scripts/cron_restart.sh` – restart scheduler
+- `scripts/test_client_connection.sh` – SOCKS5 test
+- `scripts/show_server_info.sh` – show/recreate server_info.txt
+- `scripts/health_check.sh` – server/client health check logic
+- `scripts/health_check_scheduler.sh` – health check scheduler
+- `scripts/show_health_logs.sh` – view/clear health logs
+- `scripts/health_log_rotate.sh` – rotate health logs
+- `scripts/enable_warp_policy.sh` – enable WARP policy routing (server)
+- `scripts/disable_warp_policy.sh` – disable WARP policy routing
+- `scripts/warp_status.sh` – show WARP status
+- `scripts/uninstall_paqet.sh` – full uninstall
 
 ## Notes
 
