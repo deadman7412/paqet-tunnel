@@ -203,9 +203,18 @@ if ! ip route show table ${TABLE_ID} 2>/dev/null | grep -q default; then
   ip route add default dev wgcf table ${TABLE_ID}
 fi
 
-# Add rule
-if ! ip rule show | grep -q "fwmark ${MARK}.*lookup ${TABLE_ID}"; then
-  ip rule add fwmark ${MARK} table ${TABLE_ID}
+# Add rule (ip may display fwmark in hex)
+if ! ip rule show | grep -Eq "fwmark (0x0*ca6c|0x0000ca6c|${MARK}).*lookup ${TABLE_ID}"; then
+  if ! ip rule add fwmark ${MARK} table ${TABLE_ID} 2>/dev/null; then
+    ip rule add fwmark ${MARK_HEX} table ${TABLE_ID} 2>/dev/null || true
+  fi
+fi
+if ! ip rule show | grep -Eq "fwmark (0x0*ca6c|0x0000ca6c|${MARK}).*lookup ${TABLE_ID}"; then
+  echo "Debug: fwmark rule still missing after add."
+  ip rule show || true
+else
+  echo "fwmark rule present:"
+  ip rule show | grep -E "fwmark (0x0*ca6c|0x0000ca6c|${MARK}).*lookup ${TABLE_ID}" || true
 fi
 
 # iptables/nft mark rules for paqet user (ensure exists)
@@ -237,7 +246,7 @@ fi
 if ! iptables -t mangle -C OUTPUT -m owner --uid-owner paqet -j MARK --set-mark ${MARK} 2>/dev/null; then
   echo "iptables mark rule not detected; checking nft..."
   if command -v nft >/dev/null 2>&1; then
-    if ! nft list chain inet mangle output 2>/dev/null | grep -Eq "skuid ${PAQET_UID}.*mark set (${MARK_HEX}|${MARK})"; then
+    if ! nft list chain inet mangle output 2>/dev/null | grep -Eq "skuid ${PAQET_UID}.*mark set"; then
       echo "Debug:"
       echo "  PAQET_UID=${PAQET_UID}"
       echo "  MARK=${MARK}"
