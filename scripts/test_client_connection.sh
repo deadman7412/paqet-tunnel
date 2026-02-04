@@ -28,14 +28,18 @@ fi
 echo "Testing SOCKS5 proxy at ${SOCKS_LISTEN}..."
 
 # Try HTTPS first
-if curl -fsSL --connect-timeout 5 --max-time 10 https://httpbin.org/ip --proxy "socks5h://${SOCKS_LISTEN}" >/dev/null; then
+IP_JSON="$(curl -fsSL --connect-timeout 5 --max-time 10 https://httpbin.org/ip --proxy "socks5h://${SOCKS_LISTEN}" || true)"
+if [ -n "${IP_JSON}" ]; then
   echo "Success: proxy is working (HTTPS)."
+  echo "IP response: ${IP_JSON}"
   exit 0
 fi
 
 # Fallback to HTTP if SSL fails (helps diagnose TLS issues)
-if curl -fsSL --connect-timeout 5 --max-time 10 http://httpbin.org/ip --proxy "socks5h://${SOCKS_LISTEN}" >/dev/null; then
+IP_JSON="$(curl -fsSL --connect-timeout 5 --max-time 10 http://httpbin.org/ip --proxy "socks5h://${SOCKS_LISTEN}" || true)"
+if [ -n "${IP_JSON}" ]; then
   echo "Success: proxy is working (HTTP)."
+  echo "IP response: ${IP_JSON}"
   echo "Note: HTTPS failed; check TLS/SSL path or packet loss."
   exit 0
 fi
