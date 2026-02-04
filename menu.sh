@@ -79,6 +79,8 @@ server_menu() {
     echo -e "${GREEN}13)${NC} Disable WARP (policy routing)"
     echo -e "${GREEN}14)${NC} WARP status"
     echo -e "${GREEN}15)${NC} Test WARP"
+    echo -e "${GREEN}16)${NC} Enable firewall (ufw)"
+    echo -e "${GREEN}17)${NC} Disable firewall (ufw)"
     echo
     echo
     echo -e "${GREEN}0)${NC} Back to main menu"
@@ -210,6 +212,22 @@ server_menu() {
         fi
         pause
         ;;
+      16)
+        if [ -x "${SCRIPTS_DIR}/enable_firewall.sh" ]; then
+          run_action "${SCRIPTS_DIR}/enable_firewall.sh" server
+        else
+          echo -e "${RED}Script not found or not executable:${NC} ${SCRIPTS_DIR}/enable_firewall.sh" >&2
+        fi
+        pause
+        ;;
+      17)
+        if [ -x "${SCRIPTS_DIR}/disable_firewall.sh" ]; then
+          run_action "${SCRIPTS_DIR}/disable_firewall.sh" server
+        else
+          echo -e "${RED}Script not found or not executable:${NC} ${SCRIPTS_DIR}/disable_firewall.sh" >&2
+        fi
+        pause
+        ;;
       0)
         return 0
         ;;
@@ -236,6 +254,8 @@ client_menu() {
     echo -e "${GREEN}9)${NC} Change MTU"
     echo -e "${GREEN}10)${NC} Health check"
     echo -e "${GREEN}11)${NC} Health logs"
+    echo -e "${GREEN}12)${NC} Enable firewall (ufw)"
+    echo -e "${GREEN}13)${NC} Disable firewall (ufw)"
     echo
     echo
     echo -e "${GREEN}0)${NC} Back to main menu"
@@ -312,6 +332,22 @@ client_menu() {
           run_action "${SCRIPTS_DIR}/show_health_logs.sh" client
         else
           echo -e "${RED}Script not found or not executable:${NC} ${SCRIPTS_DIR}/show_health_logs.sh" >&2
+        fi
+        pause
+        ;;
+      12)
+        if [ -x "${SCRIPTS_DIR}/enable_firewall.sh" ]; then
+          run_action "${SCRIPTS_DIR}/enable_firewall.sh" client
+        else
+          echo -e "${RED}Script not found or not executable:${NC} ${SCRIPTS_DIR}/enable_firewall.sh" >&2
+        fi
+        pause
+        ;;
+      13)
+        if [ -x "${SCRIPTS_DIR}/disable_firewall.sh" ]; then
+          run_action "${SCRIPTS_DIR}/disable_firewall.sh" client
+        else
+          echo -e "${RED}Script not found or not executable:${NC} ${SCRIPTS_DIR}/disable_firewall.sh" >&2
         fi
         pause
         ;;

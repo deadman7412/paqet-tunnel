@@ -122,6 +122,8 @@ Options include:
 - **Disable WARP (policy routing)**
 - **WARP status**
 - **Test WARP** → full diagnostics (wg, routing, iptables/nft, curl tests + summary)
+- **Enable firewall (ufw)** → install/enable ufw and allow SSH + paqet port
+- **Disable firewall (ufw)** → remove paqet/SSH rules and disable ufw
 - **Show server info** → shows or recreates `~/paqet/server_info.txt`
 
 ### server_info.txt
@@ -151,6 +153,8 @@ Options include:
 - **Change MTU** → updates client MTU (and restarts client service)
 - **Health check**
 - **Health logs**
+- **Enable firewall (ufw)**
+- **Disable firewall (ufw)**
 
 ### Client Config Defaults
 If `~/paqet/server_info.txt` is present, the client config auto‑fills:
@@ -209,6 +213,15 @@ You can optionally enter a **WARP+ license key** during setup.
 Note: This config uses a systemd drop‑in to run `paqet-server` as user `paqet` with required capabilities.
 Enable WARP performs a quick verification and warns if `paqet` traffic is not using WARP.
 
+## Firewall (UFW)
+
+The firewall option adds safe rules and enables UFW:
+- Detects SSH ports from `sshd_config` and allows them.
+- **Server:** asks for the **client public IPv4** and only allows that IP to the paqet port.
+- **Client:** reads `server_public_ip` from `server_info.txt` (or prompts) and only allows outbound TCP to that IP/port.
+
+Disable firewall removes the rules added by the script and disables UFW.
+
 ## Systemd Services
 
 Services are created as:
@@ -260,6 +273,8 @@ Then optionally asks for **reboot**.
 - `scripts/disable_warp_policy.sh` – disable WARP policy routing
 - `scripts/warp_status.sh` – show WARP status
 - `scripts/test_warp_full.sh` – full WARP diagnostics
+- `scripts/enable_firewall.sh` – enable UFW and add rules
+- `scripts/disable_firewall.sh` – disable UFW and remove rules
 - `scripts/uninstall_paqet.sh` – full uninstall
 
 ## Notes
