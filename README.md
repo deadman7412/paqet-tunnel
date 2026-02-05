@@ -17,8 +17,9 @@ These steps assume **server first**, then **client**. Tested on **Ubuntu 24.04**
    chmod +x menu.sh
    ./menu.sh
    ```
-3. **Install Paqet**
+3. **Install or update Paqet**
    - Menu → **Install Paqet**
+   - Or **Update Paqet** to fetch the latest release and restart services
 4. **Create server config**
    - Menu → **Server configuration → Create server config**
    - **Copy the printed command** and run it on the client VPS (this creates `server_info.txt`).
@@ -103,6 +104,9 @@ The installer always uses `~/paqet` regardless of the current directory.
 ## Main Menu Options
 
 - **Install Paqet**: Downloads paqet, installs libpcap, extracts and renames the binary to `~/paqet/paqet`.
+- **Update Paqet**: Checks GitHub releases, replaces the binary, and restarts services if configs exist.
+  - If GitHub is blocked (e.g., Iran), download the same release on another VPS and copy the tarball into `~/paqet`.
+  - Keep both server and client on the **same paqet version**.
 - **Server configuration**: Server setup (config, iptables, systemd, service control, restart scheduler, show server info).
 - **Client configuration**: Client setup (config, systemd, service control, restart scheduler, test connection).
 - **Uninstall Paqet**: Removes paqet files, services, cron jobs, and optionally reboots.
@@ -273,6 +277,7 @@ Then optionally asks for **reboot**.
 
 - `menu.sh` – main menu
 - `scripts/install_paqet.sh` – installer + dependency setup
+- `scripts/update_paqet.sh` – update to latest release and restart services
 - `scripts/create_server_config.sh` – server config generator
 - `scripts/create_client_config.sh` – client config generator
 - `scripts/add_server_iptables.sh` – server iptables rules
