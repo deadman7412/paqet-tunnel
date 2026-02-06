@@ -23,12 +23,24 @@ echo "Connecting to GitHub..."
 git -C "${REPO_DIR}" fetch --prune
 git -C "${REPO_DIR}" status -sb
 
-read -r -p "Pull latest changes from origin? [y/N]: " CONFIRM
-case "${CONFIRM}" in
-  y|Y) ;;
-  *) echo "Aborted."; exit 0 ;;
-esac
+# If working tree is dirty, auto-stash to allow fast-forward pull.
+STASHED=0
+if ! git -C "${REPO_DIR}" diff --quiet || ! git -C "${REPO_DIR}" diff --cached --quiet; then
+  echo "Local changes detected. Stashing before update..."
+  git -C "${REPO_DIR}" stash push -u -m "auto-stash before update $(date -u +'%Y-%m-%dT%H:%M:%SZ')" >/dev/null 2>&1 || true
+  if git -C "${REPO_DIR}" stash list | head -n1 | grep -q "auto-stash before update"; then
+    STASHED=1
+  fi
+fi
 
 git -C "${REPO_DIR}" pull --ff-only
+
+if [ "${STASHED}" -eq 1 ]; then
+  echo "Re-applying local changes..."
+  if ! git -C "${REPO_DIR}" stash pop >/dev/null 2>&1; then
+    echo "Warning: stash pop had conflicts. Resolve them manually." >&2
+    exit 1
+  fi
+fi
 
 echo "Update complete."
