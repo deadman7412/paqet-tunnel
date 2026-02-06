@@ -1,5 +1,7 @@
 # Paqet Tunnel Scripts
 
+![Release](https://img.shields.io/github/v/release/deadman7412/paqet-tunnel)
+
 **Notice:** This project is intended for personal experimentation and learning. Do not use it for unlawful activities or in production systems.
 
 ## Install & Setup (Quick Guide)
