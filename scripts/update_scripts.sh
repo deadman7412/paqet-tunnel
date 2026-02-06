@@ -6,6 +6,7 @@ REPO_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
 PAQET_DIR="${PAQET_DIR:-$HOME/paqet}"
 CLIENT_CONFIG="${PAQET_DIR}/client.yaml"
 INSTALL_PROXYCHAINS="${SCRIPT_DIR}/install_proxychains4.sh"
+REPO_URL="${PAQET_REPO_URL:-https://github.com/deadman7412/paqet-tunnel.git}"
 
 github_reachable() {
   if command -v curl >/dev/null 2>&1; then
@@ -59,13 +60,21 @@ fi
 if ! git -C "${REPO_DIR}" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
   echo "This folder is not a git repository: ${REPO_DIR}" >&2
   echo "If you downloaded a ZIP, re-clone from GitHub to enable updates." >&2
-  exit 1
+  read -r -p "Re-clone now (recommended)? [y/N]: " do_reclone
+  case "${do_reclone}" in
+    y|Y)
+      ;;
+    *)
+      exit 1
+      ;;
+  esac
 fi
 
 CURRENT_BRANCH="$(git -C "${REPO_DIR}" rev-parse --abbrev-ref HEAD 2>/dev/null || true)"
 echo "Updating scripts in ${REPO_DIR}"
 echo "Current branch: ${CURRENT_BRANCH:-unknown}"
 
+PROXY_PREFIX=()
 GIT_CMD=(git -C "${REPO_DIR}")
 if github_reachable; then
   echo "Connecting to GitHub..."
@@ -93,16 +102,30 @@ else
       fi
 
       if command -v proxychains4 >/dev/null 2>&1; then
-        GIT_CMD=(proxychains4 git -C "${REPO_DIR}")
+        PROXY_PREFIX=(proxychains4)
       else
-        GIT_CMD=(proxychains git -C "${REPO_DIR}")
+        PROXY_PREFIX=(proxychains)
       fi
+      GIT_CMD=("${PROXY_PREFIX[@]}" git -C "${REPO_DIR}")
       ;;
     *)
       echo "Notice: GitHub not reachable. Update scripts manually or re-run with proxychains." >&2
       exit 1
       ;;
   esac
+fi
+
+if ! git -C "${REPO_DIR}" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+  BACKUP_DIR="${REPO_DIR}.bak.$(date +%s)"
+  echo "Re-cloning repository into ${REPO_DIR}"
+  echo "Backup: ${BACKUP_DIR}"
+  mv "${REPO_DIR}" "${BACKUP_DIR}"
+  if ! "${PROXY_PREFIX[@]}" git clone "${REPO_URL}" "${REPO_DIR}"; then
+    echo "Clone failed. Restoring backup." >&2
+    rm -rf "${REPO_DIR}" 2>/dev/null || true
+    mv "${BACKUP_DIR}" "${REPO_DIR}"
+    exit 1
+  fi
 fi
 
 "${GIT_CMD[@]}" fetch --prune
