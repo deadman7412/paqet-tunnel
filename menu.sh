@@ -388,9 +388,10 @@ client_menu() {
     fi
     echo -e "${GREEN}1)${NC} Install Paqet"
     echo -e "${GREEN}2)${NC} Update Paqet"
-    echo -e "${GREEN}3)${NC} Server configuration"
-    echo -e "${GREEN}4)${NC} Client configuration"
-    echo -e "${GREEN}7)${NC} Uninstall Paqet"
+    echo -e "${GREEN}3)${NC} Update Scripts (git pull)"
+    echo -e "${GREEN}4)${NC} Server configuration"
+    echo -e "${GREEN}5)${NC} Client configuration"
+    echo -e "${GREEN}6)${NC} Uninstall Paqet"
     echo
     echo
     echo -e "${GREEN}0)${NC} Exit"
@@ -415,12 +416,20 @@ client_menu() {
         pause
         ;;
       3)
-        server_menu
+        if [ -x "${SCRIPTS_DIR}/update_scripts.sh" ]; then
+          run_action "${SCRIPTS_DIR}/update_scripts.sh"
+        else
+          echo -e "${RED}Script not found or not executable:${NC} ${SCRIPTS_DIR}/update_scripts.sh" >&2
+        fi
+        pause
         ;;
       4)
+        server_menu
+        ;;
+      5)
         client_menu
         ;;
-      7)
+      6)
         if [ -x "${SCRIPTS_DIR}/uninstall_paqet.sh" ]; then
           run_action "${SCRIPTS_DIR}/uninstall_paqet.sh"
         else
