@@ -11,32 +11,28 @@ These steps assume **server first**, then **client**. Tested on **Ubuntu 24.04**
 ### Server (Destination VPS)
 1. **Get the scripts**
    - Option A (recommended):
-
-```bash
-git clone https://github.com/deadman7412/paqet-tunnel ~/paqet_tunnel
-cd ~/paqet_tunnel
-chmod +x menu.sh
-./menu.sh
-```
+     ```bash
+     git clone https://github.com/deadman7412/paqet-tunnel ~/paqet_tunnel
+     cd ~/paqet_tunnel
+     chmod +x menu.sh
+     ./menu.sh
+     ```
 
    - Option B (manual ZIP download):
-
-```bash
-# 1) On GitHub, click Code → Download ZIP
-
-# 2) Upload the ZIP to your server (example uses scp)
-#    If you use a custom SSH port, add: -P <PORT>
-scp paqet-tunnel-main.zip root@<SERVER_IP>:/root/
-
-# 3) Unzip and place in the correct folder
-cd /root
-apt-get update -y && apt-get install -y unzip
-unzip paqet-tunnel-main.zip
-mv paqet-tunnel-main ~/paqet_tunnel
-cd ~/paqet_tunnel
-chmod +x menu.sh
-./menu.sh
-```
+     ```bash
+     # 1) On GitHub, click Code → Download ZIP
+     # 2) Upload the ZIP to your server (example uses scp)
+     #    If you use a custom SSH port, add: -P <PORT>
+     scp paqet-tunnel-main.zip root@<SERVER_IP>:/root/
+     # 3) Unzip and place in the correct folder
+     cd /root
+     apt-get update -y && apt-get install -y unzip
+     unzip paqet-tunnel-main.zip
+     mv paqet-tunnel-main ~/paqet_tunnel
+     cd ~/paqet_tunnel
+     chmod +x menu.sh
+     ./menu.sh
+     ```
 3. **Install or update Paqet**
    - Menu → **Install Paqet**
    - Or **Update Paqet** to fetch the latest release and restart services
@@ -120,25 +116,23 @@ This folder contains a menu‑driven setup for installing, configuring, and oper
 ## Quick Start
 
 1. Clone this repo on your VPS (server or client):
-
-```bash
-git clone https://github.com/deadman7412/paqet-tunnel ~/paqet_tunnel
-cd ~/paqet_tunnel
-chmod +x menu.sh
-```
+   ```bash
+   git clone https://github.com/deadman7412/paqet-tunnel ~/paqet_tunnel
+   cd ~/paqet_tunnel
+   chmod +x menu.sh
+   ```
 
    Or download the ZIP from GitHub and do:
-
-```bash
-# If you use a custom SSH port, add: -P <PORT>
-# upload the ZIP to your VPS, then:
-cd ~
-apt-get update -y && apt-get install -y unzip
-unzip paqet-tunnel-main.zip
-mv paqet-tunnel-main ~/paqet_tunnel
-cd ~/paqet_tunnel
-chmod +x menu.sh
-```
+   ```bash
+   # If you use a custom SSH port, add: -P <PORT>
+   # upload the ZIP to your VPS, then:
+   cd ~
+   apt-get update -y && apt-get install -y unzip
+   unzip paqet-tunnel-main.zip
+   mv paqet-tunnel-main ~/paqet_tunnel
+   cd ~/paqet_tunnel
+   chmod +x menu.sh
+   ```
 2. Run the menu:
 
 ```bash
