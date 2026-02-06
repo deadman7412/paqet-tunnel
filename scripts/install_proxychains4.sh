@@ -111,7 +111,13 @@ awk '
   BEGIN{skip=0}
   /^# paqet-tunnel start$/ {skip=1; next}
   /^# paqet-tunnel end$/ {skip=0; next}
-  skip==0 {print}
+  skip==1 {next}
+  # Comment out default Tor proxy entries if present
+  /^socks[45][[:space:]]+127\.0\.0\.1[[:space:]]+9050([[:space:]]|$)/ {
+    if ($0 ~ /^#/) { print; next }
+    print "# " $0; next
+  }
+  {print}
 ' "${PROXYCHAINS_CONF}" > "${TMP_FILE}"
 cat "${TMP_FILE}" > "${PROXYCHAINS_CONF}"
 rm -f "${TMP_FILE}"
