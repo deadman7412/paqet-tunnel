@@ -8,18 +8,21 @@ These steps assume **server first**, then **client**. Tested on **Ubuntu 24.04**
 
 ### Server (Destination VPS)
 1. **Get the scripts**
-   - Option A:
+   - Option A (recommended):
      ```bash
-     git clone https://github.com/deadman7412/paqet-tunnel
+     git clone https://github.com/deadman7412/paqet-tunnel ~/paqet_tunnel
+     cd ~/paqet_tunnel
+     chmod +x menu.sh
+     ./menu.sh
      ```
-   - Option B: download the source and upload it to the server.
-2. **Place in the correct folder**
-   ```bash
-   mv <source-folder> ~/paqet_tunnel
-   cd ~/paqet_tunnel
-   chmod +x menu.sh
-   ./menu.sh
-   ```
+   - Option B (manual download):
+     ```bash
+     # upload/download the repo folder to your server, then:
+     mv <source-folder> ~/paqet_tunnel
+     cd ~/paqet_tunnel
+     chmod +x menu.sh
+     ./menu.sh
+     ```
 3. **Install or update Paqet**
    - Menu → **Install Paqet**
    - Or **Update Paqet** to fetch the latest release and restart services
@@ -91,9 +94,16 @@ This folder contains a menu‑driven setup for installing, configuring, and oper
 
 1. Clone this repo on your VPS (server or client):
    ```bash
-   git clone https://github.com/deadman7412/paqet-tunnel
+   git clone https://github.com/deadman7412/paqet-tunnel ~/paqet_tunnel
+   cd ~/paqet_tunnel
+   chmod +x menu.sh
    ```
-   Or copy this folder to your VPS (server or client).
+   Or copy this folder to your VPS (server or client) and then:
+   ```bash
+   mv <source-folder> ~/paqet_tunnel
+   cd ~/paqet_tunnel
+   chmod +x menu.sh
+   ```
 2. Run the menu:
 
 ```bash
