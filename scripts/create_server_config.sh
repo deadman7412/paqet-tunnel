@@ -73,6 +73,15 @@ read -r -p "Listen port [random]: " PORT
 if [ -z "${PORT}" ]; then
   PORT="$(random_port)"
   echo "Selected random port: ${PORT}"
+else
+  if ! [[ "${PORT}" =~ ^[0-9]+$ ]]; then
+    echo "Port must be a number." >&2
+    exit 1
+  fi
+  if [ "${PORT}" -le 1024 ] || [ "${PORT}" -eq 80 ] || [ "${PORT}" -eq 443 ]; then
+    echo "Avoid standard/low ports (e.g., 80/443). Use a high, non-standard port." >&2
+    exit 1
+  fi
 fi
 
 echo "MTU affects packet fragmentation. If you see SSL errors, try 1200."

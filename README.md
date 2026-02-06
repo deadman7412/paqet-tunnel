@@ -10,6 +10,8 @@ If this project is useful to you, consider giving it a star.
 
 This repo contains a menu‑driven setup for installing, configuring, and operating **paqet** on Linux VPS servers (server and client). It automates common steps from the paqet README and adds operational tooling (systemd, scheduler, logs, uninstall).
 
+**Credit:** Paqet is created and maintained by [hanselime/paqet](https://github.com/hanselime/paqet). This project only provides helper scripts.
+
 ## Quick Start
 
 1. Get the scripts
@@ -49,6 +51,7 @@ These steps assume **server first**, then **client**. Tested on **Ubuntu 24.04**
    - Menu → **Server configuration → Create server config**
    - **Copy the printed command** and run it on the client VPS (creates `server_info.txt`).
    - You can leave the port blank to **auto‑randomize** a high port.
+   - Avoid standard ports like **80/443**; use a high, non‑standard port.
 3. **Apply iptables + systemd**
    - Menu → **Add iptable rules**
    - Menu → **Install systemd service**
@@ -92,6 +95,7 @@ Now your traffic routes through the paqet tunnel.
 - **Update Paqet** pulls the latest paqet release and restarts services if configs exist.
 - Keep both server and client on the **same paqet version**.
 - If you place a paqet tarball in `~/paqet`, the updater will use the local file instead of downloading.
+- Latest releases are fetched from [hanselime/paqet](https://github.com/hanselime/paqet).
 
 ### Update Paqet (Manual)
 If GitHub is blocked or you want to update manually:
