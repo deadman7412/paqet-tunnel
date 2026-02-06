@@ -20,17 +20,15 @@ chmod +x menu.sh
 ```
 
    - Option B (manual ZIP download):
-     1. On GitHub, click **Code → Download ZIP**.
-     2. Upload the ZIP to your server (example uses `scp`).
-        - If you use a custom SSH port, add `-P <PORT>` to `scp`.
 
 ```bash
+# 1) On GitHub, click Code → Download ZIP
+
+# 2) Upload the ZIP to your server (example uses scp)
+#    If you use a custom SSH port, add: -P <PORT>
 scp paqet-tunnel-main.zip root@<SERVER_IP>:/root/
-```
 
-     3. Unzip and place in the correct folder:
-
-```bash
+# 3) Unzip and place in the correct folder
 cd /root
 apt-get update -y && apt-get install -y unzip
 unzip paqet-tunnel-main.zip
@@ -130,9 +128,9 @@ chmod +x menu.sh
 ```
 
    Or download the ZIP from GitHub and do:
-   - If you use a custom SSH port, add `-P <PORT>` to `scp`.
 
 ```bash
+# If you use a custom SSH port, add: -P <PORT>
 # upload the ZIP to your VPS, then:
 cd ~
 apt-get update -y && apt-get install -y unzip
