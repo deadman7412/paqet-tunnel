@@ -4,21 +4,18 @@
 
 **Notice:** This project is intended for personal experimentation and learning. Do not use it for unlawful activities or in production systems.
 
-## Install & Setup (Quick Guide)
+This repo contains a menu‑driven setup for installing, configuring, and operating **paqet** on Linux VPS servers (server and client). It automates common steps from the paqet README and adds operational tooling (systemd, scheduler, logs, uninstall).
 
-These steps assume **server first**, then **client**. Tested on **Ubuntu 24.04**.
+## Quick Start
 
-### Server (Destination VPS)
-1. **Get the scripts**
+1. Get the scripts
    - Option A (recommended):
      ```bash
      git clone https://github.com/deadman7412/paqet-tunnel ~/paqet_tunnel
      cd ~/paqet_tunnel
      chmod +x menu.sh
-     ./menu.sh
      ```
-
-   - Option B (manual ZIP download):
+   - Option B (manual ZIP):
      ```bash
      # 1) On GitHub, click Code → Download ZIP
      # 2) Upload the ZIP to your server (example uses scp)
@@ -31,22 +28,30 @@ These steps assume **server first**, then **client**. Tested on **Ubuntu 24.04**
      mv paqet-tunnel-main ~/paqet_tunnel
      cd ~/paqet_tunnel
      chmod +x menu.sh
-     ./menu.sh
      ```
-3. **Install or update Paqet**
+2. Run the menu
+   ```bash
+   ./menu.sh
+   ```
+
+## Install & Setup (Quick Guide)
+
+These steps assume **server first**, then **client**. Tested on **Ubuntu 24.04**.
+
+### Server (Destination VPS)
+1. **Install Paqet**
    - Menu → **Install Paqet**
-   - Or **Update Paqet** to fetch the latest release and restart services
-4. **Create server config**
+2. **Create server config**
    - Menu → **Server configuration → Create server config**
-   - **Copy the printed command** and run it on the client VPS (this creates `server_info.txt`).
+   - **Copy the printed command** and run it on the client VPS (creates `server_info.txt`).
    - You can leave the port blank to **auto‑randomize** a high port.
-5. **Apply iptables + systemd**
+3. **Apply iptables + systemd**
    - Menu → **Add iptable rules**
    - Menu → **Install systemd service**
-6. **Optional scheduling**
+4. **Optional scheduling**
    - Menu → **Restart scheduler** (cron restart)
    - Menu → **Health check** (auto‑restart if needed)
-7. **Optional WARP**
+5. **Optional WARP**
    - Menu → **Enable WARP (policy routing)**
    - Menu → **Test WARP** (confirm `warp=on` for paqet traffic)
 
@@ -65,12 +70,7 @@ These steps assume **server first**, then **client**. Tested on **Ubuntu 24.04**
 5. **Test connection**
    - Menu → **Test connection** (shows proxy IP)
 
-### Logs & Status
-- **Service logs:** Menu → **Service control → Live logs**
-  - Press **Ctrl+C** to return.
-- **Health logs:** Menu → **Health logs**
-
-### Using the Tunnel With 3x‑ui (Client VPS)
+## Using the Tunnel With 3x‑ui (Client VPS)
 1. Install **3x‑ui** on the client server.
 2. Create **Outbound** → SOCKS:
    - Address: `127.0.0.1`
@@ -82,97 +82,14 @@ These steps assume **server first**, then **client**. Tested on **Ubuntu 24.04**
 
 Now your traffic routes through the paqet tunnel.
 
-## Versioning (Automatic via Git)
+## Updates
 
-This project uses **git tags** + `git describe` for automatic versions.
-The menu will show the current version if the repo has tags.
-If you download the ZIP (no `.git`), the menu reads the `VERSION` file.
-
-Example output:
-```
-v0.6.2-14-g3a9b8c1
-```
-
-To create a release tag and update `VERSION` automatically:
-
-```bash
-./scripts/release.sh v0.1.0
-git push
-git push --tags
-```
-
-If you prefer manual tagging:
-```bash
-echo "v0.1.0" > VERSION
-git add VERSION
-git commit -m "chore: bump version to v0.1.0"
-git tag -a v0.1.0 -m "Release v0.1.0"
-git push
-git push --tags
-```
-
-This folder contains a menu‑driven setup for installing, configuring, and operating **paqet** on Linux VPS servers (server and client). It automates the common steps from the paqet README and adds operational tooling (systemd, restart scheduler, logs, uninstall).
-
-## Quick Start
-
-1. Clone this repo on your VPS (server or client):
-   ```bash
-   git clone https://github.com/deadman7412/paqet-tunnel ~/paqet_tunnel
-   cd ~/paqet_tunnel
-   chmod +x menu.sh
-   ```
-
-   Or download the ZIP from GitHub and do:
-   ```bash
-   # If you use a custom SSH port, add: -P <PORT>
-   # upload the ZIP to your VPS, then:
-   cd ~
-   apt-get update -y && apt-get install -y unzip
-   unzip paqet-tunnel-main.zip
-   mv paqet-tunnel-main ~/paqet_tunnel
-   cd ~/paqet_tunnel
-   chmod +x menu.sh
-   ```
-2. Run the menu:
-
-```bash
-./menu.sh
-```
-
-## What Gets Installed Where
-
-- Paqet binaries and configs live in: `~/paqet`
-- Menu script lives in: `~/paqet_tunnel/menu.sh`
-- Helper scripts live in: `~/paqet_tunnel/scripts`
-
-The installer always uses `~/paqet` regardless of the current directory.
-
-## Main Menu Options
-
-- **Install Paqet**: Downloads paqet, installs libpcap, extracts and renames the binary to `~/paqet/paqet`.
-- **Update Paqet**: Checks GitHub releases, replaces the binary, and restarts services if configs exist.
-  - If GitHub is blocked (e.g., Iran), download the same release on another VPS and copy the tarball into `~/paqet`.
-  - Keep both server and client on the **same paqet version**.
-- **Server configuration**: Server setup (config, iptables, systemd, service control, restart scheduler, show server info).
-- **Client configuration**: Client setup (config, systemd, service control, restart scheduler, test connection).
-- **Uninstall Paqet**: Removes paqet files, services, cron jobs, and optionally reboots.
-
-## Install Behavior
-
-The installer detects:
-- **CPU arch** (`amd64` / `arm64`) from `uname -m`
-- **latest paqet release** from GitHub API
-- **libpcap** via your package manager (apt/dnf/yum)
-
-## Update Paqet (Menu)
-
-From the main menu:
+### Update Paqet (Menu)
 - **Update Paqet** pulls the latest paqet release and restarts services if configs exist.
 - Keep both server and client on the **same paqet version**.
 - If you place a paqet tarball in `~/paqet`, the updater will use the local file instead of downloading.
 
-## Update Paqet (Manual)
-
+### Update Paqet (Manual)
 If GitHub is blocked or you want to update manually:
 
 ```bash
@@ -199,6 +116,62 @@ chmod +x paqet
 [ -f ~/paqet/server.yaml ] && systemctl restart paqet-server.service
 [ -f ~/paqet/client.yaml ] && systemctl restart paqet-client.service
 ```
+
+### Update Scripts
+- **Update Scripts (git pull)** updates this repo on your VPS.
+
+## Versioning (Automatic via Git)
+
+This project uses **git tags** + `git describe` for automatic versions.
+The menu will show the current version if the repo has tags.
+If you download the ZIP (no `.git`), the menu reads the `VERSION` file.
+
+Example output:
+```
+v0.6.2-14-g3a9b8c1
+```
+
+To auto-update `VERSION` when pushing tags, install the pre-push hook (recommended):
+```bash
+cp scripts/hooks/pre-push .git/hooks/pre-push
+chmod +x .git/hooks/pre-push
+```
+
+Manual tagging (no hook):
+```bash
+echo "v0.1.0" > VERSION
+git add VERSION
+git commit -m "chore: bump version to v0.1.0"
+git tag -a v0.1.0 -m "Release v0.1.0"
+git push
+git push --tags
+```
+
+## What Gets Installed Where
+
+- Paqet binaries and configs live in: `~/paqet`
+- Menu script lives in: `~/paqet_tunnel/menu.sh`
+- Helper scripts live in: `~/paqet_tunnel/scripts`
+
+The installer always uses `~/paqet` regardless of the current directory.
+
+## Main Menu Options
+
+- **Install Paqet**: Downloads paqet, installs libpcap, extracts and renames the binary to `~/paqet/paqet`.
+- **Update Paqet**: Checks GitHub releases, replaces the binary, and restarts services if configs exist.
+  - If GitHub is blocked, download the same release on another VPS and copy the tarball into `~/paqet`.
+  - Keep both server and client on the **same paqet version**.
+- **Update Scripts (git pull)**: Updates this repo on the VPS.
+- **Server configuration**: Server setup (config, iptables, systemd, service control, restart scheduler, show server info).
+- **Client configuration**: Client setup (config, systemd, service control, restart scheduler, test connection).
+- **Uninstall Paqet**: Removes paqet files, services, cron jobs, and optionally reboots.
+
+## Install Behavior
+
+The installer detects:
+- **CPU arch** (`amd64` / `arm64`) from `uname -m`
+- **latest paqet release** from GitHub API
+- **libpcap** via your package manager (apt/dnf/yum)
 
 ### GitHub blocked or slow
 - The download is time‑limited (connect 5s, total ~20s).

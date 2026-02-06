@@ -1,0 +1,58 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Skip if this hook triggered an internal push
+if [ "${PAQET_HOOK_SKIP:-}" = "1" ]; then
+  exit 0
+fi
+
+remote_name="${1:-}"
+
+if ! command -v git >/dev/null 2>&1; then
+  echo "pre-push: git not found" >&2
+  exit 1
+fi
+
+# Collect tags being pushed from stdin (POSIX-compatible)
+tags_pushed=()
+while read -r local_ref local_sha remote_ref remote_sha; do
+  case "${local_ref}" in
+    refs/tags/*)
+      tags_pushed+=("${local_ref#refs/tags/}")
+      ;;
+  esac
+done
+
+# No tags in this push -> do nothing
+if [ "${#tags_pushed[@]}" -eq 0 ]; then
+  exit 0
+fi
+
+# Ensure working tree is clean before auto-commit
+if ! git diff --quiet || ! git diff --cached --quiet; then
+  echo "pre-push: working tree not clean; aborting version bump." >&2
+  echo "pre-push: please commit or stash changes, then push tags again." >&2
+  exit 1
+fi
+
+latest_tag=$(printf "%s\n" "${tags_pushed[@]}" | sort -V | tail -n1)
+if [ -z "${latest_tag}" ]; then
+  exit 0
+fi
+
+current_ver=""
+if [ -f VERSION ]; then
+  current_ver=$(cat VERSION 2>/dev/null | tr -d ' \n\r')
+fi
+
+if [ "${current_ver}" != "${latest_tag}" ]; then
+  echo "${latest_tag}" > VERSION
+  git add VERSION
+  git commit -m "chore: bump version to ${latest_tag}"
+  # Move the tag to the new commit so the tag includes VERSION bump
+  git tag -f "${latest_tag}" >/dev/null 2>&1 || true
+  # Push the commit (not tags). Original push will send tags.
+  PAQET_HOOK_SKIP=1 git push "${remote_name}" HEAD
+fi
+
+exit 0
