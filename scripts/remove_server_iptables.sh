@@ -20,9 +20,7 @@ if [ -f "${CONFIG_FILE}" ]; then
 fi
 
 if [ -z "${PORT}" ] && [ -f "${INFO_FILE}" ]; then
-  # shellcheck disable=SC1090
-  source "${INFO_FILE}"
-  PORT="${listen_port:-}"
+  PORT="$(awk -F= '/^listen_port=/{print $2; exit}' "${INFO_FILE}")"
 fi
 
 if [ -z "${PORT}" ]; then

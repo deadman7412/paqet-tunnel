@@ -3,6 +3,7 @@ set -euo pipefail
 
 ROLE="${1:-server}"
 SERVICE_NAME="paqet-${ROLE}"
+PAQET_DIR="${PAQET_DIR:-$HOME/paqet}"
 
 # Policy routing constants (defined early for use throughout script)
 TABLE_ID=51820
@@ -110,10 +111,8 @@ fi
 
 # Apply MTU (use same value as paqet if available)
 MTU_VALUE=""
-if [ -f "/root/paqet/server_info.txt" ]; then
-  # shellcheck disable=SC1090
-  source /root/paqet/server_info.txt
-  MTU_VALUE="${mtu:-}"
+if [ -f "${PAQET_DIR}/server_info.txt" ]; then
+  MTU_VALUE="$(awk -F= '/^mtu=/{print $2; exit}' "${PAQET_DIR}/server_info.txt")"
 fi
 if [ -z "${MTU_VALUE}" ]; then
   MTU_VALUE="1280"
@@ -136,7 +135,7 @@ PAQET_UID="$(id -u paqet)"
 MARK_HEX="$(printf '0x%08x' "${MARK}")"
 
 # Ensure paqet binary/config are accessible to paqet user
-PAQET_SRC_DIR="/root/paqet"
+PAQET_SRC_DIR="${PAQET_DIR}"
 PAQET_DST_DIR="/opt/paqet"
 PAQET_BIN_SRC="${PAQET_SRC_DIR}/paqet"
 PAQET_CFG_SRC="${PAQET_SRC_DIR}/server.yaml"

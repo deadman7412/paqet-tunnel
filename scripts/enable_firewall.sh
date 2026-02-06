@@ -103,10 +103,9 @@ else
   SERVER_IP=""
   INFO_FILE="${PAQET_DIR}/server_info.txt"
   if [ -f "${INFO_FILE}" ]; then
-    # shellcheck disable=SC1090
-    source "${INFO_FILE}"
-    if [ -n "${server_public_ip:-}" ] && [ "${server_public_ip}" != "REPLACE_WITH_SERVER_PUBLIC_IP" ]; then
-      SERVER_IP="${server_public_ip}"
+    SERVER_IP="$(awk -F= '/^server_public_ip=/{print $2; exit}' "${INFO_FILE}")"
+    if [ "${SERVER_IP}" = "REPLACE_WITH_SERVER_PUBLIC_IP" ]; then
+      SERVER_IP=""
     fi
   fi
   if [ -z "${SERVER_IP}" ]; then

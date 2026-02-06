@@ -25,10 +25,10 @@ fi
 WARP_DROPIN="/etc/systemd/system/${SERVICE_NAME}.service.d/10-warp.conf"
 if [ -f "${WARP_DROPIN}" ] || id -u paqet >/dev/null 2>&1; then
   # Ensure /opt/paqet exists and is accessible to paqet user
-  if [ -x "/root/paqet/paqet" ] && [ -f "/root/paqet/${ROLE}.yaml" ]; then
+  if [ -x "${PAQET_DIR}/paqet" ] && [ -f "${PAQET_DIR}/${ROLE}.yaml" ]; then
     mkdir -p /opt/paqet
-    cp -f "/root/paqet/paqet" "/opt/paqet/paqet"
-    cp -f "/root/paqet/${ROLE}.yaml" "/opt/paqet/${ROLE}.yaml"
+    cp -f "${PAQET_DIR}/paqet" "/opt/paqet/paqet"
+    cp -f "${PAQET_DIR}/${ROLE}.yaml" "/opt/paqet/${ROLE}.yaml"
     chown root:paqet "/opt/paqet/paqet" "/opt/paqet/${ROLE}.yaml" 2>/dev/null || true
     chmod 750 "/opt/paqet/paqet" || true
     chmod 640 "/opt/paqet/${ROLE}.yaml" || true
