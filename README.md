@@ -137,6 +137,42 @@ The installer detects:
 - **latest paqet release** from GitHub API
 - **libpcap** via your package manager (apt/dnf/yum)
 
+## Update Paqet (Menu)
+
+From the main menu:
+- **Update Paqet** pulls the latest paqet release and restarts services if configs exist.
+- Keep both server and client on the **same paqet version**.
+- If you place a paqet tarball in `~/paqet`, the updater will use the local file instead of downloading.
+
+## Update Paqet (Manual)
+
+If GitHub is blocked or you want to update manually:
+
+```bash
+# Stop services (optional but recommended)
+systemctl stop paqet-server.service 2>/dev/null || true
+systemctl stop paqet-client.service 2>/dev/null || true
+
+# Go to paqet dir
+cd ~/paqet
+
+# Place the tarball in ~/paqet (example name)
+# paqet-linux-amd64-v0.1.0.tar.gz
+# paqet-linux-arm64-v0.1.0.tar.gz
+
+# Remove old binary
+rm -f ~/paqet/paqet
+
+# Extract and install
+tar -xvzf paqet-linux-<arch>-<version>.tar.gz
+mv paqet_linux_<arch> paqet
+chmod +x paqet
+
+# Restart services if configs exist
+[ -f ~/paqet/server.yaml ] && systemctl restart paqet-server.service
+[ -f ~/paqet/client.yaml ] && systemctl restart paqet-client.service
+```
+
 ### GitHub blocked or slow
 - The download is time‑limited (connect 5s, total ~20s).
 - If GitHub is unreachable, the menu shows a notice and tells you to download manually.
