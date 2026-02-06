@@ -256,6 +256,7 @@ client_menu() {
     echo -e "${BLUE}Client Configuration${NC}"
     echo "--------------------"
     echo -e "${GREEN}1)${NC} Create client config"
+    echo -e "${GREEN}2)${NC} Install proxychains4"
     echo -e "${GREEN}3)${NC} Install systemd service"
     echo -e "${GREEN}5)${NC} Remove systemd service"
     echo -e "${GREEN}6)${NC} Service control"
@@ -278,6 +279,14 @@ client_menu() {
           run_action "${SCRIPTS_DIR}/create_client_config.sh"
         else
           echo -e "${RED}Script not found or not executable:${NC} ${SCRIPTS_DIR}/create_client_config.sh" >&2
+        fi
+        pause
+        ;;
+      2)
+        if [ -x "${SCRIPTS_DIR}/install_proxychains4.sh" ]; then
+          run_action "${SCRIPTS_DIR}/install_proxychains4.sh"
+        else
+          echo -e "${RED}Script not found or not executable:${NC} ${SCRIPTS_DIR}/install_proxychains4.sh" >&2
         fi
         pause
         ;;

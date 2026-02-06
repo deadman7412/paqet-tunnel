@@ -230,6 +230,7 @@ If file transfer is not possible, **Show server info** prints a ready-to-paste c
 
 Options include:
 - **Create client config** → creates `~/paqet/client.yaml`
+- **Install proxychains4** → installs proxychains4 and configures it to use the client SOCKS port
 - **Install systemd service** → creates `paqet-client.service`
 - **Remove systemd service**
 - **Service control**
@@ -247,6 +248,30 @@ If `~/paqet/server_info.txt` is present, the client config auto‑fills:
 - KCP key
 - Server public IP (if present)
 - MTU
+
+## Using Proxychains4 (Client VPS)
+Proxychains should point to the **SOCKS5 listen** from `~/paqet/client.yaml`
+(default `127.0.0.1:1080`), not the server `listen_port`.
+
+### Install + configure (menu)
+- Menu → **Client configuration → Install proxychains4**
+
+### Install + configure (manual)
+```bash
+sudo ~/paqet_tunnel/scripts/install_proxychains4.sh
+```
+
+### Example usage
+```bash
+proxychains4 curl https://httpbin.org/ip
+```
+
+### Example: use paqet SOCKS to reach the internet
+```bash
+# All commands prefixed with proxychains4 will route through paqet's SOCKS5
+proxychains4 curl https://example.com
+proxychains4 git ls-remote https://github.com/git/git.git
+```
 
 ## Restart Scheduler (Cron)
 
