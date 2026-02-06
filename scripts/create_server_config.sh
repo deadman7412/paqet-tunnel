@@ -21,6 +21,10 @@ fi
 
 read -r -p "Network interface [${IFACE_DEFAULT}]: " IFACE
 IFACE="${IFACE:-${IFACE_DEFAULT}}"
+if [ -z "${IFACE}" ]; then
+  echo "Network interface is required." >&2
+  exit 1
+fi
 
 LOCAL_IP_DEFAULT=""
 if [ -n "${IFACE}" ] && command -v ip >/dev/null 2>&1; then
@@ -28,6 +32,10 @@ if [ -n "${IFACE}" ] && command -v ip >/dev/null 2>&1; then
 fi
 read -r -p "Local IPv4 [${LOCAL_IP_DEFAULT}]: " LOCAL_IP
 LOCAL_IP="${LOCAL_IP:-${LOCAL_IP_DEFAULT}}"
+if [ -z "${LOCAL_IP}" ]; then
+  echo "Local IPv4 is required." >&2
+  exit 1
+fi
 
 GW_IP=""
 if command -v ip >/dev/null 2>&1; then
@@ -40,6 +48,10 @@ if [ -n "${GW_IP}" ] && command -v ip >/dev/null 2>&1; then
 fi
 read -r -p "Gateway MAC [${GW_MAC_DEFAULT}]: " GW_MAC
 GW_MAC="${GW_MAC:-${GW_MAC_DEFAULT}}"
+if [ -z "${GW_MAC}" ]; then
+  echo "Gateway MAC is required." >&2
+  exit 1
+fi
 
 random_port() {
   local port=""

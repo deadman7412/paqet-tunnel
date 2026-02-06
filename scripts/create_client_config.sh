@@ -21,6 +21,10 @@ fi
 
 read -r -p "Network interface [${IFACE_DEFAULT}]: " IFACE
 IFACE="${IFACE:-${IFACE_DEFAULT}}"
+if [ -z "${IFACE}" ]; then
+  echo "Network interface is required." >&2
+  exit 1
+fi
 
 LOCAL_IP_DEFAULT=""
 if [ -n "${IFACE}" ] && command -v ip >/dev/null 2>&1; then
@@ -28,6 +32,10 @@ if [ -n "${IFACE}" ] && command -v ip >/dev/null 2>&1; then
 fi
 read -r -p "Local IPv4 [${LOCAL_IP_DEFAULT}]: " LOCAL_IP
 LOCAL_IP="${LOCAL_IP:-${LOCAL_IP_DEFAULT}}"
+if [ -z "${LOCAL_IP}" ]; then
+  echo "Local IPv4 is required." >&2
+  exit 1
+fi
 
 GW_IP=""
 if command -v ip >/dev/null 2>&1; then
@@ -40,28 +48,24 @@ if [ -n "${GW_IP}" ] && command -v ip >/dev/null 2>&1; then
 fi
 read -r -p "Gateway MAC [${GW_MAC_DEFAULT}]: " GW_MAC
 GW_MAC="${GW_MAC:-${GW_MAC_DEFAULT}}"
+if [ -z "${GW_MAC}" ]; then
+  echo "Gateway MAC is required." >&2
+  exit 1
+fi
 
 PORT_DEFAULT="9999"
 KCP_KEY_DEFAULT=""
 MTU_DEFAULT=""
 
 if [ -f "${INFO_FILE}" ]; then
-  # shellcheck disable=SC1090
-  source "${INFO_FILE}"
-  if [ -n "${listen_port:-}" ]; then
-    PORT_DEFAULT="${listen_port}"
-  fi
-  if [ -n "${kcp_key:-}" ]; then
-    KCP_KEY_DEFAULT="${kcp_key}"
-  fi
-  if [ -n "${mtu:-}" ]; then
-    MTU_DEFAULT="${mtu}"
-  fi
-  if [ -n "${server_public_ip:-}" ] && [ "${server_public_ip}" != "REPLACE_WITH_SERVER_PUBLIC_IP" ]; then
-    SERVER_IP_DEFAULT="${server_public_ip}"
-  else
+  PORT_DEFAULT="$(awk -F= '/^listen_port=/{print $2; exit}' "${INFO_FILE}")"
+  KCP_KEY_DEFAULT="$(awk -F= '/^kcp_key=/{print $2; exit}' "${INFO_FILE}")"
+  MTU_DEFAULT="$(awk -F= '/^mtu=/{print $2; exit}' "${INFO_FILE}")"
+  SERVER_IP_DEFAULT="$(awk -F= '/^server_public_ip=/{print $2; exit}' "${INFO_FILE}")"
+  if [ "${SERVER_IP_DEFAULT}" = "REPLACE_WITH_SERVER_PUBLIC_IP" ]; then
     SERVER_IP_DEFAULT=""
   fi
+  PORT_DEFAULT="${PORT_DEFAULT:-9999}"
   echo "Loaded defaults from ${INFO_FILE}"
 else
   SERVER_IP_DEFAULT=""

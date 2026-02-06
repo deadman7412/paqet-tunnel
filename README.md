@@ -8,7 +8,10 @@ These steps assume **server first**, then **client**. Tested on **Ubuntu 24.04**
 
 ### Server (Destination VPS)
 1. **Get the scripts**
-   - Option A: `git clone <REPO_URL>` (replace when ready).
+   - Option A:
+     ```bash
+     git clone https://github.com/deadman7412/paqet-tunnel
+     ```
    - Option B: download the source and upload it to the server.
 2. **Place in the correct folder**
    ```bash
@@ -86,7 +89,11 @@ This folder contains a menu‑driven setup for installing, configuring, and oper
 
 ## Quick Start
 
-1. Copy this folder to your VPS (server or client).
+1. Clone this repo on your VPS (server or client):
+   ```bash
+   git clone https://github.com/deadman7412/paqet-tunnel
+   ```
+   Or copy this folder to your VPS (server or client).
 2. Run the menu:
 
 ```bash
