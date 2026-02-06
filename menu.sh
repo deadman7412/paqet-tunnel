@@ -18,12 +18,13 @@ banner() {
   if command -v git >/dev/null 2>&1 && git -C "${SCRIPT_DIR}" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
     ver="$(git -C "${SCRIPT_DIR}" describe --tags --always --dirty 2>/dev/null || true)"
   fi
-  echo -e "${CYAN}=================================${NC}"
-  echo -e "${CYAN}        Paqet Tunnel Menu        ${NC}"
+  echo -e "${CYAN}===========================================${NC}"
+  echo -e "${CYAN}Paqet Tunnel Menu${NC}"
   if [ -n "${ver}" ]; then
-    echo -e "${CYAN}            ${ver}            ${NC}"
+    echo -e "${CYAN}Version: ${ver}${NC}"
   fi
-  echo -e "${CYAN}=================================${NC}"
+  echo -e "${CYAN}Created by deadman7412${NC}"
+  echo -e "${CYAN}===========================================${NC}"
 }
 
 detect_arch() {
