@@ -17,14 +17,22 @@ These steps assume **server first**, then **client**. Tested on **Ubuntu 24.04**
      chmod +x menu.sh
      ./menu.sh
      ```
-   - Option B (manual download):
-     ```bash
-     # upload/download the repo folder to your server, then:
-     mv <source-folder> ~/paqet_tunnel
-     cd ~/paqet_tunnel
-     chmod +x menu.sh
-     ./menu.sh
-     ```
+   - Option B (manual ZIP download):
+     1. On GitHub, click **Code → Download ZIP**.
+     2. Upload the ZIP to your server (example uses `scp`):
+        ```bash
+        scp paqet-tunnel-main.zip root@<SERVER_IP>:/root/
+        ```
+     3. Unzip and place in the correct folder:
+        ```bash
+        cd /root
+        apt-get update -y && apt-get install -y unzip
+        unzip paqet-tunnel-main.zip
+        mv paqet-tunnel-main ~/paqet_tunnel
+        cd ~/paqet_tunnel
+        chmod +x menu.sh
+        ./menu.sh
+        ```
 3. **Install or update Paqet**
    - Menu → **Install Paqet**
    - Or **Update Paqet** to fetch the latest release and restart services
@@ -100,9 +108,13 @@ This folder contains a menu‑driven setup for installing, configuring, and oper
    cd ~/paqet_tunnel
    chmod +x menu.sh
    ```
-   Or copy this folder to your VPS (server or client) and then:
+   Or download the ZIP from GitHub and do:
    ```bash
-   mv <source-folder> ~/paqet_tunnel
+   # upload the ZIP to your VPS, then:
+   cd ~
+   apt-get update -y && apt-get install -y unzip
+   unzip paqet-tunnel-main.zip
+   mv paqet-tunnel-main ~/paqet_tunnel
    cd ~/paqet_tunnel
    chmod +x menu.sh
    ```
