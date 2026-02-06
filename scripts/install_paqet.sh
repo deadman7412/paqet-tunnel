@@ -45,33 +45,53 @@ if [ -n "${local_tarball}" ]; then
     latest="$(wget -qO- --timeout=10 https://api.github.com/repos/hanselime/paqet/releases/latest 2>/dev/null | awk -F '\"' '/tag_name/{print $4; exit}' || true)"
   fi
 
-  if [ -n "${latest}" ] && [ "${latest}" != "${VERSION}" ]; then
-    echo
-    echo -e "\033[1;31m====================================\033[0m"
-    echo -e "\033[1;31m  NEWER VERSION AVAILABLE\033[0m"
-    echo -e "\033[1;31m====================================\033[0m"
-    echo -e "\033[1;33mLatest:\033[0m ${latest}"
-    echo -e "\033[1;33mLocal:\033[0m  ${VERSION}"
-    echo
-    read -r -p "Use local version anyway? [y/N]: " USE_LOCAL
-    case "${USE_LOCAL}" in
-      y|Y)
-        echo
-        echo "Using local version: ${VERSION}"
-        echo
-        echo -e "\033[1;31mWARNING:\033[0m Ensure BOTH server and client use the same paqet version."
-        echo
-        ;;
-      *)
-        VERSION="${latest}"
-        NAME="paqet-${OS}-${ARCH}-${VERSION}.tar.gz"
-        URL="https://github.com/hanselime/paqet/releases/download/${VERSION}/${NAME}"
-        TARBALL_PATH="${PAQET_DIR}/${NAME}"
-        echo
-        echo "Using latest version: ${VERSION}"
-        echo
-        ;;
-    esac
+  if [ -n "${latest}" ]; then
+    if [ "${latest}" = "${VERSION}" ]; then
+      echo "Local tarball is already the latest version: ${VERSION}"
+    else
+      echo
+      echo -e "\033[1;31m====================================\033[0m"
+      echo -e "\033[1;31m  NEWER VERSION AVAILABLE\033[0m"
+      echo -e "\033[1;31m====================================\033[0m"
+      echo -e "\033[1;33mLatest:\033[0m ${latest}"
+      echo -e "\033[1;33mLocal:\033[0m  ${VERSION}"
+      echo
+      echo "Choose an option:"
+      echo "1) Download and install latest (${latest}) [recommended]"
+      echo "2) Use local tarball (${VERSION})"
+      echo "3) Abort"
+      read -r -p "Select [1-3]: " CHOICE
+      case "${CHOICE}" in
+        1|"")
+          VERSION="${latest}"
+          NAME="paqet-${OS}-${ARCH}-${VERSION}.tar.gz"
+          URL="https://github.com/hanselime/paqet/releases/download/${VERSION}/${NAME}"
+          TARBALL_PATH="${PAQET_DIR}/${NAME}"
+          echo
+          echo "Using latest version: ${VERSION}"
+          echo
+          ;;
+        2)
+          echo
+          echo "Using local version: ${VERSION}"
+          echo
+          echo -e "\033[1;31mWARNING:\033[0m Ensure BOTH server and client use the same paqet version."
+          echo
+          ;;
+        3)
+          echo "Aborted."
+          exit 0
+          ;;
+        *)
+          echo "Invalid option. Aborted."
+          exit 1
+          ;;
+      esac
+    fi
+  else
+    echo "Could not reach GitHub to check latest version."
+    echo "Using local tarball: ${VERSION}"
+    echo -e "\033[1;31mWARNING:\033[0m Ensure BOTH server and client use the same paqet version."
   fi
 else
   if [ -z "${VERSION}" ]; then
