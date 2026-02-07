@@ -5,10 +5,21 @@ PAQET_DIR="${PAQET_DIR:-$HOME/paqet}"
 OUT_FILE="${PAQET_DIR}/client.yaml"
 INFO_FILE="${PAQET_DIR}/server_info.txt"
 
+backup_file_if_exists() {
+  local file="$1"
+  if [ -f "${file}" ]; then
+    local ts backup
+    ts="$(date -u +"%Y%m%d-%H%M%S")"
+    backup="${file}.bak.${ts}"
+    cp -f "${file}" "${backup}"
+    echo "Backup created: ${backup}"
+  fi
+}
+
 if [ -f "${OUT_FILE}" ]; then
   read -r -p "${OUT_FILE} exists. Overwrite? [y/N]: " ow
   case "${ow}" in
-    y|Y) ;;
+    y|Y) backup_file_if_exists "${OUT_FILE}" ;;
     *) echo "Aborted."; exit 0 ;;
   esac
 fi
@@ -58,6 +69,8 @@ KCP_KEY_DEFAULT=""
 MTU_DEFAULT=""
 
 if [ -f "${INFO_FILE}" ]; then
+  INFO_FORMAT_VERSION="$(awk -F= '/^format_version=/{print $2; exit}' "${INFO_FILE}")"
+  INFO_CREATED_AT="$(awk -F= '/^created_at=/{print $2; exit}' "${INFO_FILE}")"
   PORT_DEFAULT="$(awk -F= '/^listen_port=/{print $2; exit}' "${INFO_FILE}")"
   KCP_KEY_DEFAULT="$(awk -F= '/^kcp_key=/{print $2; exit}' "${INFO_FILE}")"
   MTU_DEFAULT="$(awk -F= '/^mtu=/{print $2; exit}' "${INFO_FILE}")"
@@ -67,6 +80,12 @@ if [ -f "${INFO_FILE}" ]; then
   fi
   PORT_DEFAULT="${PORT_DEFAULT:-9999}"
   echo "Loaded defaults from ${INFO_FILE}"
+  if [ -n "${INFO_FORMAT_VERSION:-}" ] && [ "${INFO_FORMAT_VERSION}" != "1" ]; then
+    echo "Warning: server_info format_version=${INFO_FORMAT_VERSION} (expected 1). Proceeding with compatible keys."
+  fi
+  if [ -n "${INFO_CREATED_AT:-}" ]; then
+    echo "server_info created_at: ${INFO_CREATED_AT}"
+  fi
 else
   SERVER_IP_DEFAULT=""
 fi
@@ -97,7 +116,8 @@ fi
 
 mkdir -p "${PAQET_DIR}"
 
-cat <<YAML > "${OUT_FILE}"
+TMP_OUT="$(mktemp "${OUT_FILE}.tmp.XXXXXX")"
+cat <<YAML > "${TMP_OUT}"
 # paqet Client Configuration
 role: "client"
 
@@ -132,5 +152,6 @@ transport:
     mtu: ${MTU}
     key: "${KCP_KEY}"
 YAML
+mv "${TMP_OUT}" "${OUT_FILE}"
 
 echo "Wrote ${OUT_FILE}"

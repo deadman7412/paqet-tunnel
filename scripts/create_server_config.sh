@@ -4,11 +4,24 @@ set -euo pipefail
 PAQET_DIR="${PAQET_DIR:-$HOME/paqet}"
 OUT_FILE="${PAQET_DIR}/server.yaml"
 INFO_FILE="${PAQET_DIR}/server_info.txt"
+INFO_FORMAT_VERSION="1"
+CREATED_AT_UTC="$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
+
+backup_file_if_exists() {
+  local file="$1"
+  if [ -f "${file}" ]; then
+    local ts backup
+    ts="$(date -u +"%Y%m%d-%H%M%S")"
+    backup="${file}.bak.${ts}"
+    cp -f "${file}" "${backup}"
+    echo "Backup created: ${backup}"
+  fi
+}
 
 if [ -f "${OUT_FILE}" ]; then
   read -r -p "${OUT_FILE} exists. Overwrite? [y/N]: " ow
   case "${ow}" in
-    y|Y) ;;
+    y|Y) backup_file_if_exists "${OUT_FILE}" ;;
     *) echo "Aborted."; exit 0 ;;
   esac
 fi
@@ -114,7 +127,8 @@ fi
 
 mkdir -p "${PAQET_DIR}"
 
-cat <<YAML > "${OUT_FILE}"
+TMP_OUT="$(mktemp "${OUT_FILE}.tmp.XXXXXX")"
+cat <<YAML > "${TMP_OUT}"
 # paqet Server Configuration
 role: "server"
 
@@ -143,22 +157,30 @@ transport:
     mtu: ${MTU}
     key: "${KCP_KEY}"
 YAML
+mv "${TMP_OUT}" "${OUT_FILE}"
 
 echo "Wrote ${OUT_FILE}"
 
-cat <<INFO > "${INFO_FILE}"
+backup_file_if_exists "${INFO_FILE}"
+TMP_INFO="$(mktemp "${INFO_FILE}.tmp.XXXXXX")"
+cat <<INFO > "${TMP_INFO}"
 # Copy this file to the client VPS and place it at ${INFO_FILE}
+format_version=${INFO_FORMAT_VERSION}
+created_at=${CREATED_AT_UTC}
 listen_port=${PORT}
 kcp_key=${KCP_KEY}
 mtu=${MTU}
 server_public_ip=${SERVER_PUBLIC_IP:-REPLACE_WITH_SERVER_PUBLIC_IP}
 INFO
+mv "${TMP_INFO}" "${INFO_FILE}"
 
 echo "Wrote ${INFO_FILE}"
 echo
 echo "If you cannot transfer files, run these commands on the client VPS:"
 echo "  mkdir -p ${PAQET_DIR}"
 echo "  cat <<'EOF' > ${INFO_FILE}"
+echo "format_version=${INFO_FORMAT_VERSION}"
+echo "created_at=${CREATED_AT_UTC}"
 echo "listen_port=${PORT}"
 echo "kcp_key=${KCP_KEY}"
 echo "mtu=${MTU}"

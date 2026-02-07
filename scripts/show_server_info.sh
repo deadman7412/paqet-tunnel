@@ -4,6 +4,7 @@ set -euo pipefail
 PAQET_DIR="${PAQET_DIR:-$HOME/paqet}"
 INFO_FILE="${PAQET_DIR}/server_info.txt"
 CONFIG_FILE="${PAQET_DIR}/server.yaml"
+INFO_FORMAT_VERSION="1"
 
 if [ ! -f "${INFO_FILE}" ]; then
   echo "${INFO_FILE} not found. Attempting to recreate..."
@@ -58,8 +59,11 @@ if [ ! -f "${INFO_FILE}" ]; then
     exit 1
   fi
 
+  CREATED_AT_UTC="$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
   cat <<INFO > "${INFO_FILE}"
 # Copy this file to the client VPS and place it at ${INFO_FILE}
+format_version=${INFO_FORMAT_VERSION}
+created_at=${CREATED_AT_UTC}
 listen_port=${PORT}
 kcp_key=${KEY}
 mtu=${MTU}
@@ -108,6 +112,14 @@ if ! grep -q "^mtu=" "${INFO_FILE}"; then
     [ -z "${MTU_EXISTING}" ] && MTU_EXISTING="1350"
   fi
   echo "mtu=${MTU_EXISTING}" >> "${INFO_FILE}"
+fi
+
+# Ensure metadata is present in existing file
+if ! grep -q "^format_version=" "${INFO_FILE}"; then
+  sed -i "1a format_version=${INFO_FORMAT_VERSION}" "${INFO_FILE}"
+fi
+if ! grep -q "^created_at=" "${INFO_FILE}"; then
+  sed -i "1a created_at=$(date -u +"%Y-%m-%dT%H:%M:%SZ")" "${INFO_FILE}"
 fi
 
 echo
