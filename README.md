@@ -417,7 +417,7 @@ Optional DNS policy mode for domain blocking on server side (for `paqet` traffic
 
 How it works:
 - Runs a local `dnsmasq` resolver on `127.0.0.1:5353`.
-- Downloads selected bootmortis category (`ads`, `all`, `proxy`) and builds DNS deny rules.
+- Downloads selected bootmortis category (`ads`, `all`, `proxy`) from [bootmortis/iran-hosted-domains](https://github.com/bootmortis/iran-hosted-domains) and builds DNS deny rules.
 - Redirects DNS traffic from user `paqet` (`tcp/udp 53`) to local resolver.
 - Updates list daily via `/etc/cron.d/paqet-dns-policy-update`.
 - Uses system DNS upstreams from `/etc/resolv.conf` by default (better VPS compatibility).
