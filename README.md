@@ -206,24 +206,26 @@ The installer detects:
 
 ## Server Configuration Menu
 
-Options include:
+Options (same order and labels as menu):
 - **Create server config** → creates `~/paqet/server.yaml`
-- **Add iptable rules** → applies required rules from paqet README and persists them
-- **Install systemd service** → creates `paqet-server.service`
-- **Remove iptable rules** → removes rules and can remove persistence packages
-- **Remove systemd service** → removes the service
-- **Service control** → start/stop/restart/status/enable/disable/reset failed/logs
-- **Restart scheduler** → cron‑based service restart schedule
-- **Health check** → auto‑restart if stuck (server/client)
-- **Health logs** → view/clear health check logs
-- **Enable WARP (policy routing)** → route paqet traffic through Cloudflare WARP (server)
+- **Add iptable rules**
+- **Install systemd service**
+- **Remove iptable rules**
+- **Remove systemd service**
+- **Service control**
+- **Restart scheduler**
+- **Show server info** → shows or recreates `~/paqet/server_info.txt`
+- **Change MTU**
+- **Health check**
+- **Health logs**
+- **Enable WARP (policy routing)**
 - **Disable WARP (policy routing)**
 - **WARP status**
-- **Test WARP** → full diagnostics (wg, policy routing, route probe, curl tests + summary)
-- **Enable firewall (ufw)** → install/enable ufw and allow SSH + paqet port
-- **Disable firewall (ufw)** → remove paqet/SSH rules and disable ufw
-- **Repair networking stack** → re-sync iptables/UFW/WARP routing state for server
-- **Show server info** → shows or recreates `~/paqet/server_info.txt`
+- **Test WARP**
+- **Enable firewall (ufw)**
+- **Disable firewall (ufw)**
+- **Repair networking stack**
+- **Back to main menu**
 
 ### server_info.txt
 When server config is created, the script writes:
@@ -280,20 +282,21 @@ When using `manual`, set the same values on both VPSs. This project now exports/
 
 ## Client Configuration Menu
 
-Options include:
+Options (same order and labels as menu):
 - **Create client config** → creates `~/paqet/client.yaml`
-- **Install proxychains4** → installs proxychains4 and configures it to use the client SOCKS port
-- **Install systemd service** → creates `paqet-client.service`
+- **Install proxychains4**
+- **Install systemd service**
 - **Remove systemd service**
 - **Service control**
 - **Restart scheduler**
-- **Test connection** → runs curl with SOCKS5 and prints the IP response
-- **Change MTU** → updates MTU and prompts to run networking repair (recommended)
+- **Test connection**
+- **Change MTU**
 - **Health check**
 - **Health logs**
 - **Enable firewall (ufw)**
 - **Disable firewall (ufw)**
-- **Repair networking stack** → re-sync UFW + service state for client
+- **Repair networking stack**
+- **Back to main menu**
 
 ### Client Config Defaults
 If `~/paqet/server_info.txt` is present, the client config auto‑fills:
