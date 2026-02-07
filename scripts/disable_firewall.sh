@@ -17,7 +17,7 @@ if ! command -v ufw >/dev/null 2>&1; then
 fi
 
 # Remove rules created by this script (by comment)
-mapfile -t RULES < <(ufw status numbered | awk '/paqet-(tunnel|ssh)/ {gsub(/[\[\]]/,"",$1); print $1}')
+mapfile -t RULES < <(ufw status numbered | awk '/paqet-(tunnel|ssh)/ { if (match($0, /^\[[[:space:]]*[0-9]+]/)) { n=substr($0, RSTART+1, RLENGTH-2); gsub(/[[:space:]]/, "", n); print n } }')
 
 if [ "${#RULES[@]}" -gt 0 ]; then
   # Delete from highest number to avoid reindex issues

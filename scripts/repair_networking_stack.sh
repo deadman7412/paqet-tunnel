@@ -70,7 +70,7 @@ sync_ufw_server_rule() {
     old_client_ip=""
   fi
 
-  mapfile -t rules < <(ufw status numbered 2>/dev/null | awk '/paqet-tunnel/ {gsub(/[][]/,"",$1); print $1}')
+  mapfile -t rules < <(ufw status numbered 2>/dev/null | awk '/paqet-tunnel/ { if (match($0, /^\[[[:space:]]*[0-9]+]/)) { n=substr($0, RSTART+1, RLENGTH-2); gsub(/[[:space:]]/, "", n); print n } }')
   if [ "${#rules[@]}" -gt 0 ]; then
     for ((i=${#rules[@]}-1; i>=0; i--)); do
       ufw --force delete "${rules[$i]}" >/dev/null 2>&1 || true
@@ -100,7 +100,7 @@ sync_ufw_client_rule() {
     return 0
   fi
 
-  mapfile -t rules < <(ufw status numbered 2>/dev/null | awk '/paqet-tunnel/ {gsub(/[][]/,"",$1); print $1}')
+  mapfile -t rules < <(ufw status numbered 2>/dev/null | awk '/paqet-tunnel/ { if (match($0, /^\[[[:space:]]*[0-9]+]/)) { n=substr($0, RSTART+1, RLENGTH-2); gsub(/[[:space:]]/, "", n); print n } }')
   if [ "${#rules[@]}" -gt 0 ]; then
     for ((i=${#rules[@]}-1; i>=0; i--)); do
       ufw --force delete "${rules[$i]}" >/dev/null 2>&1 || true
