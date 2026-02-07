@@ -41,6 +41,30 @@ else
   echo "Cron file not found: /etc/cron.d/paqet-restart-paqet-client"
 fi
 
+# Remove UFW rules created by paqet scripts
+echo "Cleaning UFW paqet rules (if present)..."
+if command -v ufw >/dev/null 2>&1; then
+  status_line="$(ufw status 2>/dev/null | head -n1 || true)"
+  if echo "${status_line}" | grep -qiE "Status: (active|inactive)"; then
+    # Keep SSH access intact; only remove tunnel/loopback rules.
+    mapfile -t UFW_RULES < <(ufw status numbered 2>/dev/null | awk '/paqet-(tunnel|loopback)/ { if (match($0, /^\[[[:space:]]*[0-9]+]/)) { n=substr($0, RSTART+1, RLENGTH-2); gsub(/[[:space:]]/, "", n); print n } }')
+    if [ "${#UFW_RULES[@]}" -gt 0 ]; then
+      # Delete from highest number to avoid rule index shifts.
+      for ((i=${#UFW_RULES[@]}-1; i>=0; i--)); do
+        ufw --force delete "${UFW_RULES[$i]}" >/dev/null 2>&1 || true
+      done
+      echo "Removed UFW paqet rule(s)."
+    else
+      echo "No UFW paqet rules found."
+    fi
+    ufw status verbose || true
+  else
+    echo "UFW status unavailable; skipping UFW cleanup."
+  fi
+else
+  echo "ufw not installed; skipping UFW cleanup."
+fi
+
 # Remove WARP-related files
 echo "Removing WARP files (if present)..."
 echo "Disabling WARP interface and routing (if present)..."
