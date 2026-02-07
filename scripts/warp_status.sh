@@ -23,6 +23,8 @@ else
 fi
 
 WGCF_CONF="/etc/wireguard/wgcf.conf"
+MARK=51820
+MARK_HEX="$(printf '0x%x' "${MARK}")"
 if [ -f "${WGCF_CONF}" ]; then
   MTU_CONF="$(sed -n 's/^MTU[[:space:]]*=[[:space:]]*//p' "${WGCF_CONF}" | head -n1)"
   if [ -n "${MTU_CONF}" ]; then
@@ -48,8 +50,15 @@ ip route show table 51820 || echo "(no routes in table 51820)"
 
 echo
 echo "iptables mark rules:"
-if iptables -t mangle -S OUTPUT | grep -E "owner --uid-owner paqet|MARK --set-mark 51820" >/dev/null; then
-  iptables -t mangle -S OUTPUT | grep -E "owner --uid-owner paqet|MARK --set-mark 51820"
+if id -u paqet >/dev/null 2>&1; then
+  PAQET_UID="$(id -u paqet)"
+else
+  PAQET_UID=""
+fi
+if [ -n "${PAQET_UID}" ] && iptables -t mangle -S OUTPUT | grep -E "uid-owner (paqet|${PAQET_UID}).*(set-mark ${MARK}|set-xmark ${MARK_HEX}/0xffffffff)" >/dev/null; then
+  iptables -t mangle -S OUTPUT | grep -E "uid-owner (paqet|${PAQET_UID}).*(set-mark ${MARK}|set-xmark ${MARK_HEX}/0xffffffff)"
+elif iptables -t mangle -S OUTPUT | grep -E "set-mark ${MARK}|set-xmark ${MARK_HEX}/0xffffffff" >/dev/null; then
+  iptables -t mangle -S OUTPUT | grep -E "set-mark ${MARK}|set-xmark ${MARK_HEX}/0xffffffff"
 else
   echo "(no mark rules) - WARP will NOT route paqet traffic"
 fi

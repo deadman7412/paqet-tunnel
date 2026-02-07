@@ -47,15 +47,21 @@ ensure_server_iptables_rules() {
     return 0
   fi
 
-  if ! iptables -t raw -C PREROUTING -p tcp --dport "${port}" -j NOTRACK 2>/dev/null; then
-    iptables -t raw -A PREROUTING -p tcp --dport "${port}" -m comment --comment paqet-notrack-in -j NOTRACK || true
-  fi
-  if ! iptables -t raw -C OUTPUT -p tcp --sport "${port}" -j NOTRACK 2>/dev/null; then
-    iptables -t raw -A OUTPUT -p tcp --sport "${port}" -m comment --comment paqet-notrack-out -j NOTRACK || true
-  fi
-  if ! iptables -t mangle -C OUTPUT -p tcp --sport "${port}" --tcp-flags RST RST -j DROP 2>/dev/null; then
-    iptables -t mangle -A OUTPUT -p tcp --sport "${port}" --tcp-flags RST RST -m comment --comment paqet-rst-drop -j DROP || true
-  fi
+  # Keep one tagged copy of each server rule (older releases could create duplicates).
+  while iptables -t raw -C PREROUTING -p tcp --dport "${port}" -m comment --comment paqet-notrack-in -j NOTRACK 2>/dev/null; do
+    iptables -t raw -D PREROUTING -p tcp --dport "${port}" -m comment --comment paqet-notrack-in -j NOTRACK 2>/dev/null || true
+  done
+  iptables -t raw -A PREROUTING -p tcp --dport "${port}" -m comment --comment paqet-notrack-in -j NOTRACK 2>/dev/null || true
+
+  while iptables -t raw -C OUTPUT -p tcp --sport "${port}" -m comment --comment paqet-notrack-out -j NOTRACK 2>/dev/null; do
+    iptables -t raw -D OUTPUT -p tcp --sport "${port}" -m comment --comment paqet-notrack-out -j NOTRACK 2>/dev/null || true
+  done
+  iptables -t raw -A OUTPUT -p tcp --sport "${port}" -m comment --comment paqet-notrack-out -j NOTRACK 2>/dev/null || true
+
+  while iptables -t mangle -C OUTPUT -p tcp --sport "${port}" --tcp-flags RST RST -m comment --comment paqet-rst-drop -j DROP 2>/dev/null; do
+    iptables -t mangle -D OUTPUT -p tcp --sport "${port}" --tcp-flags RST RST -m comment --comment paqet-rst-drop -j DROP 2>/dev/null || true
+  done
+  iptables -t mangle -A OUTPUT -p tcp --sport "${port}" --tcp-flags RST RST -m comment --comment paqet-rst-drop -j DROP 2>/dev/null || true
 }
 
 # Install dependencies
@@ -326,8 +332,19 @@ echo "WARP policy routing enabled for ${SERVICE_NAME}."
 
 # Quick verification (best-effort)
 if command -v curl >/dev/null 2>&1 && id -u paqet >/dev/null 2>&1; then
+  get_trace() {
+    local out=""
+    out="$(sudo -u paqet curl -fsSL --connect-timeout 5 --max-time 12 https://www.cloudflare.com/cdn-cgi/trace 2>/dev/null || true)"
+    if [ -z "${out}" ]; then
+      out="$(sudo -u paqet curl -fsSL --connect-timeout 5 --max-time 12 https://cloudflare.com/cdn-cgi/trace 2>/dev/null || true)"
+    fi
+    if [ -z "${out}" ]; then
+      out="$(sudo -u paqet curl -fsSL --connect-timeout 5 --max-time 12 http://1.1.1.1/cdn-cgi/trace 2>/dev/null || true)"
+    fi
+    echo "${out}"
+  }
   echo "Verifying WARP for paqet traffic..."
-  PAQET_TRACE="$(sudo -u paqet curl -s --connect-timeout 5 --max-time 10 https://1.1.1.1/cdn-cgi/trace || true)"
+  PAQET_TRACE="$(get_trace)"
   if echo "${PAQET_TRACE}" | grep -q "warp=on"; then
     echo "WARP verification: OK (paqet traffic uses WARP)"
   else
