@@ -206,11 +206,7 @@ if [ ! -x "${INSTALL_SCRIPT}" ]; then
   exit 1
 fi
 
-if [ "${#NET_PREFIX[@]}" -gt 0 ]; then
-  "${NET_PREFIX[@]}" env VERSION="${latest}" "${INSTALL_SCRIPT}"
-else
-  env VERSION="${latest}" "${INSTALL_SCRIPT}"
-fi
+env VERSION="${latest}" "${INSTALL_SCRIPT}"
 
 # Restart services if configs exist
 if [ -f "${PAQET_DIR}/server.yaml" ]; then

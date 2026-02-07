@@ -30,7 +30,16 @@ if [ -d "${PAQET_DIR}" ]; then
   done
 fi
 
-if [ -n "${local_tarball}" ]; then
+if [ -n "${VERSION}" ]; then
+  NAME="paqet-${OS}-${ARCH}-${VERSION}.tar.gz"
+  URL="https://github.com/hanselime/paqet/releases/download/${VERSION}/${NAME}"
+  TARBALL_PATH="${PAQET_DIR}/${NAME}"
+  if [ -s "${TARBALL_PATH}" ]; then
+    echo "Found requested tarball: ${TARBALL_PATH}"
+  else
+    echo "Requested version: ${VERSION}"
+  fi
+elif [ -n "${local_tarball}" ]; then
   NAME="$(basename "${local_tarball}")"
   VERSION="$(echo "${NAME}" | sed -n 's/^paqet-'"${OS}"'-'"${ARCH}"'-\(v[^.]*\..*\)\.tar\.gz$/\1/p')"
   URL="https://github.com/hanselime/paqet/releases/download/${VERSION}/${NAME}"
@@ -94,12 +103,10 @@ if [ -n "${local_tarball}" ]; then
     echo -e "\033[1;31mWARNING:\033[0m Ensure BOTH server and client use the same paqet version."
   fi
 else
-  if [ -z "${VERSION}" ]; then
-    if command -v curl >/dev/null 2>&1; then
-      VERSION="$(curl -fsSL https://api.github.com/repos/hanselime/paqet/releases/latest 2>/dev/null | awk -F '\"' '/tag_name/{print $4; exit}' || true)"
-    elif command -v wget >/dev/null 2>&1; then
-      VERSION="$(wget -qO- https://api.github.com/repos/hanselime/paqet/releases/latest 2>/dev/null | awk -F '\"' '/tag_name/{print $4; exit}' || true)"
-    fi
+  if command -v curl >/dev/null 2>&1; then
+    VERSION="$(curl -fsSL https://api.github.com/repos/hanselime/paqet/releases/latest 2>/dev/null | awk -F '\"' '/tag_name/{print $4; exit}' || true)"
+  elif command -v wget >/dev/null 2>&1; then
+    VERSION="$(wget -qO- https://api.github.com/repos/hanselime/paqet/releases/latest 2>/dev/null | awk -F '\"' '/tag_name/{print $4; exit}' || true)"
   fi
 
   if [ -z "${VERSION}" ]; then
