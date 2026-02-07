@@ -420,6 +420,8 @@ How it works:
 - Downloads selected bootmortis category (`ads`, `all`, `proxy`) and builds DNS deny rules.
 - Redirects DNS traffic from user `paqet` (`tcp/udp 53`) to local resolver.
 - Updates list daily via `/etc/cron.d/paqet-dns-policy-update`.
+- Uses system DNS upstreams from `/etc/resolv.conf` by default (better VPS compatibility).
+- Runs a resolver self-check during enable and prints `OK` or `FAILED`.
 
 Files used:
 - `/etc/dnsmasq.d/paqet-dns-policy.conf`
@@ -430,6 +432,20 @@ Files used:
 Notes:
 - Blocking is DNS-level (resolution-time), not deep packet inspection.
 - This does not change non-`paqet` server traffic.
+- `ads` is the recommended starting category. `all` can be very aggressive and may break normal browsing/app traffic.
+
+Quick validation:
+```bash
+sudo iptables -t nat -L OUTPUT -n -v | grep paqet-dns-policy
+domain="$(sudo awk -F'/' '/^address=\// {print $2; exit}' /etc/dnsmasq.d/paqet-dns-policy-blocklist.conf)"
+nslookup -port=5353 "$domain" 127.0.0.1
+sudo -u paqet getent ahostsv4 "$domain"
+```
+
+Expected:
+- Redirect counters increase for UDP/53 (and TCP/53 if used).
+- Blocked domains resolve to `0.0.0.0` (or unusable address).
+- Allowed domains resolve normally.
 
 ## Firewall (UFW)
 
