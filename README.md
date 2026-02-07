@@ -225,6 +225,10 @@ Options (same order and labels as menu):
 - **Enable firewall (ufw)**
 - **Disable firewall (ufw)**
 - **Repair networking stack**
+- **Enable DNS policy blocklist**
+- **Disable DNS policy blocklist**
+- **Update DNS policy list now**
+- **DNS policy status**
 - **Back to main menu**
 
 ### server_info.txt
@@ -407,6 +411,26 @@ You can optionally enter a **WARP+ license key** during setup.
 Note: This config uses a systemd drop‑in to run `paqet-server` as user `paqet` with required capabilities.
 Enable WARP performs a quick verification and warns if `paqet` traffic is not using WARP.
 
+## DNS Policy Blocklist (Server)
+
+Optional DNS policy mode for domain blocking on server side (for `paqet` traffic only).
+
+How it works:
+- Runs a local `dnsmasq` resolver on `127.0.0.1:5353`.
+- Downloads selected bootmortis category (`ads`, `all`, `proxy`) and builds DNS deny rules.
+- Redirects DNS traffic from user `paqet` (`tcp/udp 53`) to local resolver.
+- Updates list daily via `/etc/cron.d/paqet-dns-policy-update`.
+
+Files used:
+- `/etc/dnsmasq.d/paqet-dns-policy.conf`
+- `/etc/dnsmasq.d/paqet-dns-policy-blocklist.conf`
+- `/etc/paqet-dns-policy/allow_domains.txt` (whitelist)
+- `/etc/paqet-dns-policy/last_update`
+
+Notes:
+- Blocking is DNS-level (resolution-time), not deep packet inspection.
+- This does not change non-`paqet` server traffic.
+
 ## Firewall (UFW)
 
 The firewall option adds safe rules and enables UFW:
@@ -442,6 +466,7 @@ Uninstall removes:
 - systemd services
 - cron jobs created by the menu
 - WARP files (wgcf, wgcf.conf, policy routing rules)
+- DNS policy files/rules (if enabled)
 
 Then optionally asks for **reboot**.
 
@@ -469,6 +494,10 @@ Then optionally asks for **reboot**.
 - `scripts/disable_warp_policy.sh` – disable WARP policy routing
 - `scripts/warp_status.sh` – show WARP status
 - `scripts/test_warp_full.sh` – full WARP diagnostics
+- `scripts/enable_dns_policy.sh` – enable DNS policy blocklist (server)
+- `scripts/disable_dns_policy.sh` – disable DNS policy blocklist
+- `scripts/update_dns_policy_list.sh` – refresh DNS policy list
+- `scripts/dns_policy_status.sh` – DNS policy status/details
 - `scripts/enable_firewall.sh` – enable UFW and add rules
 - `scripts/disable_firewall.sh` – disable UFW and remove rules
 - `scripts/uninstall_paqet.sh` – full uninstall

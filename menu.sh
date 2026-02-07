@@ -92,6 +92,10 @@ server_menu() {
     echo -e "${GREEN}16)${NC} Enable firewall (ufw)"
     echo -e "${GREEN}17)${NC} Disable firewall (ufw)"
     echo -e "${GREEN}18)${NC} Repair networking stack"
+    echo -e "${GREEN}19)${NC} Enable DNS policy blocklist"
+    echo -e "${GREEN}20)${NC} Disable DNS policy blocklist"
+    echo -e "${GREEN}21)${NC} Update DNS policy list now"
+    echo -e "${GREEN}22)${NC} DNS policy status"
     echo
     echo
     echo -e "${GREEN}0)${NC} Back to main menu"
@@ -244,6 +248,45 @@ server_menu() {
           run_action "${SCRIPTS_DIR}/repair_networking_stack.sh" server
         else
           echo -e "${RED}Script not found or not executable:${NC} ${SCRIPTS_DIR}/repair_networking_stack.sh" >&2
+        fi
+        pause
+        ;;
+      19)
+        if [ -x "${SCRIPTS_DIR}/enable_dns_policy.sh" ]; then
+          read -r -p "DNS category [ads/all/proxy] (default ads): " dns_category
+          dns_category="${dns_category:-ads}"
+          run_action "${SCRIPTS_DIR}/enable_dns_policy.sh" "${dns_category}"
+        else
+          echo -e "${RED}Script not found or not executable:${NC} ${SCRIPTS_DIR}/enable_dns_policy.sh" >&2
+        fi
+        pause
+        ;;
+      20)
+        if [ -x "${SCRIPTS_DIR}/disable_dns_policy.sh" ]; then
+          run_action "${SCRIPTS_DIR}/disable_dns_policy.sh"
+        else
+          echo -e "${RED}Script not found or not executable:${NC} ${SCRIPTS_DIR}/disable_dns_policy.sh" >&2
+        fi
+        pause
+        ;;
+      21)
+        if [ -x "${SCRIPTS_DIR}/update_dns_policy_list.sh" ]; then
+          read -r -p "DNS category [ads/all/proxy] (leave empty to use current): " dns_category
+          if [ -n "${dns_category}" ]; then
+            run_action "${SCRIPTS_DIR}/update_dns_policy_list.sh" "${dns_category}"
+          else
+            run_action "${SCRIPTS_DIR}/update_dns_policy_list.sh"
+          fi
+        else
+          echo -e "${RED}Script not found or not executable:${NC} ${SCRIPTS_DIR}/update_dns_policy_list.sh" >&2
+        fi
+        pause
+        ;;
+      22)
+        if [ -x "${SCRIPTS_DIR}/dns_policy_status.sh" ]; then
+          run_action "${SCRIPTS_DIR}/dns_policy_status.sh"
+        else
+          echo -e "${RED}Script not found or not executable:${NC} ${SCRIPTS_DIR}/dns_policy_status.sh" >&2
         fi
         pause
         ;;

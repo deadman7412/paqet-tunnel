@@ -122,6 +122,16 @@ else
   echo "wgcf binary not found: /usr/local/bin/wgcf"
 fi
 
+# Remove DNS policy files/rules (if present)
+echo "Removing DNS policy files/rules (if present)..."
+if [ -x "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/disable_dns_policy.sh" ]; then
+  "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/disable_dns_policy.sh" >/dev/null 2>&1 || true
+else
+  rm -f /etc/cron.d/paqet-dns-policy-update
+  rm -f /etc/dnsmasq.d/paqet-dns-policy.conf /etc/dnsmasq.d/paqet-dns-policy-blocklist.conf
+  rm -rf /etc/paqet-dns-policy
+fi
+
 # Remove paqet directory
 rm -rf "${PAQET_DIR}"
 rm -rf /opt/paqet 2>/dev/null || true
