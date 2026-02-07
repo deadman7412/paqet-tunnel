@@ -23,6 +23,41 @@ WGCF_TMP="${WGCF_DIR}/wgcf"
 WGCF_PROFILE="${WGCF_DIR}/wgcf-profile.conf"
 WGCF_CONF="/etc/wireguard/wgcf.conf"
 
+ensure_server_iptables_rules() {
+  local port=""
+  local info_file="${PAQET_DIR}/server_info.txt"
+  local cfg_file="${PAQET_DIR}/server.yaml"
+
+  if [ -f "${cfg_file}" ]; then
+    port="$(awk '
+      $1 == "listen:" { inlisten=1; next }
+      inlisten && $1 == "addr:" {
+        gsub(/"/, "", $2);
+        sub(/^:/, "", $2);
+        print $2;
+        exit
+      }
+    ' "${cfg_file}")"
+  fi
+  if [ -z "${port}" ] && [ -f "${info_file}" ]; then
+    port="$(awk -F= '/^listen_port=/{print $2; exit}' "${info_file}")"
+  fi
+  if [ -z "${port}" ]; then
+    echo "Warning: could not detect server listen port for iptables checks." >&2
+    return 0
+  fi
+
+  if ! iptables -t raw -C PREROUTING -p tcp --dport "${port}" -j NOTRACK 2>/dev/null; then
+    iptables -t raw -A PREROUTING -p tcp --dport "${port}" -m comment --comment paqet-notrack-in -j NOTRACK || true
+  fi
+  if ! iptables -t raw -C OUTPUT -p tcp --sport "${port}" -j NOTRACK 2>/dev/null; then
+    iptables -t raw -A OUTPUT -p tcp --sport "${port}" -m comment --comment paqet-notrack-out -j NOTRACK || true
+  fi
+  if ! iptables -t mangle -C OUTPUT -p tcp --sport "${port}" --tcp-flags RST RST -j DROP 2>/dev/null; then
+    iptables -t mangle -A OUTPUT -p tcp --sport "${port}" --tcp-flags RST RST -m comment --comment paqet-rst-drop -j DROP || true
+  fi
+}
+
 # Install dependencies
 if command -v apt-get >/dev/null 2>&1; then
   apt-get update -y
@@ -172,9 +207,8 @@ fi
 # systemd drop-in to run as paqet with caps (if service exists)
 UNIT="/etc/systemd/system/${SERVICE_NAME}.service"
 DROPIN_DIR="/etc/systemd/system/${SERVICE_NAME}.service.d"
-if [ -f "${UNIT}" ]; then
-  mkdir -p "${DROPIN_DIR}"
-  cat <<CONF > "${DROPIN_DIR}/10-warp.conf"
+mkdir -p "${DROPIN_DIR}"
+cat <<CONF > "${DROPIN_DIR}/10-warp.conf"
 [Service]
 User=paqet
 Group=paqet
@@ -186,8 +220,11 @@ WorkingDirectory=${PAQET_DST_DIR}
 ExecStart=
 ExecStart=${PAQET_BIN_DST} run -c ${PAQET_CFG_DST}
 CONF
+if [ -f "${UNIT}" ]; then
   systemctl daemon-reload
   systemctl restart "${SERVICE_NAME}.service" || true
+else
+  echo "Note: ${SERVICE_NAME}.service not installed yet. WARP drop-in is prepared and will apply after service install."
 fi
 
 # Ensure route table name exists (avoids "FIB table does not exist")
@@ -269,6 +306,7 @@ if ! iptables -t mangle -C OUTPUT -m owner --uid-owner paqet -j MARK --set-mark 
 fi
 
 # Persist firewall changes
+ensure_server_iptables_rules
 if iptables -V 2>/dev/null | grep -qi nf_tables; then
   if command -v nft >/dev/null 2>&1; then
     nft list ruleset > /etc/nftables.conf || true

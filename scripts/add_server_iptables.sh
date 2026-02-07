@@ -36,6 +36,26 @@ add_rule() {
   iptables -t "${table}" -A "$@"
 }
 
+remove_tagged_rules() {
+  local table="$1"
+  local chain="$2"
+  local tag="$3"
+  while read -r rule; do
+    [ -z "${rule}" ] && continue
+    iptables -t "${table}" ${rule} 2>/dev/null || true
+  done < <(
+    iptables -t "${table}" -S "${chain}" 2>/dev/null \
+      | awk -v c="${chain}" -v t="${tag}" '$1=="-A" && $2==c && $0 ~ t { $1="-D"; print }'
+  )
+}
+
+# Remove older paqet-tagged rules (possibly from a previous port) before adding current ones.
+remove_tagged_rules raw PREROUTING "paqet-notrack-in"
+remove_tagged_rules raw OUTPUT "paqet-notrack-out"
+remove_tagged_rules mangle OUTPUT "paqet-rst-drop"
+remove_tagged_rules filter INPUT "paqet-accept-in"
+remove_tagged_rules filter OUTPUT "paqet-accept-out"
+
 # Detect backend for persistence
 BACKEND="legacy"
 if iptables -V 2>/dev/null | grep -qi nf_tables; then
@@ -43,41 +63,45 @@ if iptables -V 2>/dev/null | grep -qi nf_tables; then
 fi
 
 # Auto-detect OS family for persistence
-if command -v apt-get >/dev/null 2>&1; then
-  apt-get update -y
-  if [ "${BACKEND}" = "legacy" ]; then
-    DEBIAN_FRONTEND=noninteractive apt-get install -y iptables-persistent netfilter-persistent
+if [ "${SKIP_PKG_INSTALL:-0}" != "1" ]; then
+  if command -v apt-get >/dev/null 2>&1; then
+    apt-get update -y
+    if [ "${BACKEND}" = "legacy" ]; then
+      DEBIAN_FRONTEND=noninteractive apt-get install -y iptables-persistent netfilter-persistent
+    else
+      DEBIAN_FRONTEND=noninteractive apt-get install -y nftables
+    fi
+  elif command -v dnf >/dev/null 2>&1; then
+    if [ "${BACKEND}" = "legacy" ]; then
+      dnf install -y iptables-services
+      systemctl enable --now iptables
+    else
+      dnf install -y nftables
+      systemctl enable --now nftables
+    fi
+  elif command -v yum >/dev/null 2>&1; then
+    if [ "${BACKEND}" = "legacy" ]; then
+      yum install -y iptables-services
+      systemctl enable --now iptables
+    else
+      yum install -y nftables
+      systemctl enable --now nftables
+    fi
   else
-    DEBIAN_FRONTEND=noninteractive apt-get install -y nftables
-  fi
-elif command -v dnf >/dev/null 2>&1; then
-  if [ "${BACKEND}" = "legacy" ]; then
-    dnf install -y iptables-services
-    systemctl enable --now iptables
-  else
-    dnf install -y nftables
-    systemctl enable --now nftables
-  fi
-elif command -v yum >/dev/null 2>&1; then
-  if [ "${BACKEND}" = "legacy" ]; then
-    yum install -y iptables-services
-    systemctl enable --now iptables
-  else
-    yum install -y nftables
-    systemctl enable --now nftables
+    echo "No supported package manager found. Skipping persistence install." >&2
   fi
 else
-  echo "No supported package manager found. Skipping persistence install." >&2
+  echo "Skipping package install (SKIP_PKG_INSTALL=1)."
 fi
 
 # Add required rules
-add_rule raw PREROUTING -p tcp --dport "${PORT}" -j NOTRACK
-add_rule raw OUTPUT -p tcp --sport "${PORT}" -j NOTRACK
-add_rule mangle OUTPUT -p tcp --sport "${PORT}" --tcp-flags RST RST -j DROP
+add_rule raw PREROUTING -p tcp --dport "${PORT}" -m comment --comment paqet-notrack-in -j NOTRACK
+add_rule raw OUTPUT -p tcp --sport "${PORT}" -m comment --comment paqet-notrack-out -j NOTRACK
+add_rule mangle OUTPUT -p tcp --sport "${PORT}" --tcp-flags RST RST -m comment --comment paqet-rst-drop -j DROP
 
 # Optional accept rules (auto-enabled)
-add_rule filter INPUT -p tcp --dport "${PORT}" -j ACCEPT
-add_rule filter OUTPUT -p tcp --sport "${PORT}" -j ACCEPT
+add_rule filter INPUT -p tcp --dport "${PORT}" -m comment --comment paqet-accept-in -j ACCEPT
+add_rule filter OUTPUT -p tcp --sport "${PORT}" -m comment --comment paqet-accept-out -j ACCEPT
 
 # Persist rules (handle nft vs legacy safely)
 if [ "${BACKEND}" = "nft" ]; then

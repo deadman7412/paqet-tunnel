@@ -5,6 +5,8 @@ PAQET_DIR="${PAQET_DIR:-$HOME/paqet}"
 INFO_FILE="${PAQET_DIR}/server_info.txt"
 SERVER_CFG="${PAQET_DIR}/server.yaml"
 CLIENT_CFG="${PAQET_DIR}/client.yaml"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPAIR_SCRIPT="${SCRIPT_DIR}/repair_networking_stack.sh"
 
 if [ ! -f "${SERVER_CFG}" ] && [ ! -f "${CLIENT_CFG}" ]; then
   echo "No server or client config found in ${PAQET_DIR}." >&2
@@ -63,6 +65,18 @@ if [ -f "${WGCF_CONF}" ]; then
     wg-quick up wgcf >/dev/null 2>&1 || true
     echo "WARP MTU set to ${MTU}"
   fi
+fi
+
+if [ -x "${REPAIR_SCRIPT}" ]; then
+  read -r -p "Run networking repair now (recommended)? [Y/n]: " RUN_REPAIR
+  case "${RUN_REPAIR}" in
+    n|N)
+      echo "Skipped networking repair."
+      ;;
+    *)
+      "${REPAIR_SCRIPT}" auto || true
+      ;;
+  esac
 fi
 
 echo "Done."

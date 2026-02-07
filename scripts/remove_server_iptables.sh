@@ -28,6 +28,26 @@ if [ -z "${PORT}" ]; then
   exit 1
 fi
 
+remove_tagged_rules() {
+  local table="$1"
+  local chain="$2"
+  local tag="$3"
+  while read -r rule; do
+    [ -z "${rule}" ] && continue
+    iptables -t "${table}" ${rule} 2>/dev/null || true
+  done < <(
+    iptables -t "${table}" -S "${chain}" 2>/dev/null \
+      | awk -v c="${chain}" -v t="${tag}" '$1=="-A" && $2==c && $0 ~ t { $1="-D"; print }'
+  )
+}
+
+# Remove all paqet-tagged rules from any previous/current port.
+remove_tagged_rules raw PREROUTING "paqet-notrack-in"
+remove_tagged_rules raw OUTPUT "paqet-notrack-out"
+remove_tagged_rules mangle OUTPUT "paqet-rst-drop"
+remove_tagged_rules filter INPUT "paqet-accept-in"
+remove_tagged_rules filter OUTPUT "paqet-accept-out"
+
 # Remove rules (ignore if not present)
 iptables -t raw -D PREROUTING -p tcp --dport "${PORT}" -j NOTRACK 2>/dev/null || true
 iptables -t raw -D OUTPUT -p tcp --sport "${PORT}" -j NOTRACK 2>/dev/null || true

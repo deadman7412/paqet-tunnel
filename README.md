@@ -209,6 +209,7 @@ Options include:
 - **Test WARP** → full diagnostics (wg, routing, iptables/nft, curl tests + summary)
 - **Enable firewall (ufw)** → install/enable ufw and allow SSH + paqet port
 - **Disable firewall (ufw)** → remove paqet/SSH rules and disable ufw
+- **Repair networking stack** → re-sync iptables/UFW/WARP routing state for server
 - **Show server info** → shows or recreates `~/paqet/server_info.txt`
 
 ### server_info.txt
@@ -274,11 +275,12 @@ Options include:
 - **Service control**
 - **Restart scheduler**
 - **Test connection** → runs curl with SOCKS5 and prints the IP response
-- **Change MTU** → updates client MTU (and restarts client service)
+- **Change MTU** → updates MTU and prompts to run networking repair (recommended)
 - **Health check**
 - **Health logs**
 - **Enable firewall (ufw)**
 - **Disable firewall (ufw)**
+- **Repair networking stack** → re-sync UFW + service state for client
 
 ### Client Config Defaults
 If `~/paqet/server_info.txt` is present, the client config auto‑fills:
@@ -286,6 +288,29 @@ If `~/paqet/server_info.txt` is present, the client config auto‑fills:
 - KCP key
 - Server public IP (if present)
 - MTU
+
+## Repair Networking Stack
+
+Use this when tunnel connectivity works but routing/firewall behavior is inconsistent (for example after changing port/MTU, enabling WARP at a different time than service install, or reboot-related drift).
+
+How to run:
+- Menu → **Server configuration → Repair networking stack**
+- Menu → **Client configuration → Repair networking stack**
+- Or script: `sudo ~/paqet_tunnel/scripts/repair_networking_stack.sh auto`
+
+What server repair does:
+- Re-applies paqet server iptables rules for the current config port.
+- Re-syncs UFW `paqet-tunnel` rule to the current server port (if UFW is active).
+- Refreshes WARP policy-routing/mark rules if `wgcf` is present.
+- Restarts `paqet-server.service` (if installed).
+
+What client repair does:
+- Re-syncs UFW outbound `paqet-tunnel` rule to current `server.addr` from `client.yaml` (if UFW is active).
+- Restarts `paqet-client.service` (if installed).
+
+MTU workflow:
+- After **Change MTU**, the script now asks to run repair immediately.
+- Recommended answer: **Yes**.
 
 ## Using Proxychains4 (Client VPS)
 Proxychains should point to the **SOCKS5 listen** from `~/paqet/client.yaml`

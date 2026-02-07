@@ -50,6 +50,8 @@ if [ ! -f "${CONFIG_PATH}" ]; then
 fi
 
 UNIT_PATH="/etc/systemd/system/${SERVICE_NAME}.service"
+DROPIN_DIR="/etc/systemd/system/${SERVICE_NAME}.service.d"
+WARP_DROPIN="${DROPIN_DIR}/10-warp.conf"
 
 echo "Using:"
 echo "  Paqet dir: ${PAQET_DIR}"
@@ -73,6 +75,19 @@ LimitNOFILE=1048576
 [Install]
 WantedBy=multi-user.target
 UNIT
+
+# If WARP setup created the paqet user, ensure service runs as that user.
+if id -u paqet >/dev/null 2>&1; then
+  mkdir -p "${DROPIN_DIR}"
+  cat <<CONF > "${WARP_DROPIN}"
+[Service]
+User=paqet
+Group=paqet
+AmbientCapabilities=CAP_NET_RAW CAP_NET_ADMIN
+CapabilityBoundingSet=CAP_NET_RAW CAP_NET_ADMIN
+NoNewPrivileges=true
+CONF
+fi
 
 systemctl daemon-reload
 systemctl enable --now "${SERVICE_NAME}.service"
