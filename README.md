@@ -206,7 +206,7 @@ Options include:
 - **Enable WARP (policy routing)** → route paqet traffic through Cloudflare WARP (server)
 - **Disable WARP (policy routing)**
 - **WARP status**
-- **Test WARP** → full diagnostics (wg, routing, iptables/nft, curl tests + summary)
+- **Test WARP** → full diagnostics (wg, policy routing, route probe, curl tests + summary)
 - **Enable firewall (ufw)** → install/enable ufw and allow SSH + paqet port
 - **Disable firewall (ufw)** → remove paqet/SSH rules and disable ufw
 - **Repair networking stack** → re-sync iptables/UFW/WARP routing state for server
@@ -301,7 +301,7 @@ How to run:
 What server repair does:
 - Re-applies paqet server iptables rules for the current config port.
 - Re-syncs UFW `paqet-tunnel` rule to the current server port (if UFW is active).
-- Refreshes WARP policy-routing/mark rules if `wgcf` is present.
+- Refreshes WARP policy-routing rules (uidrange-based) if `wgcf` is present.
 - Restarts `paqet-server.service` (if installed).
 
 What client repair does:
@@ -371,15 +371,20 @@ This is the **3x‑ui style** setup: only paqet traffic is routed through WARP, 
 Features:
 - Creates a WARP WireGuard profile using **wgcf**
 - Brings up `wgcf` interface
-- Adds **policy routing** for traffic from the `paqet` user
-- Adds a **uidrange rule** (stronger than marks) for reliability
+- Adds **uid-based policy routing** (`ip rule uidrange`) for traffic from the `paqet` user
+- Keeps the rest of server traffic (including SSH) on the normal route
 - Does **not** affect SSH (traffic not owned by `paqet` stays on default route)
 
 ### Ubuntu 24.04 vs 22.04 notes
 - Ubuntu **24.04** uses **nftables** by default (iptables-nft).
 - Ubuntu **22.04** may use **iptables-legacy** or **nft** depending on setup.
-- Scripts automatically detect the backend and install the mark rule via **iptables** or **nft** as needed.
-- On nft backends, `iptables -t mangle` may print errors; this is expected and does not affect nft rules.
+- For this setup, WARP routing uses **uidrange policy routing** as primary behavior.
+- Older mark-based WARP rules (`fwmark`, iptables MARK, nft `meta skuid ... mark set`) are cleaned up automatically when enabling/disabling/repairing WARP.
+
+### Why this setup moved away from mark-based WARP routing
+- Mark-based routing is valid in general, but on mixed `iptables-nft`/native-nft states it can create parser conflicts and duplicate rules.
+- Uidrange policy routing is simpler and more stable here because `paqet-server` already runs as dedicated user `paqet`.
+- Result: fewer nft/iptables edge cases, cleaner diagnostics, and predictable routing behavior.
 
 You can optionally enter a **WARP+ license key** during setup.
 
@@ -420,7 +425,7 @@ Uninstall removes:
 - `~/paqet` directory
 - systemd services
 - cron jobs created by the menu
-- WARP files (wgcf, wgcf.conf, routing, firewall marks)
+- WARP files (wgcf, wgcf.conf, policy routing rules)
 
 Then optionally asks for **reboot**.
 
