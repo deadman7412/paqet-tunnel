@@ -41,18 +41,18 @@ ip route show table 51820 || echo "(no routes in table 51820)"
 # 3) iptables mark rule
 echo "\n[3] iptables mark rule"
 if [ -n "${PAQET_UID}" ]; then
-  iptables -t mangle -S OUTPUT \
+  iptables -t mangle -S OUTPUT 2>/dev/null \
     | grep -E "uid-owner (paqet|${PAQET_UID}).*(set-mark ${MARK}|set-xmark ${MARK_HEX}/0xffffffff)" \
     || echo "(no iptables mark rule)"
 else
-  iptables -t mangle -S OUTPUT \
+  iptables -t mangle -S OUTPUT 2>/dev/null \
     | grep -E "set-mark ${MARK}|set-xmark ${MARK_HEX}/0xffffffff" \
     || echo "(no iptables mark rule)"
 fi
 
 # 4) iptables counters
 echo "\n[4] iptables counters"
-iptables -t mangle -L OUTPUT -n -v | grep -E "MARK.*(${MARK}|${MARK_HEX})|owner UID match" || echo "(no counters)"
+iptables -t mangle -L OUTPUT -n -v 2>/dev/null | grep -E "MARK.*(${MARK}|${MARK_HEX})|owner UID match" || echo "(no counters)"
 
 # 5) nft mark rule
 if command -v nft >/dev/null 2>&1; then
@@ -67,12 +67,15 @@ fi
 
 # 6) WARP egress direct
 echo "\n[6] curl --interface wgcf"
-WGCF_TRACE="$(curl --noproxy '*' --interface wgcf -s --connect-timeout 5 --max-time 12 http://1.1.1.1/cdn-cgi/trace 2>/dev/null || true)"
-if [ -z "${WGCF_TRACE}" ]; then
-  WGCF_TRACE="$(curl --noproxy '*' --interface wgcf -s --connect-timeout 5 --max-time 12 https://1.1.1.1/cdn-cgi/trace 2>/dev/null || true)"
+WGCF_TRACE="$(curl --noproxy '*' --interface wgcf -fsSL --connect-timeout 5 --max-time 12 https://www.cloudflare.com/cdn-cgi/trace 2>/dev/null || true)"
+if ! echo "${WGCF_TRACE}" | grep -q "warp="; then
+  WGCF_TRACE="$(curl --noproxy '*' --interface wgcf -fsSL --connect-timeout 5 --max-time 12 https://cloudflare.com/cdn-cgi/trace 2>/dev/null || true)"
 fi
-if [ -z "${WGCF_TRACE}" ]; then
-  WGCF_TRACE="$(curl --noproxy '*' --interface wgcf -fsSL --connect-timeout 5 --max-time 12 https://www.cloudflare.com/cdn-cgi/trace 2>/dev/null || true)"
+if ! echo "${WGCF_TRACE}" | grep -q "warp="; then
+  WGCF_TRACE="$(curl --noproxy '*' --interface wgcf -fsSL --connect-timeout 5 --max-time 12 https://1.1.1.1/cdn-cgi/trace 2>/dev/null || true)"
+fi
+if ! echo "${WGCF_TRACE}" | grep -q "warp="; then
+  WGCF_TRACE="$(curl --noproxy '*' --interface wgcf -sL --connect-timeout 5 --max-time 12 http://1.1.1.1/cdn-cgi/trace 2>/dev/null || true)"
 fi
 echo "${WGCF_TRACE}"
 
@@ -80,12 +83,15 @@ echo "${WGCF_TRACE}"
 PAQET_TRACE=""
 if id -u paqet >/dev/null 2>&1; then
   echo "\n[7] curl as user 'paqet'"
-  PAQET_TRACE="$(sudo -u paqet curl --noproxy '*' -s --connect-timeout 5 --max-time 12 http://1.1.1.1/cdn-cgi/trace 2>/dev/null || true)"
-  if [ -z "${PAQET_TRACE}" ]; then
-    PAQET_TRACE="$(sudo -u paqet curl --noproxy '*' -s --connect-timeout 5 --max-time 12 https://1.1.1.1/cdn-cgi/trace 2>/dev/null || true)"
+  PAQET_TRACE="$(sudo -u paqet curl --noproxy '*' -fsSL --connect-timeout 5 --max-time 12 https://www.cloudflare.com/cdn-cgi/trace 2>/dev/null || true)"
+  if ! echo "${PAQET_TRACE}" | grep -q "warp="; then
+    PAQET_TRACE="$(sudo -u paqet curl --noproxy '*' -fsSL --connect-timeout 5 --max-time 12 https://cloudflare.com/cdn-cgi/trace 2>/dev/null || true)"
   fi
-  if [ -z "${PAQET_TRACE}" ]; then
-    PAQET_TRACE="$(sudo -u paqet curl --noproxy '*' -fsSL --connect-timeout 5 --max-time 12 https://www.cloudflare.com/cdn-cgi/trace 2>/dev/null || true)"
+  if ! echo "${PAQET_TRACE}" | grep -q "warp="; then
+    PAQET_TRACE="$(sudo -u paqet curl --noproxy '*' -fsSL --connect-timeout 5 --max-time 12 https://1.1.1.1/cdn-cgi/trace 2>/dev/null || true)"
+  fi
+  if ! echo "${PAQET_TRACE}" | grep -q "warp="; then
+    PAQET_TRACE="$(sudo -u paqet curl --noproxy '*' -sL --connect-timeout 5 --max-time 12 http://1.1.1.1/cdn-cgi/trace 2>/dev/null || true)"
   fi
   echo "${PAQET_TRACE}"
 else

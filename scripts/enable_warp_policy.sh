@@ -22,6 +22,7 @@ WGCF_DIR="/root/wgcf"
 WGCF_TMP="${WGCF_DIR}/wgcf"
 WGCF_PROFILE="${WGCF_DIR}/wgcf-profile.conf"
 WGCF_CONF="/etc/wireguard/wgcf.conf"
+IPTABLES_BACKEND="legacy"
 
 ensure_server_iptables_rules() {
   local port=""
@@ -72,6 +73,10 @@ elif command -v dnf >/dev/null 2>&1; then
   dnf install -y wireguard-tools iproute iptables curl
 elif command -v yum >/dev/null 2>&1; then
   yum install -y wireguard-tools iproute iptables curl
+fi
+
+if iptables -V 2>/dev/null | grep -qi nf_tables; then
+  IPTABLES_BACKEND="nft"
 fi
 
 # Install wgcf
@@ -272,19 +277,19 @@ fi
 
 # iptables/nft mark rules for paqet user (ensure exists)
 modprobe xt_owner 2>/dev/null || true
-if iptables -V 2>/dev/null | grep -qi nf_tables; then
+if [ "${IPTABLES_BACKEND}" = "nft" ]; then
   echo "iptables backend: nft"
 else
   echo "iptables backend: legacy"
 fi
-iptables -t mangle -D OUTPUT -m owner --uid-owner paqet -j MARK --set-mark ${MARK} 2>/dev/null || true
-if ! iptables -t mangle -A OUTPUT -m owner --uid-owner paqet -j MARK --set-mark ${MARK} 2>/dev/null; then
+iptables -t mangle -D OUTPUT -m owner --uid-owner "${PAQET_UID}" -j MARK --set-mark ${MARK} 2>/dev/null || true
+if ! iptables -t mangle -A OUTPUT -m owner --uid-owner "${PAQET_UID}" -j MARK --set-mark ${MARK} 2>/dev/null; then
   echo "iptables owner-mark rule failed (will try nft fallback)."
 fi
 
-if ! iptables -t mangle -C OUTPUT -m owner --uid-owner paqet -j MARK --set-mark ${MARK} 2>/dev/null; then
-  # Fallback to nft if iptables owner match isn't effective
-  if command -v nft >/dev/null 2>&1; then
+if ! iptables -t mangle -C OUTPUT -m owner --uid-owner "${PAQET_UID}" -j MARK --set-mark ${MARK} 2>/dev/null; then
+  # On iptables-nft, avoid mixing native nft rules that can break iptables parsing.
+  if [ "${IPTABLES_BACKEND}" = "legacy" ] && command -v nft >/dev/null 2>&1; then
     nft list table inet mangle >/dev/null 2>&1 || nft add table inet mangle
     nft list chain inet mangle output >/dev/null 2>&1 || nft add chain inet mangle output '{ type filter hook output priority mangle; policy accept; }'
     # Remove any existing mark rules for this UID (avoid duplicates)
@@ -296,7 +301,7 @@ if ! iptables -t mangle -C OUTPUT -m owner --uid-owner paqet -j MARK --set-mark 
 fi
 
 # Verify rule exists via iptables or nft
-if ! iptables -t mangle -C OUTPUT -m owner --uid-owner paqet -j MARK --set-mark ${MARK} 2>/dev/null; then
+if ! iptables -t mangle -S OUTPUT 2>/dev/null | grep -Eq "uid-owner (${PAQET_UID}|paqet).*(set-mark ${MARK}|set-xmark 0x0*ca6c/0xffffffff)"; then
   echo "iptables mark rule not detected; checking nft..."
   if command -v nft >/dev/null 2>&1; then
     if ! nft -a list chain inet mangle output 2>/dev/null | grep -Eq "skuid ${PAQET_UID}.*mark set"; then
@@ -336,13 +341,15 @@ echo "WARP policy routing enabled for ${SERVICE_NAME}."
 if command -v curl >/dev/null 2>&1 && id -u paqet >/dev/null 2>&1; then
   get_trace() {
     local out=""
-    # Prefer direct IP first to avoid DNS/TLS/SNI false negatives.
-    out="$(sudo -u paqet curl --noproxy '*' -s --connect-timeout 5 --max-time 12 http://1.1.1.1/cdn-cgi/trace 2>/dev/null || true)"
-    if [ -z "${out}" ]; then
-      out="$(sudo -u paqet curl --noproxy '*' -s --connect-timeout 5 --max-time 12 https://1.1.1.1/cdn-cgi/trace 2>/dev/null || true)"
+    out="$(sudo -u paqet curl --noproxy '*' -fsSL --connect-timeout 5 --max-time 12 https://www.cloudflare.com/cdn-cgi/trace 2>/dev/null || true)"
+    if ! echo "${out}" | grep -q "warp="; then
+      out="$(sudo -u paqet curl --noproxy '*' -fsSL --connect-timeout 5 --max-time 12 https://cloudflare.com/cdn-cgi/trace 2>/dev/null || true)"
     fi
-    if [ -z "${out}" ]; then
-      out="$(sudo -u paqet curl --noproxy '*' -fsSL --connect-timeout 5 --max-time 12 https://www.cloudflare.com/cdn-cgi/trace 2>/dev/null || true)"
+    if ! echo "${out}" | grep -q "warp="; then
+      out="$(sudo -u paqet curl --noproxy '*' -fsSL --connect-timeout 5 --max-time 12 https://1.1.1.1/cdn-cgi/trace 2>/dev/null || true)"
+    fi
+    if ! echo "${out}" | grep -q "warp="; then
+      out="$(sudo -u paqet curl --noproxy '*' -sL --connect-timeout 5 --max-time 12 http://1.1.1.1/cdn-cgi/trace 2>/dev/null || true)"
     fi
     echo "${out}"
   }

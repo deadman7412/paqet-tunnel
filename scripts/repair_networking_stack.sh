@@ -142,19 +142,8 @@ ensure_warp_policy_rules() {
   fi
 
   modprobe xt_owner 2>/dev/null || true
-  iptables -t mangle -D OUTPUT -m owner --uid-owner paqet -j MARK --set-mark ${MARK} 2>/dev/null || true
-  iptables -t mangle -A OUTPUT -m owner --uid-owner paqet -j MARK --set-mark ${MARK} 2>/dev/null || true
-
-  if ! iptables -t mangle -C OUTPUT -m owner --uid-owner paqet -j MARK --set-mark ${MARK} 2>/dev/null; then
-    if command -v nft >/dev/null 2>&1; then
-      nft list table inet mangle >/dev/null 2>&1 || nft add table inet mangle
-      nft list chain inet mangle output >/dev/null 2>&1 || nft add chain inet mangle output '{ type filter hook output priority mangle; policy accept; }'
-      while read -r handle; do
-        [ -n "${handle}" ] && nft delete rule inet mangle output handle "${handle}" 2>/dev/null || true
-      done < <(nft -a list chain inet mangle output 2>/dev/null | awk -v p_uid="${uid}" '/skuid/ && /mark set/ && $0 ~ ("skuid " p_uid) {for(i=1;i<=NF;i++) if($i=="handle"){print $(i+1)}}')
-      nft add rule inet mangle output meta skuid ${uid} counter meta mark set ${MARK}
-    fi
-  fi
+  iptables -t mangle -D OUTPUT -m owner --uid-owner "${uid}" -j MARK --set-mark ${MARK} 2>/dev/null || true
+  iptables -t mangle -A OUTPUT -m owner --uid-owner "${uid}" -j MARK --set-mark ${MARK} 2>/dev/null || true
 
   echo "WARP: refreshed policy routing and mark rules."
 }
