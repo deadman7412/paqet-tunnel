@@ -63,12 +63,24 @@ if [ -n "${SOURCE_URL}" ]; then
 fi
 
 if [ -z "${SOURCE_USED}" ]; then
-  for url in \
-    "https://raw.githubusercontent.com/bootmortis/iran-hosted-domains/release/domains/${CATEGORY}.txt" \
-    "https://raw.githubusercontent.com/bootmortis/iran-hosted-domains/main/domains/${CATEGORY}.txt" \
-    "https://raw.githubusercontent.com/bootmortis/iran-hosted-domains/release/${CATEGORY}.txt" \
-    "https://raw.githubusercontent.com/bootmortis/iran-hosted-domains/main/${CATEGORY}.txt"
-  do
+  URLS=()
+  case "${CATEGORY}" in
+    ads)
+      URLS+=("https://github.com/bootmortis/iran-hosted-domains/releases/latest/download/clash_rules_ads.txt")
+      URLS+=("https://github.com/bootmortis/iran-hosted-domains/releases/latest/download/surge_domainset_ads.txt")
+      URLS+=("https://raw.githubusercontent.com/bootmortis/iran-hosted-domains/main/domains/ads.txt")
+      ;;
+    all)
+      URLS+=("https://github.com/bootmortis/iran-hosted-domains/releases/latest/download/domains.txt")
+      URLS+=("https://raw.githubusercontent.com/bootmortis/iran-hosted-domains/main/domains.txt")
+      ;;
+    proxy)
+      URLS+=("https://github.com/bootmortis/iran-hosted-domains/releases/latest/download/proxy.txt")
+      URLS+=("https://raw.githubusercontent.com/bootmortis/iran-hosted-domains/main/domains/proxy.txt")
+      URLS+=("https://raw.githubusercontent.com/bootmortis/iran-hosted-domains/main/proxy.txt")
+      ;;
+  esac
+  for url in "${URLS[@]}"; do
     if fetch_from_url "${url}"; then
       SOURCE_USED="${url}"
       break
@@ -78,16 +90,29 @@ fi
 
 if [ -z "${SOURCE_USED}" ]; then
   echo "Failed to download DNS policy list for category '${CATEGORY}'." >&2
+  echo "Tip: set DNS_POLICY_SOURCE_URL to a reachable plain-text list URL." >&2
   exit 1
 fi
 
-awk '
+awk -F, '
   {
     gsub(/\r/, "", $0)
     sub(/#.*/, "", $0)
     gsub(/^[[:space:]]+|[[:space:]]+$/, "", $0)
     if ($0 == "") next
     d=tolower($0)
+    # Rule list compatibility (clash/surge formats)
+    if (index(d, ",") > 0) {
+      t=tolower($1)
+      v=tolower($2)
+      gsub(/^[[:space:]]+|[[:space:]]+$/, "", v)
+      if (t ~ /domain-suffix|domain|host-suffix|host/) {
+        d=v
+      } else {
+        next
+      }
+    }
+    sub(/^\+\./, "", d)
     sub(/^domain:/, "", d)
     sub(/^full:/, "", d)
     if (d ~ /^regexp:/) next
