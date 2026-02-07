@@ -75,6 +75,39 @@ get_latest_tag() {
   fi
 }
 
+enable_proxychains_mode() {
+  if command -v proxychains4 >/dev/null 2>&1 || command -v proxychains >/dev/null 2>&1; then
+    read -r -p "Use proxychains to update paqet via paqet SOCKS? [y/N]: " use_proxy
+  else
+    read -r -p "Install proxychains4 and use it to update paqet via paqet SOCKS? [y/N]: " use_proxy
+  fi
+
+  case "${use_proxy}" in
+    y|Y)
+      if ! command -v proxychains4 >/dev/null 2>&1 && ! command -v proxychains >/dev/null 2>&1; then
+        if [ -x "${INSTALL_PROXYCHAINS}" ]; then
+          "${INSTALL_PROXYCHAINS}"
+        else
+          echo "Proxychains installer not found: ${INSTALL_PROXYCHAINS}" >&2
+          return 1
+        fi
+      fi
+      if ! require_paqet_socks; then
+        return 1
+      fi
+      if command -v proxychains4 >/dev/null 2>&1; then
+        NET_PREFIX=(proxychains4)
+      else
+        NET_PREFIX=(proxychains)
+      fi
+      return 0
+      ;;
+    *)
+      return 1
+      ;;
+  esac
+}
+
 if ! command -v curl >/dev/null 2>&1 && ! command -v wget >/dev/null 2>&1; then
   echo "curl or wget is required to check releases." >&2
   exit 1
@@ -83,40 +116,23 @@ fi
 latest=""
 if github_reachable; then
   latest="$(get_latest_tag)"
-else
-  echo "GitHub is not reachable from this server." >&2
-  if command -v proxychains4 >/dev/null 2>&1 || command -v proxychains >/dev/null 2>&1; then
-    read -r -p "Use proxychains to update paqet via paqet SOCKS? [y/N]: " use_proxy
-  else
-    read -r -p "Install proxychains4 and use it to update paqet via paqet SOCKS? [y/N]: " use_proxy
-  fi
-  case "${use_proxy}" in
-    y|Y)
-      if ! command -v proxychains4 >/dev/null 2>&1 && ! command -v proxychains >/dev/null 2>&1; then
-        if [ -x "${INSTALL_PROXYCHAINS}" ]; then
-          "${INSTALL_PROXYCHAINS}"
-        else
-          echo "Proxychains installer not found: ${INSTALL_PROXYCHAINS}" >&2
-          print_manual_notice
-          exit 1
-        fi
-      fi
-      if ! require_paqet_socks; then
-        print_manual_notice
-        exit 1
-      fi
-      if command -v proxychains4 >/dev/null 2>&1; then
-        NET_PREFIX=(proxychains4)
-      else
-        NET_PREFIX=(proxychains)
-      fi
+  if [ -z "${latest}" ]; then
+    echo "Direct GitHub API query returned no release tag." >&2
+    if enable_proxychains_mode; then
       latest="$(get_latest_tag)"
-      ;;
-    *)
+    else
       print_manual_notice
       exit 1
-      ;;
-  esac
+    fi
+  fi
+else
+  echo "GitHub is not reachable from this server." >&2
+  if enable_proxychains_mode; then
+    latest="$(get_latest_tag)"
+  else
+    print_manual_notice
+    exit 1
+  fi
 fi
 
 if [ -z "${latest}" ]; then
@@ -190,7 +206,11 @@ if [ ! -x "${INSTALL_SCRIPT}" ]; then
   exit 1
 fi
 
-"${NET_PREFIX[@]}" "${INSTALL_SCRIPT}"
+if [ "${#NET_PREFIX[@]}" -gt 0 ]; then
+  "${NET_PREFIX[@]}" env VERSION="${latest}" "${INSTALL_SCRIPT}"
+else
+  env VERSION="${latest}" "${INSTALL_SCRIPT}"
+fi
 
 # Restart services if configs exist
 if [ -f "${PAQET_DIR}/server.yaml" ]; then

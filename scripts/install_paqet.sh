@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-VERSION=""
+VERSION="${VERSION:-}"
 OS="linux"
 PAQET_DIR="${PAQET_DIR:-$HOME/paqet}"
 BIN_PATH="${PAQET_DIR}/paqet"
