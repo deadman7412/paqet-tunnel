@@ -260,12 +260,14 @@ else
 fi
 
 # Fallback: uidrange rule (forces routing for paqet user, avoids mark timing issues)
-if ! ip rule show | grep -Eq "uidrange ${PAQET_UID}-${PAQET_UID}.*lookup (${TABLE_ID}|wgcf)"; then
-  if ip rule add uidrange ${PAQET_UID}-${PAQET_UID} table ${TABLE_ID} 2>/dev/null; then
-    echo "uidrange rule added for paqet user (${PAQET_UID})."
-  else
-    echo "Warning: uidrange rule not supported or failed to add." >&2
-  fi
+# Clean old duplicate uidrange rules and keep a single one.
+while ip rule show | grep -Eq "uidrange ${PAQET_UID}-${PAQET_UID}.*lookup (${TABLE_ID}|wgcf)"; do
+  ip rule del uidrange ${PAQET_UID}-${PAQET_UID} table ${TABLE_ID} 2>/dev/null || ip rule del uidrange ${PAQET_UID}-${PAQET_UID} table wgcf 2>/dev/null || true
+done
+if ip rule add uidrange ${PAQET_UID}-${PAQET_UID} table ${TABLE_ID} 2>/dev/null; then
+  echo "uidrange rule added for paqet user (${PAQET_UID})."
+else
+  echo "Warning: uidrange rule not supported or failed to add." >&2
 fi
 
 # iptables/nft mark rules for paqet user (ensure exists)
@@ -334,12 +336,13 @@ echo "WARP policy routing enabled for ${SERVICE_NAME}."
 if command -v curl >/dev/null 2>&1 && id -u paqet >/dev/null 2>&1; then
   get_trace() {
     local out=""
-    out="$(sudo -u paqet curl -fsSL --connect-timeout 5 --max-time 12 https://www.cloudflare.com/cdn-cgi/trace 2>/dev/null || true)"
+    # Prefer direct IP first to avoid DNS/TLS/SNI false negatives.
+    out="$(sudo -u paqet curl --noproxy '*' -s --connect-timeout 5 --max-time 12 http://1.1.1.1/cdn-cgi/trace 2>/dev/null || true)"
     if [ -z "${out}" ]; then
-      out="$(sudo -u paqet curl -fsSL --connect-timeout 5 --max-time 12 https://cloudflare.com/cdn-cgi/trace 2>/dev/null || true)"
+      out="$(sudo -u paqet curl --noproxy '*' -s --connect-timeout 5 --max-time 12 https://1.1.1.1/cdn-cgi/trace 2>/dev/null || true)"
     fi
     if [ -z "${out}" ]; then
-      out="$(sudo -u paqet curl -fsSL --connect-timeout 5 --max-time 12 http://1.1.1.1/cdn-cgi/trace 2>/dev/null || true)"
+      out="$(sudo -u paqet curl --noproxy '*' -fsSL --connect-timeout 5 --max-time 12 https://www.cloudflare.com/cdn-cgi/trace 2>/dev/null || true)"
     fi
     echo "${out}"
   }

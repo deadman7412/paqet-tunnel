@@ -67,12 +67,12 @@ fi
 
 # 6) WARP egress direct
 echo "\n[6] curl --interface wgcf"
-WGCF_TRACE="$(curl --interface wgcf -s --connect-timeout 5 --max-time 10 https://1.1.1.1/cdn-cgi/trace || true)"
+WGCF_TRACE="$(curl --noproxy '*' --interface wgcf -s --connect-timeout 5 --max-time 12 http://1.1.1.1/cdn-cgi/trace 2>/dev/null || true)"
 if [ -z "${WGCF_TRACE}" ]; then
-  WGCF_TRACE="$(curl --interface wgcf -fsSL --connect-timeout 5 --max-time 12 https://www.cloudflare.com/cdn-cgi/trace 2>/dev/null || true)"
+  WGCF_TRACE="$(curl --noproxy '*' --interface wgcf -s --connect-timeout 5 --max-time 12 https://1.1.1.1/cdn-cgi/trace 2>/dev/null || true)"
 fi
 if [ -z "${WGCF_TRACE}" ]; then
-  WGCF_TRACE="$(curl --interface wgcf -fsSL --connect-timeout 5 --max-time 12 http://1.1.1.1/cdn-cgi/trace 2>/dev/null || true)"
+  WGCF_TRACE="$(curl --noproxy '*' --interface wgcf -fsSL --connect-timeout 5 --max-time 12 https://www.cloudflare.com/cdn-cgi/trace 2>/dev/null || true)"
 fi
 echo "${WGCF_TRACE}"
 
@@ -80,9 +80,12 @@ echo "${WGCF_TRACE}"
 PAQET_TRACE=""
 if id -u paqet >/dev/null 2>&1; then
   echo "\n[7] curl as user 'paqet'"
-  PAQET_TRACE="$(sudo -u paqet curl -fsSL --connect-timeout 5 --max-time 12 https://www.cloudflare.com/cdn-cgi/trace 2>/dev/null || true)"
+  PAQET_TRACE="$(sudo -u paqet curl --noproxy '*' -s --connect-timeout 5 --max-time 12 http://1.1.1.1/cdn-cgi/trace 2>/dev/null || true)"
   if [ -z "${PAQET_TRACE}" ]; then
-    PAQET_TRACE="$(sudo -u paqet curl -fsSL --connect-timeout 5 --max-time 12 http://1.1.1.1/cdn-cgi/trace 2>/dev/null || true)"
+    PAQET_TRACE="$(sudo -u paqet curl --noproxy '*' -s --connect-timeout 5 --max-time 12 https://1.1.1.1/cdn-cgi/trace 2>/dev/null || true)"
+  fi
+  if [ -z "${PAQET_TRACE}" ]; then
+    PAQET_TRACE="$(sudo -u paqet curl --noproxy '*' -fsSL --connect-timeout 5 --max-time 12 https://www.cloudflare.com/cdn-cgi/trace 2>/dev/null || true)"
   fi
   echo "${PAQET_TRACE}"
 else
