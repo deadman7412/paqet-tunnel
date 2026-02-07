@@ -1,6 +1,13 @@
 .os_artifacts
 .DS_Store
 **/.DS_Store
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+.Trash-*/
+.nfs*
+.directory
 *.swp
 *.swo
 *.bak
