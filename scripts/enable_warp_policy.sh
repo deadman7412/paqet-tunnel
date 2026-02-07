@@ -5,7 +5,7 @@ ROLE="${1:-server}"
 SERVICE_NAME="paqet-${ROLE}"
 PAQET_DIR="${PAQET_DIR:-$HOME/paqet}"
 
-# Policy routing constants (defined early for use throughout script)
+# Policy routing constants
 TABLE_ID=51820
 MARK=51820
 MARK_HEX="$(printf '0x%08x' "${MARK}")"
@@ -250,22 +250,12 @@ if ! ip route show table ${TABLE_ID} 2>/dev/null | grep -q default; then
   ip route add default dev wgcf table ${TABLE_ID}
 fi
 
-# Add rule (ip may display fwmark in hex and table may show as name)
-if ! ip rule show | grep -Eq "fwmark (0x0*ca6c|0x0000ca6c|${MARK}).*lookup (${TABLE_ID}|wgcf)"; then
-  if ! ip rule add fwmark ${MARK} table ${TABLE_ID} 2>/dev/null; then
-    ip rule add fwmark ${MARK_HEX} table ${TABLE_ID} 2>/dev/null || true
-  fi
-fi
-if ! ip rule show | grep -Eq "fwmark (0x0*ca6c|0x0000ca6c|${MARK}).*lookup (${TABLE_ID}|wgcf)"; then
-  echo "Debug: fwmark rule still missing after add."
-  ip rule show || true
-else
-  echo "fwmark rule present:"
-  ip rule show | grep -E "fwmark (0x0*ca6c|0x0000ca6c|${MARK}).*lookup (${TABLE_ID}|wgcf)" || true
-fi
+# Clean old fwmark rules from previous versions.
+while ip rule show | grep -Eq "fwmark (0x0*ca6c|0x0000ca6c|${MARK}).*lookup (${TABLE_ID}|wgcf)"; do
+  ip rule del fwmark ${MARK} table ${TABLE_ID} 2>/dev/null || ip rule del fwmark ${MARK_HEX} table ${TABLE_ID} 2>/dev/null || ip rule del fwmark 0xca6c table wgcf 2>/dev/null || true
+done
 
-# Fallback: uidrange rule (forces routing for paqet user, avoids mark timing issues)
-# Clean old duplicate uidrange rules and keep a single one.
+# Uid-based policy routing (preferred, avoids iptables/nft mark issues).
 while ip rule show | grep -Eq "uidrange ${PAQET_UID}-${PAQET_UID}.*lookup (${TABLE_ID}|wgcf)"; do
   ip rule del uidrange ${PAQET_UID}-${PAQET_UID} table ${TABLE_ID} 2>/dev/null || ip rule del uidrange ${PAQET_UID}-${PAQET_UID} table wgcf 2>/dev/null || true
 done
@@ -275,48 +265,19 @@ else
   echo "Warning: uidrange rule not supported or failed to add." >&2
 fi
 
-# iptables/nft mark rules for paqet user (ensure exists)
-modprobe xt_owner 2>/dev/null || true
-if [ "${IPTABLES_BACKEND}" = "nft" ]; then
-  echo "iptables backend: nft"
-else
-  echo "iptables backend: legacy"
-fi
-iptables -t mangle -D OUTPUT -m owner --uid-owner "${PAQET_UID}" -j MARK --set-mark ${MARK} 2>/dev/null || true
-if ! iptables -t mangle -A OUTPUT -m owner --uid-owner "${PAQET_UID}" -j MARK --set-mark ${MARK} 2>/dev/null; then
-  echo "iptables owner-mark rule failed (will try nft fallback)."
-fi
+# Cleanup old mark rules from previous versions (safe no-op when absent).
+while iptables -t mangle -D OUTPUT -m owner --uid-owner "${PAQET_UID}" -j MARK --set-mark ${MARK} 2>/dev/null; do :; done
+while iptables -t mangle -D OUTPUT -m owner --uid-owner paqet -j MARK --set-mark ${MARK} 2>/dev/null; do :; done
 
-if ! iptables -t mangle -C OUTPUT -m owner --uid-owner "${PAQET_UID}" -j MARK --set-mark ${MARK} 2>/dev/null; then
-  # On iptables-nft, avoid mixing native nft rules that can break iptables parsing.
-  if [ "${IPTABLES_BACKEND}" = "legacy" ] && command -v nft >/dev/null 2>&1; then
-    nft list table inet mangle >/dev/null 2>&1 || nft add table inet mangle
-    nft list chain inet mangle output >/dev/null 2>&1 || nft add chain inet mangle output '{ type filter hook output priority mangle; policy accept; }'
-    # Remove any existing mark rules for this UID (avoid duplicates)
-    while read -r handle; do
-      [ -n "${handle}" ] && nft delete rule inet mangle output handle "${handle}" 2>/dev/null || true
-    done < <(nft -a list chain inet mangle output 2>/dev/null | awk -v uid="${PAQET_UID}" '/skuid/ && /mark set/ && $0 ~ ("skuid " uid) {for(i=1;i<=NF;i++) if($i=="handle"){print $(i+1)}}')
-    nft add rule inet mangle output meta skuid ${PAQET_UID} counter meta mark set ${MARK}
-  fi
+if command -v nft >/dev/null 2>&1; then
+  while read -r handle; do
+    [ -n "${handle}" ] && nft delete rule ip mangle OUTPUT handle "${handle}" 2>/dev/null || true
+  done < <(nft -a list chain ip mangle OUTPUT 2>/dev/null | awk -v uid="${PAQET_UID}" '/skuid/ && /mark set/ && $0 ~ ("skuid " uid) {for(i=1;i<=NF;i++) if($i=="handle"){print $(i+1)}}')
+  while read -r handle; do
+    [ -n "${handle}" ] && nft delete rule inet mangle output handle "${handle}" 2>/dev/null || true
+  done < <(nft -a list chain inet mangle output 2>/dev/null | awk -v uid="${PAQET_UID}" '/skuid/ && /mark set/ && $0 ~ ("skuid " uid) {for(i=1;i<=NF;i++) if($i=="handle"){print $(i+1)}}')
 fi
-
-# Verify rule exists via iptables or nft
-if ! iptables -t mangle -S OUTPUT 2>/dev/null | grep -Eq "uid-owner (${PAQET_UID}|paqet).*(set-mark ${MARK}|set-xmark 0x0*ca6c/0xffffffff)"; then
-  echo "iptables mark rule not detected; checking nft..."
-  if command -v nft >/dev/null 2>&1; then
-    if ! nft -a list chain inet mangle output 2>/dev/null | grep -Eq "skuid ${PAQET_UID}.*mark set"; then
-      echo "Warning: could not verify nft mark rule (continuing)." >&2
-      echo "Debug:"
-      echo "  PAQET_UID=${PAQET_UID}"
-      echo "  MARK=${MARK}"
-      echo "  MARK_HEX=${MARK_HEX}"
-      echo "  nft chain output:"
-      nft -a list chain inet mangle output 2>/dev/null || true
-    fi
-  else
-    echo "Warning: iptables mark rule not present and nft not available (continuing)." >&2
-  fi
-fi
+echo "WARP routing mode: uidrange-only (no MARK rules)."
 
 # Persist firewall changes
 ensure_server_iptables_rules

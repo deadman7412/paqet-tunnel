@@ -9,6 +9,10 @@ MARK=51820
 
 # Remove iptables mark rule
 iptables -t mangle -D OUTPUT -m owner --uid-owner paqet -j MARK --set-mark ${MARK} 2>/dev/null || true
+if id -u paqet >/dev/null 2>&1; then
+  PAQET_UID="$(id -u paqet)"
+  while iptables -t mangle -D OUTPUT -m owner --uid-owner "${PAQET_UID}" -j MARK --set-mark ${MARK} 2>/dev/null; do :; done
+fi
 
 # Remove nft mark rule if present
 if command -v nft >/dev/null 2>&1; then
@@ -22,11 +26,13 @@ if command -v nft >/dev/null 2>&1; then
   fi
 fi
 
-# Remove ip rule and route table
-ip rule del fwmark ${MARK} table ${TABLE_ID} 2>/dev/null || true
+# Remove ip rules and route table
+while ip rule del fwmark ${MARK} table ${TABLE_ID} 2>/dev/null; do :; done
+while ip rule del fwmark 0xca6c table ${TABLE_ID} 2>/dev/null; do :; done
 if id -u paqet >/dev/null 2>&1; then
   PAQET_UID="$(id -u paqet)"
-  ip rule del uidrange ${PAQET_UID}-${PAQET_UID} table ${TABLE_ID} 2>/dev/null || true
+  while ip rule del uidrange ${PAQET_UID}-${PAQET_UID} table ${TABLE_ID} 2>/dev/null; do :; done
+  while ip rule del uidrange ${PAQET_UID}-${PAQET_UID} table wgcf 2>/dev/null; do :; done
 fi
 ip route flush table ${TABLE_ID} 2>/dev/null || true
 

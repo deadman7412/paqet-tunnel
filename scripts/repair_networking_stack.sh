@@ -133,19 +133,24 @@ ensure_warp_policy_rules() {
 
   ip route add default dev wgcf table ${TABLE_ID} 2>/dev/null || true
 
-  if ! ip rule show | grep -Eq "fwmark (0x0*ca6c|${MARK}).*lookup (${TABLE_ID}|wgcf)"; then
-    ip rule add fwmark ${MARK} table ${TABLE_ID} 2>/dev/null || ip rule add fwmark ${MARK_HEX} table ${TABLE_ID} 2>/dev/null || true
+  while ip rule show | grep -Eq "fwmark (0x0*ca6c|${MARK}).*lookup (${TABLE_ID}|wgcf)"; do
+    ip rule del fwmark ${MARK} table ${TABLE_ID} 2>/dev/null || ip rule del fwmark ${MARK_HEX} table ${TABLE_ID} 2>/dev/null || ip rule del fwmark 0xca6c table wgcf 2>/dev/null || true
+  done
+
+  while ip rule show | grep -Eq "uidrange ${uid}-${uid}.*lookup (${TABLE_ID}|wgcf)"; do
+    ip rule del uidrange ${uid}-${uid} table ${TABLE_ID} 2>/dev/null || ip rule del uidrange ${uid}-${uid} table wgcf 2>/dev/null || true
+  done
+  ip rule add uidrange ${uid}-${uid} table ${TABLE_ID} 2>/dev/null || true
+
+  while iptables -t mangle -D OUTPUT -m owner --uid-owner "${uid}" -j MARK --set-mark ${MARK} 2>/dev/null; do :; done
+  while iptables -t mangle -D OUTPUT -m owner --uid-owner paqet -j MARK --set-mark ${MARK} 2>/dev/null; do :; done
+  if command -v nft >/dev/null 2>&1; then
+    while read -r handle; do
+      [ -n "${handle}" ] && nft delete rule ip mangle OUTPUT handle "${handle}" 2>/dev/null || true
+    done < <(nft -a list chain ip mangle OUTPUT 2>/dev/null | awk -v p_uid="${uid}" '/skuid/ && /mark set/ && $0 ~ ("skuid " p_uid) {for(i=1;i<=NF;i++) if($i=="handle"){print $(i+1)}}')
   fi
 
-  if ! ip rule show | grep -Eq "uidrange ${uid}-${uid}.*lookup (${TABLE_ID}|wgcf)"; then
-    ip rule add uidrange ${uid}-${uid} table ${TABLE_ID} 2>/dev/null || true
-  fi
-
-  modprobe xt_owner 2>/dev/null || true
-  iptables -t mangle -D OUTPUT -m owner --uid-owner "${uid}" -j MARK --set-mark ${MARK} 2>/dev/null || true
-  iptables -t mangle -A OUTPUT -m owner --uid-owner "${uid}" -j MARK --set-mark ${MARK} 2>/dev/null || true
-
-  echo "WARP: refreshed policy routing and mark rules."
+  echo "WARP: refreshed policy routing (uidrange-only)."
 }
 
 repair_server() {

@@ -37,6 +37,10 @@ else
   echo "(no uidrange rule)"
 fi
 ip route show table 51820 || echo "(no routes in table 51820)"
+if [ -n "${PAQET_UID}" ]; then
+  echo "route probe (uid ${PAQET_UID}):"
+  ip route get 1.1.1.1 uid "${PAQET_UID}" 2>/dev/null || echo "(route probe failed)"
+fi
 
 # 3) iptables mark rule
 echo "\n[3] iptables mark rule"
@@ -114,7 +118,11 @@ if [ -n "${PAQET_TRACE}" ]; then
     echo "Note: If uidrange rule is missing or unsupported, paqet may bypass WARP."
   fi
 else
-  echo "paqet traffic: NOT TESTED (user missing or curl failed)"
+  if [ -n "${PAQET_UID}" ] && ip route get 1.1.1.1 uid "${PAQET_UID}" 2>/dev/null | grep -q "dev wgcf"; then
+    echo "paqet traffic: NOT TESTED by curl (likely DNS/egress issue), but policy route points to wgcf"
+  else
+    echo "paqet traffic: NOT TESTED (user missing or curl failed)"
+  fi
 fi
 
 # 8) MTU checks
