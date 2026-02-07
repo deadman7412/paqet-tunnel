@@ -35,17 +35,28 @@ PAQET_UID="$(id -u "${PAQET_USER}")"
 
 mkdir -p "${DNS_POLICY_DIR}" /etc/dnsmasq.d
 
-cat > "${DNSMASQ_MAIN_CONF}" <<CONF
+UPSTREAMS="${DNS_POLICY_UPSTREAMS:-}"
+{
+  cat <<CONF
 # Paqet DNS policy resolver
 port=${DNS_PORT}
 listen-address=127.0.0.1
 bind-interfaces
-no-resolv
-server=1.1.1.1
-server=1.0.0.1
 cache-size=10000
 conf-file=${DNSMASQ_BLOCK_CONF}
 CONF
+  if [ -n "${UPSTREAMS}" ]; then
+    echo "no-resolv"
+    IFS=',' read -r -a UP_ARR <<< "${UPSTREAMS}"
+    for s in "${UP_ARR[@]}"; do
+      s="$(echo "${s}" | xargs)"
+      [ -n "${s}" ] && echo "server=${s}"
+    done
+  else
+    # Default: use system resolver chain for better VPS compatibility.
+    echo "resolv-file=/etc/resolv.conf"
+  fi
+} > "${DNSMASQ_MAIN_CONF}"
 
 if [ ! -f "${ALLOW_FILE}" ]; then
   cat > "${ALLOW_FILE}" <<CONF
@@ -58,6 +69,7 @@ fi
 "${UPDATE_SCRIPT}" "${CATEGORY}"
 
 systemctl enable --now dnsmasq >/dev/null 2>&1 || true
+systemctl restart dnsmasq >/dev/null 2>&1 || true
 
 while iptables -t nat -D OUTPUT -m owner --uid-owner "${PAQET_UID}" -p udp --dport 53 -m comment --comment paqet-dns-policy -j REDIRECT --to-ports "${DNS_PORT}" 2>/dev/null; do :; done
 while iptables -t nat -D OUTPUT -m owner --uid-owner "${PAQET_UID}" -p tcp --dport 53 -m comment --comment paqet-dns-policy -j REDIRECT --to-ports "${DNS_PORT}" 2>/dev/null; do :; done
@@ -91,3 +103,10 @@ echo "DNS policy enabled for paqet traffic."
 echo "Category: ${CATEGORY}"
 echo "Resolver: 127.0.0.1:${DNS_PORT}"
 echo "Whitelist file: ${ALLOW_FILE}"
+if command -v nslookup >/dev/null 2>&1; then
+  if nslookup -port="${DNS_PORT}" example.com 127.0.0.1 >/dev/null 2>&1; then
+    echo "Resolver self-check: OK"
+  else
+    echo "Resolver self-check: FAILED (check upstream DNS reachability and dnsmasq logs)" >&2
+  fi
+fi
