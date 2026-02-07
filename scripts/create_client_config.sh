@@ -27,6 +27,33 @@ validate_mode() {
   esac
 }
 
+sync_ufw_tunnel_rule_client() {
+  local server_ip="$1"
+  local server_port="$2"
+  local status_line=""
+  local -a rules=()
+
+  if ! command -v ufw >/dev/null 2>&1; then
+    return 0
+  fi
+
+  status_line="$(ufw status 2>/dev/null | head -n1 || true)"
+  if ! echo "${status_line}" | grep -q "Status: active"; then
+    return 0
+  fi
+
+  mapfile -t rules < <(ufw status numbered 2>/dev/null | awk '/paqet-tunnel/ {gsub(/[][]/,"",$1); print $1}')
+  if [ "${#rules[@]}" -gt 0 ]; then
+    for ((i=${#rules[@]}-1; i>=0; i--)); do
+      ufw --force delete "${rules[$i]}" >/dev/null 2>&1 || true
+    done
+    echo "Removed old UFW paqet-tunnel rule(s)."
+  fi
+
+  ufw allow out to "${server_ip}" port "${server_port}" proto tcp comment 'paqet-tunnel' >/dev/null 2>&1 || true
+  echo "Updated UFW paqet-tunnel rule to ${server_ip}:${server_port}."
+}
+
 if [ -f "${OUT_FILE}" ]; then
   read -r -p "${OUT_FILE} exists. Overwrite? [y/N]: " ow
   case "${ow}" in
@@ -301,3 +328,4 @@ YAML
 mv "${TMP_OUT}" "${OUT_FILE}"
 
 echo "Wrote ${OUT_FILE}"
+sync_ufw_tunnel_rule_client "${SERVER_IP}" "${PORT}"

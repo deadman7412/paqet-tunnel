@@ -29,6 +29,43 @@ validate_mode() {
   esac
 }
 
+sync_ufw_tunnel_rule_server() {
+  local new_port="$1"
+  local old_client_ip=""
+  local status_line=""
+  local -a rules=()
+
+  if ! command -v ufw >/dev/null 2>&1; then
+    return 0
+  fi
+
+  status_line="$(ufw status 2>/dev/null | head -n1 || true)"
+  if ! echo "${status_line}" | grep -q "Status: active"; then
+    return 0
+  fi
+
+  old_client_ip="$(ufw status 2>/dev/null | awk '/paqet-tunnel/ && /ALLOW IN/ {for(i=1;i<=NF;i++) if($i=="IN"){print $(i+1); exit}}')"
+  if [ -z "${old_client_ip}" ] || [ "${old_client_ip}" = "Anywhere" ] || [ "${old_client_ip}" = "Anywhere(v6)" ]; then
+    old_client_ip=""
+  fi
+
+  mapfile -t rules < <(ufw status numbered 2>/dev/null | awk '/paqet-tunnel/ {gsub(/[][]/,"",$1); print $1}')
+  if [ "${#rules[@]}" -gt 0 ]; then
+    for ((i=${#rules[@]}-1; i>=0; i--)); do
+      ufw --force delete "${rules[$i]}" >/dev/null 2>&1 || true
+    done
+    echo "Removed old UFW paqet-tunnel rule(s)."
+  fi
+
+  if [ -n "${old_client_ip}" ]; then
+    ufw allow from "${old_client_ip}" to any port "${new_port}" proto tcp comment 'paqet-tunnel' >/dev/null 2>&1 || true
+    echo "Updated UFW paqet-tunnel rule to port ${new_port} (source ${old_client_ip})."
+  else
+    echo "UFW is active but previous client IP was not found."
+    echo "Run 'Enable firewall (ufw)' to add the new paqet-tunnel rule for port ${new_port}."
+  fi
+}
+
 if [ -f "${OUT_FILE}" ]; then
   read -r -p "${OUT_FILE} exists. Overwrite? [y/N]: " ow
   case "${ow}" in
@@ -296,6 +333,7 @@ fi
 mv "${TMP_INFO}" "${INFO_FILE}"
 
 echo "Wrote ${INFO_FILE}"
+sync_ufw_tunnel_rule_server "${PORT}"
 echo
 echo "If you cannot transfer files, run these commands on the client VPS:"
 echo "  mkdir -p ${PAQET_DIR}"
