@@ -12,6 +12,19 @@ This repo contains a menu‑driven setup for installing, configuring, and operat
 
 **Credit:** Paqet is created and maintained by [hanselime/paqet](https://github.com/hanselime/paqet). This project only provides helper scripts.
 
+## Features
+
+- **Menu-driven setup:** Interactive server/client workflows for Paqet on Linux VPS
+- **Install/Update/Uninstall:** One-command lifecycle management from the main menu
+- **Config generation:** Server/client config creators with backup-safe overwrites
+- **Service management:** Systemd install/remove plus start/stop/status/log controls
+- **Health checks:** Cron-based health monitoring with auto-restart and health logs
+- **Restart scheduler:** Fixed-interval cron restarts for server or client service
+- **Proxy support:** Built-in `proxychains4` install and auto-configuration for Paqet SOCKS
+- **Network controls:** UFW + iptables helpers and networking stack repair actions
+- **WARP routing:** Optional Cloudflare WARP policy routing with status/tests
+- **Diagnostics:** Built-in connection tests, WARP tests, and server info tools
+
 ## Quick Start
 
 1. Get the scripts
