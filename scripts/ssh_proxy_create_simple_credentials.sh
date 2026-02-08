@@ -73,11 +73,20 @@ resolve_key_path() {
   return 1
 }
 
+read_key_content() {
+  local key_path="$1"
+  if [ ! -f "${key_path}" ]; then
+    return 1
+  fi
+  cat "${key_path}"
+}
+
 main() {
   local username=""
   local server_ip=""
   local port=""
   local key_path=""
+  local key_content=""
   local out_dir=""
   local out_file=""
 
@@ -111,6 +120,14 @@ main() {
 
   if ! key_path="$(resolve_key_path "${username}")"; then
     echo "Private key file not found for ${username}." >&2
+    if [ -d "${SSH_PROXY_STATE_DIR}/clients/${username}" ]; then
+      echo "Available files in ${SSH_PROXY_STATE_DIR}/clients/${username}:" >&2
+      ls -la "${SSH_PROXY_STATE_DIR}/clients/${username}" >&2 || true
+    fi
+    exit 1
+  fi
+  if ! key_content="$(read_key_content "${key_path}")"; then
+    echo "Failed to read private key file: ${key_path}" >&2
     exit 1
   fi
 
@@ -125,6 +142,8 @@ username: ${username}
 server_ip: ${server_ip}
 server_port: ${port}
 private_key_file: ${key_path}
+private_key:
+${key_content}
 
 SSH SOCKS command (desktop):
 ssh -N -D 127.0.0.1:1080 -i ${key_path} -p ${port} ${username}@${server_ip} -o IdentitiesOnly=yes
@@ -145,7 +164,11 @@ TXT
   echo "Username: ${username}"
   echo "Server IP: ${server_ip}"
   echo "Port: ${port}"
-  echo "Private key: ${key_path}"
+  echo "Private key file: ${key_path}"
+  echo
+  echo "-----BEGIN PRIVATE KEY FOR COPY-----"
+  echo "${key_content}"
+  echo "-----END PRIVATE KEY FOR COPY-----"
   echo
   echo "Quick connect command:"
   echo "ssh -N -D 127.0.0.1:1080 -i ${key_path} -p ${port} ${username}@${server_ip} -o IdentitiesOnly=yes"
