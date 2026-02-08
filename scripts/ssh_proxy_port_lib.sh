@@ -50,7 +50,7 @@ ssh_proxy_ensure_sshd_user_policy() {
 # Managed by paqet SSH proxy
 Match Group ${SSH_PROXY_GROUP}
   PasswordAuthentication yes
-  KbdInteractiveAuthentication no
+  ChallengeResponseAuthentication no
   PubkeyAuthentication no
   PermitTTY no
   X11Forwarding no

@@ -149,7 +149,7 @@ main() {
 
   nologin_shell="$(ssh_proxy_detect_nologin_shell)"
   ssh_proxy_ensure_sshd_user_policy
-  if ! sshd -t >/dev/null 2>&1; then
+  if ! sshd -t; then
     echo "sshd policy config is invalid. Aborting." >&2
     exit 1
   fi
