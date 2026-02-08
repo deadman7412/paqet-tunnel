@@ -41,6 +41,27 @@ ensure_qrencode() {
   command -v qrencode >/dev/null 2>&1
 }
 
+ensure_terminal_qr_viewer() {
+  if command -v chafa >/dev/null 2>&1 || command -v viu >/dev/null 2>&1; then
+    return 0
+  fi
+
+  echo "No terminal QR viewer found. Installing..."
+  if command -v apt-get >/dev/null 2>&1; then
+    apt-get update -y
+    DEBIAN_FRONTEND=noninteractive apt-get install -y chafa || true
+    DEBIAN_FRONTEND=noninteractive apt-get install -y viu || true
+  elif command -v dnf >/dev/null 2>&1; then
+    dnf install -y chafa || true
+    dnf install -y viu || true
+  elif command -v yum >/dev/null 2>&1; then
+    yum install -y chafa || true
+    yum install -y viu || true
+  fi
+
+  command -v chafa >/dev/null 2>&1 || command -v viu >/dev/null 2>&1
+}
+
 generate_png_qr_from_config() {
   local config_file="$1"
   local out_png="$2"
@@ -65,6 +86,7 @@ generate_png_qr_from_config() {
 
   if qrencode -o "${out_png}" -l L -m 2 -s 4 "${payload}"; then
     echo "Saved QR PNG: ${out_png}"
+    ensure_terminal_qr_viewer >/dev/null 2>&1 || true
     if command -v chafa >/dev/null 2>&1; then
       echo
       echo "QR preview (chafa):"
