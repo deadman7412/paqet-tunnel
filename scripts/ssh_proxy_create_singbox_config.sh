@@ -41,12 +41,13 @@ ensure_qrencode() {
   command -v qrencode >/dev/null 2>&1
 }
 
-show_terminal_qr_from_config() {
+generate_png_qr_from_config() {
   local config_file="$1"
+  local out_png="$2"
   local payload=""
 
   if ! ensure_qrencode; then
-    echo "Could not install qrencode; skipping terminal QR." >&2
+    echo "Could not install qrencode; skipping QR PNG." >&2
     return 0
   fi
 
@@ -62,11 +63,11 @@ show_terminal_qr_from_config() {
     return 1
   fi
 
-  echo
-  echo "Terminal QR (config payload):"
-  if ! qrencode -t UTF8 -l L -m 0 "${payload}"; then
-    echo "Config is too large for a single QR payload."
-    echo "Use file import (sing-box.json) or remote profile URL mode."
+  if qrencode -o "${out_png}" -l L -m 2 -s 4 "${payload}"; then
+    echo "Saved QR PNG: ${out_png}"
+  else
+    echo "Config is too large for a single QR image. Use file import (sing-box.json)." >&2
+    return 1
   fi
 }
 
@@ -221,13 +222,6 @@ write_config() {
           "iran-geosite-ads"
         ],
         "action": "reject"
-      },
-      {
-        "rule_set": [
-          "iran-geosite-all"
-        ],
-        "action": "route",
-        "outbound": "direct"
       }
     ],
     "final": "ssh-out"
@@ -260,6 +254,7 @@ main() {
   local rule_set_detour="direct"
   local out_dir=""
   local out_file=""
+  local out_qr_png=""
 
   ssh_proxy_require_root
 
@@ -297,6 +292,7 @@ main() {
 
   out_dir="${CLIENTS_DIR}/${username}"
   out_file="${out_dir}/sing-box.json"
+  out_qr_png="${out_dir}/sing-box-embedded-qr.png"
   mkdir -p "${out_dir}"
 
   write_config "${out_file}" "${server}" "${server_port}" "${username}" "${private_key_content}" "${local_port}" "${rule_set_detour}"
@@ -306,7 +302,7 @@ main() {
   echo "Server: ${server}:${server_port} (locked)"
   echo "Local mixed inbound port: ${local_port} (locked)"
   echo "Rule-set detour outbound: ${rule_set_detour} (locked)"
-  show_terminal_qr_from_config "${out_file}" || true
+  generate_png_qr_from_config "${out_file}" "${out_qr_png}" || true
   echo
   echo "Use this on client:"
   echo "  sing-box run -c ${out_file}"
