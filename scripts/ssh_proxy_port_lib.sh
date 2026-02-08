@@ -55,7 +55,6 @@ Match Group ${SSH_PROXY_GROUP}
   PermitTTY no
   X11Forwarding no
   AllowAgentForwarding no
-  PermitUserEnvironment no
   AllowTcpForwarding yes
   GatewayPorts no
   PermitTunnel no
