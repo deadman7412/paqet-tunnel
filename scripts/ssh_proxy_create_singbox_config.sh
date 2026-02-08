@@ -65,6 +65,18 @@ generate_png_qr_from_config() {
 
   if qrencode -o "${out_png}" -l L -m 2 -s 4 "${payload}"; then
     echo "Saved QR PNG: ${out_png}"
+    if command -v chafa >/dev/null 2>&1; then
+      echo
+      echo "QR preview (chafa):"
+      chafa -f symbols -s 80x40 "${out_png}" || true
+    elif command -v viu >/dev/null 2>&1; then
+      echo
+      echo "QR preview (viu):"
+      viu -w 80 "${out_png}" || true
+    else
+      echo "No terminal image viewer found (chafa/viu)."
+      echo "To scan: open ${out_png} on any device with an image viewer."
+    fi
   else
     echo "Config is too large for a single QR image. Use file import (sing-box.json)." >&2
     return 1
@@ -177,53 +189,23 @@ write_config() {
   local username="$4"
   local private_key_content="$5"
   local local_port="$6"
-  local rule_set_detour="$7"
+  local _rule_set_detour="$7"
 
   cat > "${out_file}" <<JSON
 {
   "log": {
-    "level": "info"
-  },
-  "experimental": {
-    "cache_file": {
-      "enabled": true
-    }
+    "level": "warn"
   },
   "inbounds": [
     {
       "type": "mixed",
       "tag": "mixed-in",
       "listen": "127.0.0.1",
-      "listen_port": ${local_port}
+      "listen_port": ${local_port},
+      "set_system_proxy": true
     }
   ],
   "route": {
-    "rule_set": [
-      {
-        "tag": "iran-geosite-ads",
-        "type": "remote",
-        "format": "binary",
-        "download_detour": "${rule_set_detour}",
-        "update_interval": "7d",
-        "url": "https://github.com/bootmortis/sing-geosite/releases/latest/download/geosite-ads.srs"
-      },
-      {
-        "tag": "iran-geosite-all",
-        "type": "remote",
-        "format": "binary",
-        "download_detour": "${rule_set_detour}",
-        "update_interval": "7d",
-        "url": "https://github.com/bootmortis/sing-geosite/releases/latest/download/geosite-all.srs"
-      }
-    ],
-    "rules": [
-      {
-        "rule_set": [
-          "iran-geosite-ads"
-        ],
-        "action": "reject"
-      }
-    ],
     "final": "ssh-out"
   },
   "outbounds": [
@@ -234,10 +216,6 @@ write_config() {
       "server_port": ${server_port},
       "user": "${username}",
       "private_key": "${private_key_content}"
-    },
-    {
-      "type": "direct",
-      "tag": "direct"
     }
   ]
 }
@@ -301,8 +279,12 @@ main() {
   echo "Generated: ${out_file}"
   echo "Server: ${server}:${server_port} (locked)"
   echo "Local mixed inbound port: ${local_port} (locked)"
-  echo "Rule-set detour outbound: ${rule_set_detour} (locked)"
+  echo "Mode: all traffic via ssh-out (locked)"
   generate_png_qr_from_config "${out_file}" "${out_qr_png}" || true
+  echo
+  echo "If you are on a remote terminal, download files to your local device:"
+  echo "  scp root@${server}:${out_qr_png} ."
+  echo "  scp root@${server}:${out_file} ."
   echo
   echo "Use this on client:"
   echo "  sing-box run -c ${out_file}"
