@@ -200,18 +200,26 @@ CONF
 }
 
 ssh_proxy_reload_service() {
-  if systemctl is-active --quiet ssh 2>/dev/null; then
-    systemctl reload ssh
+  # On some distros SSH uses socket activation; extra ports in sshd_config
+  # won't be opened until we switch to service mode.
+  if systemctl is-enabled --quiet ssh.socket 2>/dev/null || systemctl is-active --quiet ssh.socket 2>/dev/null; then
+    systemctl disable --now ssh.socket >/dev/null 2>&1 || true
+  fi
+
+  if systemctl list-unit-files 2>/dev/null | awk '{print $1}' | grep -qx 'ssh.service'; then
+    systemctl enable --now ssh.service >/dev/null 2>&1 || true
+    systemctl restart ssh.service
     return 0
   fi
 
-  if systemctl is-active --quiet sshd 2>/dev/null; then
-    systemctl reload sshd
+  if systemctl list-unit-files 2>/dev/null | awk '{print $1}' | grep -qx 'sshd.service'; then
+    systemctl enable --now sshd.service >/dev/null 2>&1 || true
+    systemctl restart sshd.service
     return 0
   fi
 
-  echo "Warning: ssh/sshd service not active; config updated but service not reloaded." >&2
-  return 0
+  echo "Warning: neither ssh.service nor sshd.service was found." >&2
+  return 1
 }
 
 ssh_proxy_wait_for_port_listen() {
