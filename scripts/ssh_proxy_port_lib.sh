@@ -244,19 +244,37 @@ ssh_proxy_reload_service() {
     systemctl disable --now ssh.socket >/dev/null 2>&1 || true
   fi
 
-  if systemctl list-unit-files 2>/dev/null | awk '{print $1}' | grep -qx 'ssh.service'; then
-    systemctl enable --now ssh.service >/dev/null 2>&1 || true
-    systemctl restart ssh.service
+  if systemctl restart ssh >/dev/null 2>&1; then
+    systemctl enable --now ssh >/dev/null 2>&1 || true
     return 0
   fi
 
-  if systemctl list-unit-files 2>/dev/null | awk '{print $1}' | grep -qx 'sshd.service'; then
-    systemctl enable --now sshd.service >/dev/null 2>&1 || true
-    systemctl restart sshd.service
+  if systemctl restart sshd >/dev/null 2>&1; then
+    systemctl enable --now sshd >/dev/null 2>&1 || true
     return 0
   fi
 
-  echo "Warning: neither ssh.service nor sshd.service was found." >&2
+  if command -v service >/dev/null 2>&1; then
+    if service ssh restart >/dev/null 2>&1; then
+      return 0
+    fi
+    if service sshd restart >/dev/null 2>&1; then
+      return 0
+    fi
+  fi
+
+  if command -v systemctl >/dev/null 2>&1; then
+    systemctl status ssh --no-pager >/dev/null 2>&1 || true
+    systemctl status sshd --no-pager >/dev/null 2>&1 || true
+  fi
+
+  if pgrep -x sshd >/dev/null 2>&1; then
+    # Last resort: daemon exists, send HUP.
+    pkill -HUP -x sshd >/dev/null 2>&1 || true
+    return 0
+  fi
+
+  echo "Warning: could not restart ssh/sshd service on this system." >&2
   return 1
 }
 
