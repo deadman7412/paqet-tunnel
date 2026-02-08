@@ -32,7 +32,7 @@ read_user_meta() {
 
   if [ -f "${json_file}" ]; then
     val="$(awk -v k="${key}" '
-      $0 ~ "\"" k "\"" {
+      $0 ~ "^[[:space:]]*\"" k "\"[[:space:]]*:" {
         line=$0
         sub(/^[^:]*:[[:space:]]*/, "", line)
         gsub(/[",]/, "", line)
