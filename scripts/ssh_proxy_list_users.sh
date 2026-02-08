@@ -7,6 +7,7 @@ source "${SCRIPT_DIR}/ssh_proxy_port_lib.sh"
 
 print_user_row() {
   local meta_file="$1"
+  local meta_json_file=""
   local username=""
   local proxy_port=""
   local created_at=""
@@ -15,6 +16,15 @@ print_user_row() {
   username="$(awk -F= '/^username=/{print $2; exit}' "${meta_file}" 2>/dev/null || true)"
   proxy_port="$(awk -F= '/^proxy_port=/{print $2; exit}' "${meta_file}" 2>/dev/null || true)"
   created_at="$(awk -F= '/^created_at=/{print $2; exit}' "${meta_file}" 2>/dev/null || true)"
+
+  if [ -z "${username}" ]; then
+    meta_json_file="${meta_file%.env}.json"
+    if [ -f "${meta_json_file}" ]; then
+      username="$(awk -F'"' '/"username"[[:space:]]*:/ {print $4; exit}' "${meta_json_file}" 2>/dev/null || true)"
+      proxy_port="$(awk -F: '/"proxy_port"[[:space:]]*:/ {gsub(/[ ,]/, "", $2); print $2; exit}' "${meta_json_file}" 2>/dev/null || true)"
+      created_at="$(awk -F'"' '/"created_at"[[:space:]]*:/ {print $4; exit}' "${meta_json_file}" 2>/dev/null || true)"
+    fi
+  fi
 
   if [ -z "${username}" ]; then
     return 0

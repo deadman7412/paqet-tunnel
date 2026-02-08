@@ -37,10 +37,15 @@ remove_user_account() {
 remove_user_meta() {
   local username="$1"
   local meta_file="${SSH_PROXY_USERS_DIR}/${username}.env"
+  local meta_json_file="${SSH_PROXY_USERS_DIR}/${username}.json"
 
   if [ -f "${meta_file}" ]; then
     rm -f "${meta_file}"
     echo "Removed user metadata: ${meta_file}"
+  fi
+  if [ -f "${meta_json_file}" ]; then
+    rm -f "${meta_json_file}"
+    echo "Removed user metadata: ${meta_json_file}"
   fi
 }
 

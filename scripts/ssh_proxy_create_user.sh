@@ -11,12 +11,15 @@ is_valid_username() {
 
 create_proxy_user() {
   local username="$1"
-  local pubkey="$2"
-  local proxy_port="$3"
+  local proxy_port="$2"
+  local pubkey="$3"
+  local private_key_file="$4"
+  local public_key_file="$5"
   local home_dir="/home/${username}"
   local ssh_dir="${home_dir}/.ssh"
   local auth_keys="${ssh_dir}/authorized_keys"
   local meta_file="${SSH_PROXY_USERS_DIR}/${username}.env"
+  local meta_json_file="${SSH_PROXY_USERS_DIR}/${username}.json"
 
   if id -u "${username}" >/dev/null 2>&1; then
     echo "User already exists: ${username}" >&2
@@ -37,12 +40,52 @@ create_proxy_user() {
   cat > "${meta_file}" <<META
 username=${username}
 proxy_port=${proxy_port}
+private_key_file=${private_key_file}
+public_key_file=${public_key_file}
 created_at=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
 META
   chmod 600 "${meta_file}"
 
+  cat > "${meta_json_file}" <<JSON
+{
+  "username": "${username}",
+  "proxy_port": ${proxy_port},
+  "private_key_file": "${private_key_file}",
+  "public_key_file": "${public_key_file}",
+  "created_at": "$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
+}
+JSON
+  chmod 600 "${meta_json_file}"
+
   echo "Created SSH proxy user: ${username}"
   echo "Assigned SSH proxy port: ${proxy_port}"
+}
+
+generate_user_keypair() {
+  local username="$1"
+  local user_client_dir="${SSH_PROXY_STATE_DIR}/clients/${username}"
+  local private_key_file="${user_client_dir}/id_ed25519"
+  local public_key_file="${private_key_file}.pub"
+  local comment="paqet-ssh-proxy-${username}"
+
+  if ! command -v ssh-keygen >/dev/null 2>&1; then
+    echo "ssh-keygen is not available. Install OpenSSH client tools first." >&2
+    return 1
+  fi
+
+  mkdir -p "${user_client_dir}"
+  chmod 700 "${user_client_dir}"
+
+  if [ -f "${private_key_file}" ] || [ -f "${public_key_file}" ]; then
+    echo "Key files already exist for ${username}: ${private_key_file}" >&2
+    echo "Remove old files or choose another username." >&2
+    return 1
+  fi
+
+  ssh-keygen -t ed25519 -N "" -f "${private_key_file}" -C "${comment}" >/dev/null
+  chmod 600 "${private_key_file}" "${public_key_file}"
+
+  echo "${private_key_file}|${public_key_file}"
 }
 
 ensure_port_once() {
@@ -80,8 +123,11 @@ ensure_port_once() {
 
 main() {
   local username=""
-  local pubkey=""
   local proxy_port=""
+  local key_files=""
+  local private_key_file=""
+  local public_key_file=""
+  local pubkey=""
 
   ssh_proxy_require_root
 
@@ -98,18 +144,21 @@ main() {
     exit 1
   fi
 
-  read -r -p "User public key (ssh-ed25519/ssh-rsa ...): " pubkey
-  if [ -z "${pubkey}" ]; then
-    echo "Public key is required." >&2
+  key_files="$(generate_user_keypair "${username}")"
+  if [ -z "${key_files}" ]; then
+    echo "Failed to generate user keypair." >&2
     exit 1
   fi
-  if ! echo "${pubkey}" | grep -qE '^ssh-(ed25519|rsa|ecdsa) '; then
-    echo "Public key format looks invalid." >&2
-    exit 1
-  fi
+  private_key_file="${key_files%%|*}"
+  public_key_file="${key_files##*|}"
+  pubkey="$(cat "${public_key_file}")"
 
-  create_proxy_user "${username}" "${pubkey}" "${proxy_port}"
+  create_proxy_user "${username}" "${proxy_port}" "${pubkey}" "${private_key_file}" "${public_key_file}"
 
+  echo
+  echo "Generated key files:"
+  echo "  Private key: ${private_key_file}"
+  echo "  Public key:  ${public_key_file}"
   echo
   echo "Connection example:"
   echo "  ssh -N -D 127.0.0.1:1081 ${username}@<SERVER_IP> -p ${proxy_port}"

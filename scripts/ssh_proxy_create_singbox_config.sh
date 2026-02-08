@@ -106,8 +106,9 @@ read_default_server() {
 ensure_user_exists() {
   local username="$1"
   local meta_file="${SSH_PROXY_USERS_DIR}/${username}.env"
+  local meta_json_file="${SSH_PROXY_USERS_DIR}/${username}.json"
 
-  if [ ! -f "${meta_file}" ] && ! id -u "${username}" >/dev/null 2>&1; then
+  if [ ! -f "${meta_file}" ] && [ ! -f "${meta_json_file}" ] && ! id -u "${username}" >/dev/null 2>&1; then
     echo "Unknown SSH proxy user: ${username}" >&2
     return 1
   fi
@@ -115,13 +116,35 @@ ensure_user_exists() {
   return 0
 }
 
+read_user_json_field() {
+  local username="$1"
+  local field="$2"
+  local meta_json_file="${SSH_PROXY_USERS_DIR}/${username}.json"
+
+  if [ ! -f "${meta_json_file}" ]; then
+    return 0
+  fi
+
+  awk -v k="${field}" '
+    $0 ~ "\"" k "\"" {
+      line=$0
+      sub(/^[^:]*:[[:space:]]*/, "", line)
+      gsub(/[",]/, "", line)
+      gsub(/^[[:space:]]+|[[:space:]]+$/, "", line)
+      print line
+      exit
+    }
+  ' "${meta_json_file}" 2>/dev/null || true
+}
+
 read_user_port() {
   local username="$1"
   local meta_file="${SSH_PROXY_USERS_DIR}/${username}.env"
   local user_port=""
 
+  user_port="$(read_user_json_field "${username}" "proxy_port")"
   if [ -f "${meta_file}" ]; then
-    user_port="$(awk -F= '/^proxy_port=/{print $2; exit}' "${meta_file}" 2>/dev/null || true)"
+    user_port="${user_port:-$(awk -F= '/^proxy_port=/{print $2; exit}' "${meta_file}" 2>/dev/null || true)}"
   fi
 
   if [ -z "${user_port}" ]; then
@@ -129,6 +152,23 @@ read_user_port() {
   fi
 
   echo "${user_port}"
+}
+
+read_user_private_key_default() {
+  local username="$1"
+  local meta_file="${SSH_PROXY_USERS_DIR}/${username}.env"
+  local key_path=""
+
+  key_path="$(read_user_json_field "${username}" "private_key_file")"
+  if [ -z "${key_path}" ] && [ -f "${meta_file}" ]; then
+    key_path="$(awk -F= '/^private_key_file=/{print $2; exit}' "${meta_file}" 2>/dev/null || true)"
+  fi
+
+  if [ -z "${key_path}" ]; then
+    key_path="~/.ssh/${username}_proxy"
+  fi
+
+  echo "${key_path}"
 }
 
 write_config() {
@@ -247,8 +287,9 @@ main() {
     exit 1
   fi
 
-  read -r -p "Client private key path [~/.ssh/${username}_proxy]: " private_key_path
-  private_key_path="${private_key_path:-~/.ssh/${username}_proxy}"
+  private_key_path="$(read_user_private_key_default "${username}")"
+  read -r -p "Client private key path [${private_key_path}]: " input_key_path
+  private_key_path="${input_key_path:-${private_key_path}}"
 
   read -r -p "Local mixed inbound port [2080]: " local_port
   local_port="${local_port:-2080}"
