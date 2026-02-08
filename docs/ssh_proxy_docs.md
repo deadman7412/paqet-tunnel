@@ -28,7 +28,7 @@ Open:
 3. `Enable SSH firewall rules`
 4. `Enable WARP on SSH` (optional)
 5. `Enable server DNS routing on SSH` (optional)
-6. `Generate sing-box client config`
+6. `Show simple SSH credentials`
 
 ## What Each Option Does
 
@@ -39,7 +39,8 @@ Open:
 
 - `Create SSH proxy user`
   - Creates Linux user.
-  - Auto-generates SSH keypair for that user.
+  - Uses password authentication.
+  - Sets no-login shell for proxy-only access.
   - Stores metadata under `/etc/paqet-ssh-proxy/users/`.
 
 - `Remove SSH proxy user`
@@ -57,31 +58,23 @@ Open:
 - `Enable/Disable server DNS routing on SSH`
   - Adds/removes UID-based DNS redirect rules for SSH proxy users.
 
-- `Generate sing-box client config`
-  - Builds per-user sing-box config at:
-    - `/etc/paqet-ssh-proxy/clients/<username>/sing-box.json`
-  - Embeds the generated private SSH key directly in config.
-  - Prints a terminal QR from that same embedded config.
+- `Show simple SSH credentials`
+  - Prints username, password, server IP, and port.
+  - Writes credentials file at:
+    - `/etc/paqet-ssh-proxy/clients/<username>/ssh-simple.txt`
 
-## Client Usage (sing-box)
+## Client Usage (Raw SSH)
 
 On the client device:
 
-1. Import config (or scan QR shown during generation).
-2. Start sing-box with that profile.
-3. Use local proxy from the config (`mixed` inbound, default `127.0.0.1:2080`).
+1. Use the shown username/password/server/port in your SSH client app.
+2. Enable dynamic SOCKS proxy / tunnel mode in the app.
+3. Keep WARP/DNS SSH options enabled on server if required.
 
 ## Troubleshooting
 
 - `SSH proxy port is not configured`
   - Run `Manage SSH proxy port` first.
 
-- `Private key file not found`
-  - Recreate the user or inspect:
-    - `/etc/paqet-ssh-proxy/users/<username>.json`
-
-- `qrencode not found`
-  - Generator attempts to install it automatically.
-  - Manual install fallback:
-    - `apt-get install -y qrencode`
-
+- `Password is not stored`
+  - Recreate the user with menu option `Create SSH proxy user`.

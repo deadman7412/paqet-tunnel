@@ -50,43 +50,11 @@ read_user_meta() {
   echo "${val}"
 }
 
-resolve_key_path() {
-  local username="$1"
-  local key_path=""
-
-  key_path="$(read_user_meta "${username}" "private_key_file")"
-  if [ -n "${key_path}" ] && [ -f "${key_path}" ]; then
-    echo "${key_path}"
-    return 0
-  fi
-
-  if [ -f "${SSH_PROXY_STATE_DIR}/clients/${username}/id_ed25519" ]; then
-    echo "${SSH_PROXY_STATE_DIR}/clients/${username}/id_ed25519"
-    return 0
-  fi
-
-  if [ -f "${SSH_PROXY_STATE_DIR}/clients/${username}/id_rsa_singbox" ]; then
-    echo "${SSH_PROXY_STATE_DIR}/clients/${username}/id_rsa_singbox"
-    return 0
-  fi
-
-  return 1
-}
-
-read_key_content() {
-  local key_path="$1"
-  if [ ! -f "${key_path}" ]; then
-    return 1
-  fi
-  cat "${key_path}"
-}
-
 main() {
   local username=""
   local server_ip=""
   local port=""
-  local key_path=""
-  local key_content=""
+  local password=""
   local out_dir=""
   local out_file=""
 
@@ -118,16 +86,9 @@ main() {
     exit 1
   fi
 
-  if ! key_path="$(resolve_key_path "${username}")"; then
-    echo "Private key file not found for ${username}." >&2
-    if [ -d "${SSH_PROXY_STATE_DIR}/clients/${username}" ]; then
-      echo "Available files in ${SSH_PROXY_STATE_DIR}/clients/${username}:" >&2
-      ls -la "${SSH_PROXY_STATE_DIR}/clients/${username}" >&2 || true
-    fi
-    exit 1
-  fi
-  if ! key_content="$(read_key_content "${key_path}")"; then
-    echo "Failed to read private key file: ${key_path}" >&2
+  password="$(read_user_meta "${username}" "password")"
+  if [ -z "${password}" ]; then
+    echo "Password is not stored for user '${username}'. Recreate the user via menu option 2." >&2
     exit 1
   fi
 
@@ -139,37 +100,24 @@ main() {
 SSH Proxy Simple Credentials
 ============================
 username: ${username}
+password: ${password}
 server_ip: ${server_ip}
 server_port: ${port}
-private_key_file: ${key_path}
-private_key_raw:
-${key_content}
-
-SSH SOCKS command (desktop):
-ssh -N -D 127.0.0.1:1080 -i ${key_path} -p ${port} ${username}@${server_ip} -o IdentitiesOnly=yes
-
-SSH local-forward test:
-ssh -N -L 18080:example.com:80 -i ${key_path} -p ${port} ${username}@${server_ip} -o IdentitiesOnly=yes
 
 Notes:
-- Enable these menu options for server-side routing policy:
+- This account is proxy-only (interactive shell login disabled).
+- Enable these menu options for server-side policy:
   - Enable WARP on SSH
   - Enable server DNS routing on SSH
-- Keep private key secret.
 TXT
   chmod 600 "${out_file}"
 
   echo "Generated: ${out_file}"
   echo
   echo "Username: ${username}"
+  echo "Password: ${password}"
   echo "Server IP: ${server_ip}"
   echo "Port: ${port}"
-  echo "Private key file: ${key_path}"
-  echo
-  echo "${key_content}"
-  echo
-  echo "Quick connect command:"
-  echo "ssh -N -D 127.0.0.1:1080 -i ${key_path} -p ${port} ${username}@${server_ip} -o IdentitiesOnly=yes"
 }
 
 main "$@"

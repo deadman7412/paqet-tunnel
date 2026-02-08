@@ -5,6 +5,8 @@ SSH_PROXY_STATE_DIR="${SSH_PROXY_STATE_DIR:-/etc/paqet-ssh-proxy}"
 SSH_PROXY_USERS_DIR="${SSH_PROXY_STATE_DIR}/users"
 SSH_PROXY_SETTINGS_FILE="${SSH_PROXY_STATE_DIR}/settings.env"
 SSH_PROXY_PORT_CONF="/etc/ssh/sshd_config.d/paqet-ssh-proxy.conf"
+SSH_PROXY_GROUP="paqet-ssh-proxy"
+SSH_PROXY_POLICY_CONF="/etc/ssh/sshd_config.d/paqet-ssh-proxy-users.conf"
 
 ssh_proxy_require_root() {
   if [ "$(id -u)" -ne 0 ]; then
@@ -21,6 +23,43 @@ ssh_proxy_get_configured_port() {
   if [ -f "${SSH_PROXY_SETTINGS_FILE}" ]; then
     awk -F= '/^proxy_port=/{print $2; exit}' "${SSH_PROXY_SETTINGS_FILE}" 2>/dev/null || true
   fi
+}
+
+ssh_proxy_detect_nologin_shell() {
+  if [ -x /usr/sbin/nologin ]; then
+    echo "/usr/sbin/nologin"
+    return 0
+  fi
+  if [ -x /sbin/nologin ]; then
+    echo "/sbin/nologin"
+    return 0
+  fi
+  echo "/bin/false"
+}
+
+ssh_proxy_ensure_group() {
+  if getent group "${SSH_PROXY_GROUP}" >/dev/null 2>&1; then
+    return 0
+  fi
+  groupadd --system "${SSH_PROXY_GROUP}" >/dev/null 2>&1 || groupadd "${SSH_PROXY_GROUP}" >/dev/null 2>&1 || true
+}
+
+ssh_proxy_ensure_sshd_user_policy() {
+  mkdir -p "$(dirname "${SSH_PROXY_POLICY_CONF}")"
+  cat > "${SSH_PROXY_POLICY_CONF}" <<CONF
+# Managed by paqet SSH proxy
+Match Group ${SSH_PROXY_GROUP}
+  PasswordAuthentication yes
+  KbdInteractiveAuthentication no
+  PubkeyAuthentication no
+  PermitTTY no
+  X11Forwarding no
+  AllowAgentForwarding no
+  PermitUserEnvironment no
+  AllowTcpForwarding yes
+  GatewayPorts no
+  PermitTunnel no
+CONF
 }
 
 ssh_proxy_list_usernames() {

@@ -452,14 +452,13 @@ ssh_proxy_menu() {
     echo -e "${GREEN}2)${NC} Create SSH proxy user"
     echo -e "${GREEN}3)${NC} Remove SSH proxy user"
     echo -e "${GREEN}4)${NC} List SSH proxy users"
-    echo -e "${GREEN}5)${NC} Generate sing-box client config"
-    echo -e "${GREEN}6)${NC} Generate simple SSH credentials"
-    echo -e "${GREEN}7)${NC} Enable SSH firewall rules"
-    echo -e "${GREEN}8)${NC} Disable SSH firewall rules"
-    echo -e "${GREEN}9)${NC} Enable WARP on SSH"
-    echo -e "${GREEN}10)${NC} Disable WARP on SSH"
-    echo -e "${GREEN}11)${NC} Enable server DNS routing on SSH"
-    echo -e "${GREEN}12)${NC} Disable server DNS routing on SSH"
+    echo -e "${GREEN}5)${NC} Show simple SSH credentials"
+    echo -e "${GREEN}6)${NC} Enable SSH firewall rules"
+    echo -e "${GREEN}7)${NC} Disable SSH firewall rules"
+    echo -e "${GREEN}8)${NC} Enable WARP on SSH"
+    echo -e "${GREEN}9)${NC} Disable WARP on SSH"
+    echo -e "${GREEN}10)${NC} Enable server DNS routing on SSH"
+    echo -e "${GREEN}11)${NC} Disable server DNS routing on SSH"
     echo
     echo
     echo -e "${GREEN}0)${NC} Back to main menu"
@@ -500,14 +499,6 @@ ssh_proxy_menu() {
         pause
         ;;
       5)
-        if [ -x "${SCRIPTS_DIR}/ssh_proxy_create_singbox_config.sh" ]; then
-          run_action "${SCRIPTS_DIR}/ssh_proxy_create_singbox_config.sh"
-        else
-          echo -e "${YELLOW}Not implemented yet:${NC} ${SCRIPTS_DIR}/ssh_proxy_create_singbox_config.sh"
-        fi
-        pause
-        ;;
-      6)
         if [ -x "${SCRIPTS_DIR}/ssh_proxy_create_simple_credentials.sh" ]; then
           run_action "${SCRIPTS_DIR}/ssh_proxy_create_simple_credentials.sh"
         else
@@ -515,7 +506,7 @@ ssh_proxy_menu() {
         fi
         pause
         ;;
-      7)
+      6)
         if [ -x "${SCRIPTS_DIR}/ssh_proxy_enable_firewall.sh" ]; then
           run_action "${SCRIPTS_DIR}/ssh_proxy_enable_firewall.sh"
         else
@@ -523,7 +514,7 @@ ssh_proxy_menu() {
         fi
         pause
         ;;
-      8)
+      7)
         if [ -x "${SCRIPTS_DIR}/ssh_proxy_disable_firewall.sh" ]; then
           run_action "${SCRIPTS_DIR}/ssh_proxy_disable_firewall.sh"
         else
@@ -531,7 +522,7 @@ ssh_proxy_menu() {
         fi
         pause
         ;;
-      9)
+      8)
         if [ -x "${SCRIPTS_DIR}/ssh_proxy_enable_warp.sh" ]; then
           run_action "${SCRIPTS_DIR}/ssh_proxy_enable_warp.sh"
         else
@@ -539,7 +530,7 @@ ssh_proxy_menu() {
         fi
         pause
         ;;
-      10)
+      9)
         if [ -x "${SCRIPTS_DIR}/ssh_proxy_disable_warp.sh" ]; then
           run_action "${SCRIPTS_DIR}/ssh_proxy_disable_warp.sh"
         else
@@ -547,7 +538,7 @@ ssh_proxy_menu() {
         fi
         pause
         ;;
-      11)
+      10)
         if [ -x "${SCRIPTS_DIR}/ssh_proxy_enable_dns_routing.sh" ]; then
           run_action "${SCRIPTS_DIR}/ssh_proxy_enable_dns_routing.sh"
         else
@@ -555,7 +546,7 @@ ssh_proxy_menu() {
         fi
         pause
         ;;
-      12)
+      11)
         if [ -x "${SCRIPTS_DIR}/ssh_proxy_disable_dns_routing.sh" ]; then
           run_action "${SCRIPTS_DIR}/ssh_proxy_disable_dns_routing.sh"
         else

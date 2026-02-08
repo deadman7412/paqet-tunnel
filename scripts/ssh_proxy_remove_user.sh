@@ -19,16 +19,27 @@ confirm() {
 remove_user_account() {
   local username="$1"
   local remove_home="$2"
+  local uid=""
 
   if ! id -u "${username}" >/dev/null 2>&1; then
     echo "System user not found: ${username}"
     return 0
   fi
 
+  uid="$(id -u "${username}")"
+  # Ensure account is removable even if active SSH/proxy sessions exist.
+  pkill -KILL -u "${uid}" >/dev/null 2>&1 || true
+  sleep 1
+
   if [ "${remove_home}" = "yes" ]; then
-    userdel -r "${username}" >/dev/null 2>&1 || userdel "${username}"
+    userdel -r -f "${username}" >/dev/null 2>&1 || userdel -r "${username}" >/dev/null 2>&1 || userdel -f "${username}" >/dev/null 2>&1 || userdel "${username}"
   else
-    userdel "${username}"
+    userdel -f "${username}" >/dev/null 2>&1 || userdel "${username}"
+  fi
+
+  if id -u "${username}" >/dev/null 2>&1; then
+    echo "Failed to remove system user: ${username}" >&2
+    return 1
   fi
 
   echo "Removed system user: ${username}"
@@ -38,6 +49,7 @@ remove_user_meta() {
   local username="$1"
   local meta_file="${SSH_PROXY_USERS_DIR}/${username}.env"
   local meta_json_file="${SSH_PROXY_USERS_DIR}/${username}.json"
+  local client_dir="${SSH_PROXY_STATE_DIR}/clients/${username}"
 
   if [ -f "${meta_file}" ]; then
     rm -f "${meta_file}"
@@ -46,6 +58,10 @@ remove_user_meta() {
   if [ -f "${meta_json_file}" ]; then
     rm -f "${meta_json_file}"
     echo "Removed user metadata: ${meta_json_file}"
+  fi
+  if [ -d "${client_dir}" ]; then
+    rm -rf "${client_dir}"
+    echo "Removed user client data: ${client_dir}"
   fi
 }
 
@@ -69,7 +85,7 @@ main() {
     exit 1
   fi
 
-  if ! id -u "${username}" >/dev/null 2>&1 && [ ! -f "${SSH_PROXY_USERS_DIR}/${username}.env" ]; then
+  if ! id -u "${username}" >/dev/null 2>&1 && [ ! -f "${SSH_PROXY_USERS_DIR}/${username}.env" ] && [ ! -f "${SSH_PROXY_USERS_DIR}/${username}.json" ]; then
     echo "No such SSH proxy user in system or metadata: ${username}" >&2
     exit 1
   fi

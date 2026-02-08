@@ -23,7 +23,7 @@ This repo contains a menu‑driven setup for installing, configuring, and operat
 - **Proxy support:** Built-in `proxychains4` install and auto-configuration for Paqet SOCKS
 - **Network controls:** UFW + iptables helpers and networking stack repair actions
 - **WARP routing:** Optional Cloudflare WARP policy routing with status/tests
-- **SSH proxy mode:** Managed SSH proxy users, sing-box config generation, and explicit firewall/WARP/DNS toggles
+- **SSH proxy mode:** Managed SSH proxy users (password auth), simple credentials output, and explicit firewall/WARP/DNS toggles
 - **Diagnostics:** Built-in connection tests, WARP tests, and server info tools
 
 ## Quick Start
@@ -186,7 +186,7 @@ The installer always uses `~/paqet` regardless of the current directory.
 - **Update Scripts (git pull)**: Updates this repo on the VPS.
 - **Server configuration**: Server setup (config, iptables, systemd, service control, restart scheduler, show server info).
 - **Client configuration**: Client setup (config, systemd, service control, restart scheduler, test connection).
-- **SSH proxy**: Manage SSH proxy port/users and generate sing-box client profiles.
+- **SSH proxy**: Manage SSH proxy port/users and show simple credentials for raw SSH clients.
   - Read full guide: `docs/ssh_proxy_docs.md`
 - **Uninstall Paqet**: Removes paqet files, services, cron jobs, and optionally reboots.
 
