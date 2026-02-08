@@ -214,6 +214,25 @@ ssh_proxy_reload_service() {
   return 0
 }
 
+ssh_proxy_wait_for_port_listen() {
+  local port="$1"
+  local try=0
+
+  if ! command -v ss >/dev/null 2>&1; then
+    return 0
+  fi
+
+  while [ "${try}" -lt 10 ]; do
+    if ss -ltn 2>/dev/null | awk '{print $4}' | grep -qE "(^|:)${port}$"; then
+      return 0
+    fi
+    sleep 1
+    try=$((try + 1))
+  done
+
+  return 1
+}
+
 ssh_proxy_remove_ufw_port_if_active() {
   local port="$1"
   local -a rules=()
@@ -276,6 +295,18 @@ ssh_proxy_apply_port() {
 
   if ! ssh_proxy_reload_service; then
     echo "Failed to reload ssh service. Rolling back." >&2
+    if [ -n "${backup}" ] && [ -f "${backup}" ]; then
+      cp -f "${backup}" "${SSH_PROXY_PORT_CONF}"
+    else
+      rm -f "${SSH_PROXY_PORT_CONF}"
+    fi
+    sshd -t >/dev/null 2>&1 || true
+    ssh_proxy_reload_service >/dev/null 2>&1 || true
+    return 1
+  fi
+
+  if ! ssh_proxy_wait_for_port_listen "${new_port}"; then
+    echo "SSH is not listening on ${new_port} after reload. Rolling back." >&2
     if [ -n "${backup}" ] && [ -f "${backup}" ]; then
       cp -f "${backup}" "${SSH_PROXY_PORT_CONF}"
     else

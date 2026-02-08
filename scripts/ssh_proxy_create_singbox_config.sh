@@ -64,9 +64,9 @@ show_terminal_qr_from_config() {
 
   echo
   echo "Terminal QR (config payload):"
-  if ! qrencode -t ANSIUTF8 "${payload}"; then
+  if ! qrencode -t UTF8 -l L -m 0 "${payload}"; then
     echo "Config is too large for a single QR payload."
-    echo "Use remote profile URL mode instead."
+    echo "Use file import (sing-box.json) or remote profile URL mode."
   fi
 }
 
@@ -257,7 +257,7 @@ main() {
   local private_key_path=""
   local private_key_content=""
   local local_port="2080"
-  local rule_set_detour="ssh-out"
+  local rule_set_detour="direct"
   local out_dir=""
   local out_file=""
 
