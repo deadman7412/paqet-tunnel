@@ -442,6 +442,129 @@ client_menu() {
   done
 }
 
+ssh_proxy_menu() {
+  while true; do
+    clear
+    banner
+    echo -e "${BLUE}SSH Proxy${NC}"
+    echo "---------"
+    echo -e "${GREEN}1)${NC} Manage SSH proxy port"
+    echo -e "${GREEN}2)${NC} Create SSH proxy user"
+    echo -e "${GREEN}3)${NC} Remove SSH proxy user"
+    echo -e "${GREEN}4)${NC} List SSH proxy users"
+    echo -e "${GREEN}5)${NC} Generate sing-box client config"
+    echo -e "${GREEN}6)${NC} Enable SSH firewall rules"
+    echo -e "${GREEN}7)${NC} Disable SSH firewall rules"
+    echo -e "${GREEN}8)${NC} Enable WARP on SSH"
+    echo -e "${GREEN}9)${NC} Disable WARP on SSH"
+    echo -e "${GREEN}10)${NC} Enable server DNS routing on SSH"
+    echo -e "${GREEN}11)${NC} Disable server DNS routing on SSH"
+    echo
+    echo
+    echo -e "${GREEN}0)${NC} Back to main menu"
+    echo
+    read -r -p "Select an option: " choice
+
+    case "${choice}" in
+      1)
+        if [ -x "${SCRIPTS_DIR}/ssh_proxy_manage_port.sh" ]; then
+          run_action "${SCRIPTS_DIR}/ssh_proxy_manage_port.sh"
+        else
+          echo -e "${YELLOW}Not implemented yet:${NC} ${SCRIPTS_DIR}/ssh_proxy_manage_port.sh"
+        fi
+        pause
+        ;;
+      2)
+        if [ -x "${SCRIPTS_DIR}/ssh_proxy_create_user.sh" ]; then
+          run_action "${SCRIPTS_DIR}/ssh_proxy_create_user.sh"
+        else
+          echo -e "${YELLOW}Not implemented yet:${NC} ${SCRIPTS_DIR}/ssh_proxy_create_user.sh"
+        fi
+        pause
+        ;;
+      3)
+        if [ -x "${SCRIPTS_DIR}/ssh_proxy_remove_user.sh" ]; then
+          run_action "${SCRIPTS_DIR}/ssh_proxy_remove_user.sh"
+        else
+          echo -e "${YELLOW}Not implemented yet:${NC} ${SCRIPTS_DIR}/ssh_proxy_remove_user.sh"
+        fi
+        pause
+        ;;
+      4)
+        if [ -x "${SCRIPTS_DIR}/ssh_proxy_list_users.sh" ]; then
+          run_action "${SCRIPTS_DIR}/ssh_proxy_list_users.sh"
+        else
+          echo -e "${YELLOW}Not implemented yet:${NC} ${SCRIPTS_DIR}/ssh_proxy_list_users.sh"
+        fi
+        pause
+        ;;
+      5)
+        if [ -x "${SCRIPTS_DIR}/ssh_proxy_create_singbox_config.sh" ]; then
+          run_action "${SCRIPTS_DIR}/ssh_proxy_create_singbox_config.sh"
+        else
+          echo -e "${YELLOW}Not implemented yet:${NC} ${SCRIPTS_DIR}/ssh_proxy_create_singbox_config.sh"
+        fi
+        pause
+        ;;
+      6)
+        if [ -x "${SCRIPTS_DIR}/ssh_proxy_enable_firewall.sh" ]; then
+          run_action "${SCRIPTS_DIR}/ssh_proxy_enable_firewall.sh"
+        else
+          echo -e "${YELLOW}Not implemented yet:${NC} ${SCRIPTS_DIR}/ssh_proxy_enable_firewall.sh"
+        fi
+        pause
+        ;;
+      7)
+        if [ -x "${SCRIPTS_DIR}/ssh_proxy_disable_firewall.sh" ]; then
+          run_action "${SCRIPTS_DIR}/ssh_proxy_disable_firewall.sh"
+        else
+          echo -e "${YELLOW}Not implemented yet:${NC} ${SCRIPTS_DIR}/ssh_proxy_disable_firewall.sh"
+        fi
+        pause
+        ;;
+      8)
+        if [ -x "${SCRIPTS_DIR}/ssh_proxy_enable_warp.sh" ]; then
+          run_action "${SCRIPTS_DIR}/ssh_proxy_enable_warp.sh"
+        else
+          echo -e "${YELLOW}Not implemented yet:${NC} ${SCRIPTS_DIR}/ssh_proxy_enable_warp.sh"
+        fi
+        pause
+        ;;
+      9)
+        if [ -x "${SCRIPTS_DIR}/ssh_proxy_disable_warp.sh" ]; then
+          run_action "${SCRIPTS_DIR}/ssh_proxy_disable_warp.sh"
+        else
+          echo -e "${YELLOW}Not implemented yet:${NC} ${SCRIPTS_DIR}/ssh_proxy_disable_warp.sh"
+        fi
+        pause
+        ;;
+      10)
+        if [ -x "${SCRIPTS_DIR}/ssh_proxy_enable_dns_routing.sh" ]; then
+          run_action "${SCRIPTS_DIR}/ssh_proxy_enable_dns_routing.sh"
+        else
+          echo -e "${YELLOW}Not implemented yet:${NC} ${SCRIPTS_DIR}/ssh_proxy_enable_dns_routing.sh"
+        fi
+        pause
+        ;;
+      11)
+        if [ -x "${SCRIPTS_DIR}/ssh_proxy_disable_dns_routing.sh" ]; then
+          run_action "${SCRIPTS_DIR}/ssh_proxy_disable_dns_routing.sh"
+        else
+          echo -e "${YELLOW}Not implemented yet:${NC} ${SCRIPTS_DIR}/ssh_proxy_disable_dns_routing.sh"
+        fi
+        pause
+        ;;
+      0)
+        return 0
+        ;;
+      *)
+        echo -e "${RED}Invalid option:${NC} ${choice}" >&2
+        pause
+        ;;
+    esac
+  done
+}
+
   while true; do
     clear
     banner
@@ -464,7 +587,8 @@ client_menu() {
     echo -e "${GREEN}3)${NC} Update Scripts (git pull)"
     echo -e "${GREEN}4)${NC} Server configuration"
     echo -e "${GREEN}5)${NC} Client configuration"
-    echo -e "${GREEN}6)${NC} Uninstall Paqet"
+    echo -e "${GREEN}6)${NC} SSH proxy"
+    echo -e "${GREEN}7)${NC} Uninstall Paqet"
     echo
     echo
     echo -e "${GREEN}0)${NC} Exit"
@@ -503,6 +627,9 @@ client_menu() {
         client_menu
         ;;
       6)
+        ssh_proxy_menu
+        ;;
+      7)
         if [ -x "${SCRIPTS_DIR}/uninstall_paqet.sh" ]; then
           run_action "${SCRIPTS_DIR}/uninstall_paqet.sh"
         else
