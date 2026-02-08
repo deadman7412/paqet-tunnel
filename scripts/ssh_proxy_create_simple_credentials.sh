@@ -142,7 +142,7 @@ username: ${username}
 server_ip: ${server_ip}
 server_port: ${port}
 private_key_file: ${key_path}
-private_key:
+private_key_raw:
 ${key_content}
 
 SSH SOCKS command (desktop):
@@ -166,9 +166,7 @@ TXT
   echo "Port: ${port}"
   echo "Private key file: ${key_path}"
   echo
-  echo "-----BEGIN PRIVATE KEY FOR COPY-----"
   echo "${key_content}"
-  echo "-----END PRIVATE KEY FOR COPY-----"
   echo
   echo "Quick connect command:"
   echo "ssh -N -D 127.0.0.1:1080 -i ${key_path} -p ${port} ${username}@${server_ip} -o IdentitiesOnly=yes"
