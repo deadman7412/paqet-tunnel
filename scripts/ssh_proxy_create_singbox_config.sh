@@ -189,7 +189,7 @@ write_config() {
   local username="$4"
   local private_key_content="$5"
   local local_port="$6"
-  local _rule_set_detour="$7"
+  local rule_set_detour="$7"
 
   cat > "${out_file}" <<JSON
 {
@@ -206,6 +206,39 @@ write_config() {
     }
   ],
   "route": {
+    "rule_set": [
+      {
+        "tag": "iran-geosite-ads",
+        "type": "remote",
+        "format": "binary",
+        "download_detour": "${rule_set_detour}",
+        "update_interval": "7d",
+        "url": "https://github.com/bootmortis/sing-geosite/releases/latest/download/geosite-ads.srs"
+      },
+      {
+        "tag": "iran-geosite-all",
+        "type": "remote",
+        "format": "binary",
+        "download_detour": "${rule_set_detour}",
+        "update_interval": "7d",
+        "url": "https://github.com/bootmortis/sing-geosite/releases/latest/download/geosite-all.srs"
+      }
+    ],
+    "rules": [
+      {
+        "rule_set": [
+          "iran-geosite-ads"
+        ],
+        "action": "reject"
+      },
+      {
+        "rule_set": [
+          "iran-geosite-all"
+        ],
+        "action": "route",
+        "outbound": "direct"
+      }
+    ],
     "final": "ssh-out"
   },
   "outbounds": [
@@ -216,6 +249,10 @@ write_config() {
       "server_port": ${server_port},
       "user": "${username}",
       "private_key": "${private_key_content}"
+    },
+    {
+      "type": "direct",
+      "tag": "direct"
     }
   ]
 }
@@ -279,7 +316,7 @@ main() {
   echo "Generated: ${out_file}"
   echo "Server: ${server}:${server_port} (locked)"
   echo "Local mixed inbound port: ${local_port} (locked)"
-  echo "Mode: all traffic via ssh-out (locked)"
+  echo "Mode: ads=blocked, iran=direct, everything else=ssh-out (locked)"
   generate_png_qr_from_config "${out_file}" "${out_qr_png}" || true
   echo
   echo "If you are on a remote terminal, download files to your local device:"
