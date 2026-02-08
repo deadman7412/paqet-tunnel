@@ -9,6 +9,28 @@ is_valid_username() {
   [[ "$1" =~ ^[a-z_][a-z0-9_-]{2,31}$ ]]
 }
 
+read_default_server_ip() {
+  local info_file="${PAQET_DIR}/server_info.txt"
+  local server_ip=""
+
+  if [ -f "${info_file}" ]; then
+    server_ip="$(awk -F= '/^server_public_ip=/{print $2; exit}' "${info_file}" 2>/dev/null || true)"
+    if [ "${server_ip}" = "REPLACE_WITH_SERVER_PUBLIC_IP" ]; then
+      server_ip=""
+    fi
+  fi
+
+  if [ -z "${server_ip}" ] && command -v curl >/dev/null 2>&1; then
+    server_ip="$(curl -fsS --connect-timeout 3 --max-time 5 https://api.ipify.org 2>/dev/null || true)"
+  fi
+
+  if [ -z "${server_ip}" ]; then
+    server_ip="<SERVER_IP>"
+  fi
+
+  echo "${server_ip}"
+}
+
 create_proxy_user() {
   local username="$1"
   local proxy_port="$2"
@@ -128,6 +150,7 @@ main() {
   local private_key_file=""
   local public_key_file=""
   local pubkey=""
+  local server_ip=""
 
   ssh_proxy_require_root
 
@@ -154,6 +177,7 @@ main() {
   pubkey="$(cat "${public_key_file}")"
 
   create_proxy_user "${username}" "${proxy_port}" "${pubkey}" "${private_key_file}" "${public_key_file}"
+  server_ip="$(read_default_server_ip)"
 
   echo
   echo "Generated key files:"
@@ -161,7 +185,7 @@ main() {
   echo "  Public key:  ${public_key_file}"
   echo
   echo "Connection example:"
-  echo "  ssh -N -D 127.0.0.1:1081 ${username}@<SERVER_IP> -p ${proxy_port}"
+  echo "  ssh -N -D 127.0.0.1:1081 ${username}@${server_ip} -p ${proxy_port}"
 }
 
 main "$@"

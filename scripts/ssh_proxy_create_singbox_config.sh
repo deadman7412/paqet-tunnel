@@ -20,48 +20,33 @@ url_encode() {
   echo "${out}"
 }
 
-generate_qr_if_requested() {
-  local out_dir="$1"
-  local profile_name="$2"
-  local remote_url="$3"
-  local encoded_url=""
-  local encoded_name=""
-  local import_link=""
-  local qr_png=""
-
-  if [ -z "${remote_url}" ]; then
+ensure_qrencode() {
+  if command -v qrencode >/dev/null 2>&1; then
     return 0
   fi
 
-  encoded_url="$(url_encode "${remote_url}")"
-  encoded_name="$(url_encode "${profile_name}")"
-  import_link="sing-box://import-remote-profile?url=${encoded_url}#${encoded_name}"
-  qr_png="${out_dir}/sing-box-import-qr.png"
-
-  echo
-  echo "Remote import link:"
-  echo "${import_link}"
-
-  if ! command -v qrencode >/dev/null 2>&1; then
-    echo "qrencode not found; skipping QR image generation."
-    echo "Install hint: apt-get install -y qrencode"
-    return 0
+  echo "qrencode not found. Installing..."
+  if command -v apt-get >/dev/null 2>&1; then
+    apt-get update -y
+    DEBIAN_FRONTEND=noninteractive apt-get install -y qrencode
+  elif command -v dnf >/dev/null 2>&1; then
+    dnf install -y qrencode
+  elif command -v yum >/dev/null 2>&1; then
+    yum install -y qrencode
+  else
+    echo "No supported package manager found to install qrencode." >&2
+    return 1
   fi
 
-  qrencode -o "${qr_png}" -s 8 -m 2 "${import_link}"
-  echo "Saved QR PNG: ${qr_png}"
-  echo
-  echo "Terminal QR preview:"
-  qrencode -t ANSIUTF8 "${import_link}" || true
+  command -v qrencode >/dev/null 2>&1
 }
 
 show_terminal_qr_from_config() {
   local config_file="$1"
   local payload=""
 
-  if ! command -v qrencode >/dev/null 2>&1; then
-    echo "qrencode not found; cannot show terminal QR."
-    echo "Install hint: apt-get install -y qrencode"
+  if ! ensure_qrencode; then
+    echo "Could not install qrencode; skipping terminal QR." >&2
     return 0
   fi
 
@@ -171,12 +156,25 @@ read_user_private_key_default() {
   echo "${key_path}"
 }
 
+json_escape_multiline() {
+  awk '
+    BEGIN { ORS=""; first=1 }
+    {
+      gsub(/\\/,"\\\\");
+      gsub(/"/,"\\\"");
+      if (!first) printf "\\n";
+      printf "%s", $0;
+      first=0
+    }
+  ' "$1"
+}
+
 write_config() {
   local out_file="$1"
   local server="$2"
   local server_port="$3"
   local username="$4"
-  local private_key_path="$5"
+  local private_key_content="$5"
   local local_port="$6"
   local rule_set_detour="$7"
 
@@ -241,7 +239,7 @@ write_config() {
       "server": "${server}",
       "server_port": ${server_port},
       "user": "${username}",
-      "private_key_path": "${private_key_path}"
+      "private_key": "${private_key_content}"
     },
     {
       "type": "direct",
@@ -257,10 +255,9 @@ main() {
   local server=""
   local server_port=""
   local private_key_path=""
-  local local_port=""
-  local rule_set_detour=""
-  local remote_url=""
-  local show_qr_now=""
+  local private_key_content=""
+  local local_port="2080"
+  local rule_set_detour="ssh-out"
   local out_dir=""
   local out_file=""
 
@@ -280,47 +277,36 @@ main() {
   fi
 
   server="$(read_default_server)"
-  read -r -p "Server address/IP [${server}]: " input_server
-  server="${input_server:-${server}}"
   if [ -z "${server}" ]; then
-    echo "Server address is required." >&2
+    echo "Server address could not be detected." >&2
+    echo "Set server_public_ip in ${PAQET_DIR}/server_info.txt and retry." >&2
     exit 1
   fi
 
   private_key_path="$(read_user_private_key_default "${username}")"
-  read -r -p "Client private key path [${private_key_path}]: " input_key_path
-  private_key_path="${input_key_path:-${private_key_path}}"
-
-  read -r -p "Local mixed inbound port [2080]: " local_port
-  local_port="${local_port:-2080}"
-  if ! ssh_proxy_is_number "${local_port}" || [ "${local_port}" -lt 1 ] || [ "${local_port}" -gt 65535 ]; then
-    echo "Local mixed inbound port must be 1-65535." >&2
+  if [ ! -f "${private_key_path}" ]; then
+    echo "Private key file not found for user '${username}': ${private_key_path}" >&2
+    echo "Create the user again or fix metadata before generating config." >&2
     exit 1
   fi
-
-  read -r -p "Rule-set download detour outbound [ssh-out]: " rule_set_detour
-  rule_set_detour="${rule_set_detour:-ssh-out}"
+  private_key_content="$(json_escape_multiline "${private_key_path}")"
+  if [ -z "${private_key_content}" ]; then
+    echo "Private key is empty: ${private_key_path}" >&2
+    exit 1
+  fi
 
   out_dir="${CLIENTS_DIR}/${username}"
   out_file="${out_dir}/sing-box.json"
   mkdir -p "${out_dir}"
 
-  write_config "${out_file}" "${server}" "${server_port}" "${username}" "${private_key_path}" "${local_port}" "${rule_set_detour}"
+  write_config "${out_file}" "${server}" "${server_port}" "${username}" "${private_key_content}" "${local_port}" "${rule_set_detour}"
   chmod 600 "${out_file}" || true
 
   echo "Generated: ${out_file}"
-  read -r -p "Show terminal QR now? [Y/n]: " show_qr_now
-  case "${show_qr_now}" in
-    n|N) ;;
-    *)
-      show_terminal_qr_from_config "${out_file}" || true
-      ;;
-  esac
-
-  read -r -p "Remote HTTPS URL for this config (optional, for import-remote-profile QR): " remote_url
-  if [ -n "${remote_url}" ]; then
-    generate_qr_if_requested "${out_dir}" "${username}-ssh-proxy" "${remote_url}"
-  fi
+  echo "Server: ${server}:${server_port} (locked)"
+  echo "Local mixed inbound port: ${local_port} (locked)"
+  echo "Rule-set detour outbound: ${rule_set_detour} (locked)"
+  show_terminal_qr_from_config "${out_file}" || true
   echo
   echo "Use this on client:"
   echo "  sing-box run -c ${out_file}"
