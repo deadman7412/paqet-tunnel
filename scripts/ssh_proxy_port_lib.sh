@@ -20,9 +20,30 @@ ssh_proxy_is_number() {
 }
 
 ssh_proxy_get_configured_port() {
+  ssh_proxy_get_setting "proxy_port"
+}
+
+ssh_proxy_get_setting() {
+  local key="$1"
   if [ -f "${SSH_PROXY_SETTINGS_FILE}" ]; then
-    awk -F= '/^proxy_port=/{print $2; exit}' "${SSH_PROXY_SETTINGS_FILE}" 2>/dev/null || true
+    awk -F= -v k="${key}" '$1==k {print $2; exit}' "${SSH_PROXY_SETTINGS_FILE}" 2>/dev/null || true
   fi
+}
+
+ssh_proxy_set_setting() {
+  local key="$1"
+  local value="$2"
+  local tmp=""
+
+  mkdir -p "${SSH_PROXY_STATE_DIR}" "${SSH_PROXY_USERS_DIR}"
+  tmp="$(mktemp)"
+
+  if [ -f "${SSH_PROXY_SETTINGS_FILE}" ]; then
+    awk -F= -v k="${key}" '$1!=k {print $0}' "${SSH_PROXY_SETTINGS_FILE}" > "${tmp}" 2>/dev/null || true
+  fi
+  echo "${key}=${value}" >> "${tmp}"
+  mv "${tmp}" "${SSH_PROXY_SETTINGS_FILE}"
+  chmod 600 "${SSH_PROXY_SETTINGS_FILE}"
 }
 
 ssh_proxy_detect_nologin_shell() {
@@ -83,12 +104,8 @@ ssh_proxy_list_usernames() {
 ssh_proxy_save_configured_port() {
   local port="$1"
 
-  mkdir -p "${SSH_PROXY_STATE_DIR}" "${SSH_PROXY_USERS_DIR}"
-  cat > "${SSH_PROXY_SETTINGS_FILE}" <<CONF
-proxy_port=${port}
-updated_at=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
-CONF
-  chmod 600 "${SSH_PROXY_SETTINGS_FILE}"
+  ssh_proxy_set_setting "proxy_port" "${port}"
+  ssh_proxy_set_setting "updated_at" "$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
 }
 
 ssh_proxy_get_all_ssh_ports() {

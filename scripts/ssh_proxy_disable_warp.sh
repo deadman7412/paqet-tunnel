@@ -37,6 +37,7 @@ main() {
     count=$((count + 1))
   done <<< "${usernames}"
 
+  ssh_proxy_set_setting "warp_enabled" "0"
   echo "Disabled WARP uid rules for ${count} SSH proxy user(s)."
 }
 

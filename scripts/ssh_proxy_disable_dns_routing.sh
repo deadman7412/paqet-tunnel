@@ -56,6 +56,7 @@ main() {
   done <<< "${usernames}"
 
   persist_firewall
+  ssh_proxy_set_setting "dns_enabled" "0"
   echo "Disabled server DNS routing for ${count} SSH proxy user(s)."
 }
 

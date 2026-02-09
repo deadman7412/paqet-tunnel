@@ -9,12 +9,64 @@ is_valid_username() {
   [[ "$1" =~ ^[a-z_][a-z0-9_-]{2,31}$ ]]
 }
 
+TABLE_ID=51820
+DNS_PORT=5353
+DNS_RULE_COMMENT="paqet-ssh-proxy-dns"
+
 generate_password() {
   if command -v openssl >/dev/null 2>&1; then
     openssl rand -base64 18 | tr -d '\n' | tr '/+' 'AZ' | cut -c1-20
     return
   fi
   tr -dc 'A-Za-z0-9' </dev/urandom | head -c 20
+}
+
+auto_apply_warp_for_user() {
+  local username="$1"
+  local uid=""
+
+  if [ "$(ssh_proxy_get_setting "warp_enabled")" != "1" ]; then
+    return 0
+  fi
+  if ! id -u "${username}" >/dev/null 2>&1; then
+    return 1
+  fi
+  if ! ip link show wgcf >/dev/null 2>&1; then
+    echo "Warning: WARP is marked enabled but wgcf interface not found; skipped for ${username}." >&2
+    return 0
+  fi
+
+  uid="$(id -u "${username}")"
+  if ! ip rule show | grep -Eq "uidrange ${uid}-${uid}.*lookup (${TABLE_ID}|wgcf)"; then
+    ip rule add uidrange "${uid}-${uid}" table ${TABLE_ID} 2>/dev/null || ip rule add uidrange "${uid}-${uid}" table wgcf 2>/dev/null || {
+      echo "Warning: failed to add WARP uid rule for ${username}." >&2
+      return 0
+    }
+  fi
+  echo "Auto-applied WARP routing for ${username}."
+}
+
+auto_apply_dns_for_user() {
+  local username="$1"
+  local uid=""
+
+  if [ "$(ssh_proxy_get_setting "dns_enabled")" != "1" ]; then
+    return 0
+  fi
+  if ! id -u "${username}" >/dev/null 2>&1; then
+    return 1
+  fi
+  if ! systemctl is-active --quiet dnsmasq 2>/dev/null; then
+    echo "Warning: DNS routing is marked enabled but dnsmasq is not active; skipped for ${username}." >&2
+    return 0
+  fi
+
+  uid="$(id -u "${username}")"
+  while iptables -t nat -D OUTPUT -m owner --uid-owner "${uid}" -p udp --dport 53 -m comment --comment "${DNS_RULE_COMMENT}" -j REDIRECT --to-ports "${DNS_PORT}" 2>/dev/null; do :; done
+  while iptables -t nat -D OUTPUT -m owner --uid-owner "${uid}" -p tcp --dport 53 -m comment --comment "${DNS_RULE_COMMENT}" -j REDIRECT --to-ports "${DNS_PORT}" 2>/dev/null; do :; done
+  iptables -t nat -A OUTPUT -m owner --uid-owner "${uid}" -p udp --dport 53 -m comment --comment "${DNS_RULE_COMMENT}" -j REDIRECT --to-ports "${DNS_PORT}" || true
+  iptables -t nat -A OUTPUT -m owner --uid-owner "${uid}" -p tcp --dport 53 -m comment --comment "${DNS_RULE_COMMENT}" -j REDIRECT --to-ports "${DNS_PORT}" || true
+  echo "Auto-applied DNS routing for ${username}."
 }
 
 read_default_server_ip() {
@@ -156,6 +208,8 @@ main() {
   ssh_proxy_reload_service
 
   create_proxy_user "${username}" "${proxy_port}" "${password}" "${nologin_shell}"
+  auto_apply_warp_for_user "${username}" || true
+  auto_apply_dns_for_user "${username}" || true
   server_ip="$(read_default_server_ip)"
 
   echo
