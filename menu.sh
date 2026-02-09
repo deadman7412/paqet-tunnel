@@ -68,6 +68,77 @@ run_action() {
   fi
 }
 
+policy_core_menu() {
+  while true; do
+    clear
+    banner
+    echo -e "${BLUE}WARP/DNS Core${NC}"
+    echo "-------------"
+    echo -e "${GREEN}1)${NC} Install WARP core (wgcf)"
+    echo -e "${GREEN}2)${NC} Uninstall WARP core (wgcf)"
+    echo -e "${GREEN}3)${NC} Install DNS policy core"
+    echo -e "${GREEN}4)${NC} Uninstall DNS policy core"
+    echo -e "${GREEN}5)${NC} Reconcile server/SSH policy bindings"
+    echo
+    echo
+    echo -e "${GREEN}0)${NC} Back to main menu"
+    echo
+    read -r -p "Select an option: " choice
+
+    case "${choice}" in
+      1)
+        if [ -x "${SCRIPTS_DIR}/warp_core_install.sh" ]; then
+          run_action "${SCRIPTS_DIR}/warp_core_install.sh"
+        else
+          echo -e "${RED}Script not found or not executable:${NC} ${SCRIPTS_DIR}/warp_core_install.sh" >&2
+        fi
+        pause
+        ;;
+      2)
+        if [ -x "${SCRIPTS_DIR}/warp_core_uninstall.sh" ]; then
+          run_action "${SCRIPTS_DIR}/warp_core_uninstall.sh"
+        else
+          echo -e "${RED}Script not found or not executable:${NC} ${SCRIPTS_DIR}/warp_core_uninstall.sh" >&2
+        fi
+        pause
+        ;;
+      3)
+        if [ -x "${SCRIPTS_DIR}/dns_policy_core_install.sh" ]; then
+          read -r -p "DNS category [ads/all/proxy] (default ads): " dns_category
+          dns_category="${dns_category:-ads}"
+          run_action "${SCRIPTS_DIR}/dns_policy_core_install.sh" "${dns_category}"
+        else
+          echo -e "${RED}Script not found or not executable:${NC} ${SCRIPTS_DIR}/dns_policy_core_install.sh" >&2
+        fi
+        pause
+        ;;
+      4)
+        if [ -x "${SCRIPTS_DIR}/dns_policy_core_uninstall.sh" ]; then
+          run_action "${SCRIPTS_DIR}/dns_policy_core_uninstall.sh"
+        else
+          echo -e "${RED}Script not found or not executable:${NC} ${SCRIPTS_DIR}/dns_policy_core_uninstall.sh" >&2
+        fi
+        pause
+        ;;
+      5)
+        if [ -x "${SCRIPTS_DIR}/reconcile_policy_bindings.sh" ]; then
+          run_action "${SCRIPTS_DIR}/reconcile_policy_bindings.sh" all
+        else
+          echo -e "${RED}Script not found or not executable:${NC} ${SCRIPTS_DIR}/reconcile_policy_bindings.sh" >&2
+        fi
+        pause
+        ;;
+      0)
+        return 0
+        ;;
+      *)
+        echo -e "${RED}Invalid option:${NC} ${choice}" >&2
+        pause
+        ;;
+    esac
+  done
+}
+
 server_menu() {
   while true; do
     clear
@@ -85,15 +156,15 @@ server_menu() {
     echo -e "${GREEN}9)${NC} Change MTU"
     echo -e "${GREEN}10)${NC} Health check"
     echo -e "${GREEN}11)${NC} Health logs"
-    echo -e "${GREEN}12)${NC} Enable WARP (policy routing)"
-    echo -e "${GREEN}13)${NC} Disable WARP (policy routing)"
+    echo -e "${GREEN}12)${NC} Enable WARP for paqet-server (bind)"
+    echo -e "${GREEN}13)${NC} Disable WARP for paqet-server (unbind)"
     echo -e "${GREEN}14)${NC} WARP status"
     echo -e "${GREEN}15)${NC} Test WARP"
     echo -e "${GREEN}16)${NC} Enable firewall (ufw)"
     echo -e "${GREEN}17)${NC} Disable firewall (ufw)"
     echo -e "${GREEN}18)${NC} Repair networking stack"
-    echo -e "${GREEN}19)${NC} Enable DNS policy blocklist"
-    echo -e "${GREEN}20)${NC} Disable DNS policy blocklist"
+    echo -e "${GREEN}19)${NC} Enable DNS policy for paqet-server (bind)"
+    echo -e "${GREEN}20)${NC} Disable DNS policy for paqet-server (unbind)"
     echo -e "${GREEN}21)${NC} Update DNS policy list now"
     echo -e "${GREEN}22)${NC} DNS policy status"
     echo -e "${GREEN}23)${NC} Show WARP config for 3x-ui"
@@ -254,9 +325,7 @@ server_menu() {
         ;;
       19)
         if [ -x "${SCRIPTS_DIR}/enable_dns_policy.sh" ]; then
-          read -r -p "DNS category [ads/all/proxy] (default ads): " dns_category
-          dns_category="${dns_category:-ads}"
-          run_action "${SCRIPTS_DIR}/enable_dns_policy.sh" "${dns_category}"
+          run_action "${SCRIPTS_DIR}/enable_dns_policy.sh"
         else
           echo -e "${RED}Script not found or not executable:${NC} ${SCRIPTS_DIR}/enable_dns_policy.sh" >&2
         fi
@@ -464,10 +533,10 @@ ssh_proxy_menu() {
     echo -e "${GREEN}5)${NC} Show simple SSH credentials"
     echo -e "${GREEN}6)${NC} Enable SSH firewall rules"
     echo -e "${GREEN}7)${NC} Disable SSH firewall rules"
-    echo -e "${GREEN}8)${NC} Enable WARP on SSH"
-    echo -e "${GREEN}9)${NC} Disable WARP on SSH"
-    echo -e "${GREEN}10)${NC} Enable server DNS routing on SSH"
-    echo -e "${GREEN}11)${NC} Disable server DNS routing on SSH"
+    echo -e "${GREEN}8)${NC} Enable WARP for SSH proxy users"
+    echo -e "${GREEN}9)${NC} Disable WARP for SSH proxy users"
+    echo -e "${GREEN}10)${NC} Enable DNS routing for SSH proxy users"
+    echo -e "${GREEN}11)${NC} Disable DNS routing for SSH proxy users"
     echo
     echo
     echo -e "${GREEN}0)${NC} Back to main menu"
@@ -598,6 +667,7 @@ ssh_proxy_menu() {
     echo -e "${GREEN}5)${NC} Client configuration"
     echo -e "${GREEN}6)${NC} SSH proxy"
     echo -e "${GREEN}7)${NC} Uninstall Paqet"
+    echo -e "${GREEN}8)${NC} WARP/DNS core"
     echo
     echo
     echo -e "${GREEN}0)${NC} Exit"
@@ -645,6 +715,9 @@ ssh_proxy_menu() {
           echo -e "${RED}Script not found or not executable:${NC} ${SCRIPTS_DIR}/uninstall_paqet.sh" >&2
         fi
         pause
+        ;;
+      8)
+        policy_core_menu
         ;;
       0)
         echo -e "${GREEN}Goodbye.${NC}"

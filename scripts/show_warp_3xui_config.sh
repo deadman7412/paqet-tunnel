@@ -23,7 +23,7 @@ get_value() {
 
 if [ ! -f "${WGCF_CONF}" ]; then
   echo "WARP config not found: ${WGCF_CONF}" >&2
-  echo "Run: Server configuration -> Enable WARP (policy routing)" >&2
+  echo "Run: Main menu -> WARP/DNS core -> Install WARP core" >&2
   exit 1
 fi
 

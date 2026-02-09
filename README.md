@@ -73,7 +73,8 @@ These steps assume **server first**, then **client**. Tested on **Ubuntu 24.04**
    - Menu → **Restart scheduler** (cron restart)
    - Menu → **Health check** (auto‑restart if needed)
 5. **Optional WARP**
-   - Menu → **Enable WARP (policy routing)**
+   - Menu → **WARP/DNS core → Install WARP core (wgcf)**
+   - Menu → **Server configuration → Enable WARP for paqet-server (bind)**
    - Menu → **Test WARP** (confirm `warp=on` for paqet traffic)
 
 ### Client (Local VPS)
@@ -188,7 +189,8 @@ The installer always uses `~/paqet` regardless of the current directory.
 - **Client configuration**: Client setup (config, systemd, service control, restart scheduler, test connection).
 - **SSH proxy**: Manage SSH proxy port/users and show simple credentials for raw SSH clients.
   - Read full guide: `docs/ssh_proxy_docs.md`
-- **Uninstall Paqet**: Removes paqet files, services, cron jobs, and optionally reboots.
+- **Uninstall Paqet**: Opens modular uninstall options (paqet, WARP core, DNS core, SSH proxy, or full uninstall).
+- **WARP/DNS core**: Install/uninstall shared WARP and DNS core components and reconcile bindings.
 
 ## Install Behavior
 
@@ -221,15 +223,15 @@ Options (same order and labels as menu):
 - **Change MTU**
 - **Health check**
 - **Health logs**
-- **Enable WARP (policy routing)**
-- **Disable WARP (policy routing)**
+- **Enable WARP for paqet-server (bind)**
+- **Disable WARP for paqet-server (unbind)**
 - **WARP status**
 - **Test WARP**
 - **Enable firewall (ufw)**
 - **Disable firewall (ufw)**
 - **Repair networking stack**
-- **Enable DNS policy blocklist**
-- **Disable DNS policy blocklist**
+- **Enable DNS policy for paqet-server (bind)**
+- **Disable DNS policy for paqet-server (unbind)**
 - **Update DNS policy list now**
 - **DNS policy status**
 - **Back to main menu**
@@ -389,6 +391,10 @@ Logs are auto‑rotated when they exceed **1MB** (current log is truncated and p
 
 ## Cloudflare WARP (Policy Routing)
 
+This project now separates WARP into:
+- **Core layer:** install/remove wgcf and interface lifecycle from `Main menu -> WARP/DNS core`
+- **Binding layer:** enable/disable routing per consumer (`Server configuration` for paqet-server, `SSH proxy` for SSH users)
+
 This is the **3x‑ui style** setup: only paqet traffic is routed through WARP, not the whole server.
 
 Features:
@@ -415,6 +421,10 @@ Note: This config uses a systemd drop‑in to run `paqet-server` as user `paqet`
 Enable WARP performs a quick verification and warns if `paqet` traffic is not using WARP.
 
 ## DNS Policy Blocklist (Server)
+
+This project now separates DNS policy into:
+- **Core layer:** install/remove dnsmasq policy resolver and blocklist updater from `Main menu -> WARP/DNS core`
+- **Binding layer:** enable/disable DNS redirect per consumer (`Server configuration` for paqet-server, `SSH proxy` for SSH users)
 
 Optional DNS policy mode for domain blocking on server side (for `paqet` traffic only).
 
@@ -480,14 +490,13 @@ From **Service control**:
 
 ## Uninstall
 
-Uninstall removes:
-- `~/paqet` directory
-- systemd services
-- cron jobs created by the menu
-- WARP files (wgcf, wgcf.conf, policy routing rules)
-- DNS policy files/rules (if enabled)
-
-Then optionally asks for **reboot**.
+Uninstall now provides selectable modes:
+- Remove paqet only
+- Remove WARP core only
+- Remove DNS core only
+- Remove SSH proxy only (keep Linux users)
+- Remove SSH proxy + all SSH proxy users
+- Full uninstall (everything, with optional reboot)
 
 ## Files Included
 
@@ -509,14 +518,19 @@ Then optionally asks for **reboot**.
 - `scripts/health_check_scheduler.sh` – health check scheduler
 - `scripts/show_health_logs.sh` – view/clear health logs
 - `scripts/health_log_rotate.sh` – rotate health logs
-- `scripts/enable_warp_policy.sh` – enable WARP policy routing (server)
-- `scripts/disable_warp_policy.sh` – disable WARP policy routing
+- `scripts/enable_warp_policy.sh` – enable WARP policy routing for server
+- `scripts/disable_warp_policy.sh` – disable WARP policy routing for server
+- `scripts/warp_core_install.sh` – install/activate WARP core (wgcf)
+- `scripts/warp_core_uninstall.sh` – uninstall/deactivate WARP core (wgcf)
 - `scripts/warp_status.sh` – show WARP status
 - `scripts/test_warp_full.sh` – full WARP diagnostics
-- `scripts/enable_dns_policy.sh` – enable DNS policy blocklist (server)
-- `scripts/disable_dns_policy.sh` – disable DNS policy blocklist
+- `scripts/enable_dns_policy.sh` – enable DNS policy binding for server traffic
+- `scripts/disable_dns_policy.sh` – disable DNS policy binding for server traffic
+- `scripts/dns_policy_core_install.sh` – install DNS policy resolver/blocklist core
+- `scripts/dns_policy_core_uninstall.sh` – uninstall DNS policy resolver/blocklist core
 - `scripts/update_dns_policy_list.sh` – refresh DNS policy list
 - `scripts/dns_policy_status.sh` – DNS policy status/details
+- `scripts/reconcile_policy_bindings.sh` – re-apply server/SSH bindings from saved settings
 - `scripts/enable_firewall.sh` – enable UFW and add rules
 - `scripts/disable_firewall.sh` – disable UFW and remove rules
 - `scripts/uninstall_paqet.sh` – full uninstall

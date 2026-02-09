@@ -23,6 +23,17 @@ Open:
 
 ## Recommended Order
 
+1. `WARP/DNS core -> Install WARP core` (optional, if you want SSH users over WARP)
+2. `WARP/DNS core -> Install DNS policy core` (optional, if you want DNS routing)
+3. `Manage SSH proxy port`
+4. `Create SSH proxy user`
+5. `Enable SSH firewall rules`
+6. `Enable WARP on SSH` (optional)
+7. `Enable server DNS routing on SSH` (optional)
+8. `Show simple SSH credentials`
+
+## Legacy Order (before core split)
+
 1. `Manage SSH proxy port`
 2. `Create SSH proxy user`
 3. `Enable SSH firewall rules`

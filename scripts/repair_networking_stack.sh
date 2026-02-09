@@ -6,10 +6,20 @@ PAQET_DIR="${PAQET_DIR:-$HOME/paqet}"
 SERVER_CFG="${PAQET_DIR}/server.yaml"
 CLIENT_CFG="${PAQET_DIR}/client.yaml"
 ADD_IPTABLES_SCRIPT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/add_server_iptables.sh"
+RECONCILE_SCRIPT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/reconcile_policy_bindings.sh"
+SERVER_POLICY_STATE_FILE="/etc/paqet-policy/settings.env"
 
 TABLE_ID=51820
 MARK=51820
 MARK_HEX="$(printf '0x%08x' "${MARK}")"
+
+get_setting() {
+  local file="$1"
+  local key="$2"
+  if [ -f "${file}" ]; then
+    awk -F= -v k="${key}" '$1==k {print $2; exit}' "${file}" 2>/dev/null || true
+  fi
+}
 
 role_enabled() {
   local wanted="$1"
@@ -114,6 +124,7 @@ sync_ufw_client_rule() {
 
 ensure_warp_policy_rules() {
   local uid=""
+  local server_warp_enabled=""
 
   if [ ! -f /etc/wireguard/wgcf.conf ]; then
     return 0
@@ -137,10 +148,19 @@ ensure_warp_policy_rules() {
     ip rule del fwmark ${MARK} table ${TABLE_ID} 2>/dev/null || ip rule del fwmark ${MARK_HEX} table ${TABLE_ID} 2>/dev/null || ip rule del fwmark 0xca6c table wgcf 2>/dev/null || true
   done
 
+  server_warp_enabled="$(get_setting "${SERVER_POLICY_STATE_FILE}" "server_warp_enabled")"
+  if [ -z "${server_warp_enabled}" ] && [ -f /etc/systemd/system/paqet-server.service.d/10-warp.conf ]; then
+    server_warp_enabled="1"
+  fi
   while ip rule show | grep -Eq "uidrange ${uid}-${uid}.*lookup (${TABLE_ID}|wgcf)"; do
     ip rule del uidrange ${uid}-${uid} table ${TABLE_ID} 2>/dev/null || ip rule del uidrange ${uid}-${uid} table wgcf 2>/dev/null || true
   done
-  ip rule add uidrange ${uid}-${uid} table ${TABLE_ID} 2>/dev/null || true
+  if [ "${server_warp_enabled}" = "1" ]; then
+    ip rule add uidrange ${uid}-${uid} table ${TABLE_ID} 2>/dev/null || true
+    echo "WARP: refreshed paqet-server binding."
+  else
+    echo "WARP: server binding is disabled (core kept active)."
+  fi
 
   while iptables -t mangle -D OUTPUT -m owner --uid-owner "${uid}" -j MARK --set-mark ${MARK} 2>/dev/null; do :; done
   while iptables -t mangle -D OUTPUT -m owner --uid-owner paqet -j MARK --set-mark ${MARK} 2>/dev/null; do :; done
@@ -150,7 +170,10 @@ ensure_warp_policy_rules() {
     done < <(nft -a list chain ip mangle OUTPUT 2>/dev/null | awk -v p_uid="${uid}" '/skuid/ && /mark set/ && $0 ~ ("skuid " p_uid) {for(i=1;i<=NF;i++) if($i=="handle"){print $(i+1)}}')
   fi
 
-  echo "WARP: refreshed policy routing (uidrange-only)."
+  if [ -x "${RECONCILE_SCRIPT}" ]; then
+    "${RECONCILE_SCRIPT}" warp >/dev/null 2>&1 || true
+  fi
+  echo "WARP: refreshed policy routing."
 }
 
 repair_server() {

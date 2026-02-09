@@ -11,13 +11,13 @@ RULE_COMMENT="paqet-ssh-proxy-dns"
 ensure_dns_resolver() {
   if [ ! -f /etc/dnsmasq.d/paqet-dns-policy.conf ]; then
     echo "Server DNS policy is not installed/configured." >&2
-    echo "Run: Server configuration -> Enable DNS policy blocklist" >&2
+    echo "Run: Main menu -> WARP/DNS core -> Install DNS policy core" >&2
     exit 1
   fi
 
   if ! systemctl is-active --quiet dnsmasq 2>/dev/null; then
     echo "dnsmasq is not active for server DNS policy." >&2
-    echo "Run: Server configuration -> Enable DNS policy blocklist" >&2
+    echo "Run: Main menu -> WARP/DNS core -> Install DNS policy core" >&2
     exit 1
   fi
 }
