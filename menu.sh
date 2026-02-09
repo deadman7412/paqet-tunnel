@@ -666,8 +666,8 @@ ssh_proxy_menu() {
     echo -e "${GREEN}4)${NC} Server configuration"
     echo -e "${GREEN}5)${NC} Client configuration"
     echo -e "${GREEN}6)${NC} SSH proxy"
-    echo -e "${GREEN}7)${NC} Uninstall Paqet"
-    echo -e "${GREEN}8)${NC} WARP/DNS core"
+    echo -e "${GREEN}7)${NC} WARP/DNS core"
+    echo -e "${GREEN}8)${NC} Uninstall / remove components"
     echo
     echo
     echo -e "${GREEN}0)${NC} Exit"
@@ -709,15 +709,15 @@ ssh_proxy_menu() {
         ssh_proxy_menu
         ;;
       7)
+        policy_core_menu
+        ;;
+      8)
         if [ -x "${SCRIPTS_DIR}/uninstall_paqet.sh" ]; then
           run_action "${SCRIPTS_DIR}/uninstall_paqet.sh"
         else
           echo -e "${RED}Script not found or not executable:${NC} ${SCRIPTS_DIR}/uninstall_paqet.sh" >&2
         fi
         pause
-        ;;
-      8)
-        policy_core_menu
         ;;
       0)
         echo -e "${GREEN}Goodbye.${NC}"
