@@ -96,6 +96,7 @@ server_menu() {
     echo -e "${GREEN}20)${NC} Disable DNS policy blocklist"
     echo -e "${GREEN}21)${NC} Update DNS policy list now"
     echo -e "${GREEN}22)${NC} DNS policy status"
+    echo -e "${GREEN}23)${NC} Show WARP config for 3x-ui"
     echo
     echo
     echo -e "${GREEN}0)${NC} Back to main menu"
@@ -287,6 +288,14 @@ server_menu() {
           run_action "${SCRIPTS_DIR}/dns_policy_status.sh"
         else
           echo -e "${RED}Script not found or not executable:${NC} ${SCRIPTS_DIR}/dns_policy_status.sh" >&2
+        fi
+        pause
+        ;;
+      23)
+        if [ -x "${SCRIPTS_DIR}/show_warp_3xui_config.sh" ]; then
+          run_action "${SCRIPTS_DIR}/show_warp_3xui_config.sh"
+        else
+          echo -e "${RED}Script not found or not executable:${NC} ${SCRIPTS_DIR}/show_warp_3xui_config.sh" >&2
         fi
         pause
         ;;
