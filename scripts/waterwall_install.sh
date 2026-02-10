@@ -34,6 +34,17 @@ detect_arch() {
   esac
 }
 
+cpu_has_flag() {
+  local flag="$1"
+  if command -v lscpu >/dev/null 2>&1; then
+    lscpu 2>/dev/null | grep -i "^Flags:" | grep -qw "${flag}" && return 0
+  fi
+  if [ -r /proc/cpuinfo ]; then
+    grep -m1 -i "^flags" /proc/cpuinfo 2>/dev/null | grep -qw "${flag}" && return 0
+  fi
+  return 1
+}
+
 fetch_latest_release_json() {
   if command -v curl >/dev/null 2>&1; then
     curl -fsSL --connect-timeout 5 --max-time 15 "${API_URL}" 2>/dev/null || true
@@ -47,16 +58,48 @@ fetch_latest_release_json() {
 pick_asset_url() {
   local json="$1"
   local arch="$2"
-  local urls="" preferred=""
+  local urls="" preferred="" line
   urls="$(printf "%s\n" "${json}" | awk -F'"' '/"browser_download_url":/ {print $4}')"
   [ -n "${urls}" ] || return 1
 
   case "${arch}" in
     amd64)
-      preferred="$(printf "%s\n" "${urls}" | grep -Ei '\.zip$' | grep -Ei 'linux' | grep -Ei '(amd64|x86_64|x64|linux-64)' | head -n1 || true)"
+      # Prioritize broad CPU compatibility to avoid Illegal instruction on older VPS CPUs.
+      while IFS= read -r line; do
+        case "${line}" in
+          *linux-gcc-x64-old-cpu.zip) preferred="${line}"; break ;;
+        esac
+      done <<< "${urls}"
+      if [ -z "${preferred}" ]; then
+        while IFS= read -r line; do
+          case "${line}" in
+            *linux-gcc-x64.zip) preferred="${line}"; break ;;
+          esac
+        done <<< "${urls}"
+      fi
+      if [ -z "${preferred}" ]; then
+        while IFS= read -r line; do
+          case "${line}" in
+            *linux-clang-x64.zip) preferred="${line}"; break ;;
+          esac
+        done <<< "${urls}"
+      fi
+      if [ -z "${preferred}" ] && cpu_has_flag avx512f; then
+        while IFS= read -r line; do
+          case "${line}" in
+            *linux-clang-avx512f-x64.zip) preferred="${line}"; break ;;
+          esac
+        done <<< "${urls}"
+      fi
+      if [ -z "${preferred}" ]; then
+        preferred="$(printf "%s\n" "${urls}" | grep -Ei '\.zip$' | grep -Ei 'linux' | grep -Ei '(amd64|x86_64|x64|linux-64)' | head -n1 || true)"
+      fi
       ;;
     arm64)
-      preferred="$(printf "%s\n" "${urls}" | grep -Ei '\.zip$' | grep -Ei 'linux' | grep -Ei '(arm64|aarch64)' | head -n1 || true)"
+      preferred="$(printf "%s\n" "${urls}" | grep -Ei 'linux-(gcc|clang)-arm64-old-cpu\.zip$' | head -n1 || true)"
+      if [ -z "${preferred}" ]; then
+        preferred="$(printf "%s\n" "${urls}" | grep -Ei '\.zip$' | grep -Ei 'linux' | grep -Ei '(arm64|aarch64)' | head -n1 || true)"
+      fi
       ;;
     *)
       preferred=""
