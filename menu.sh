@@ -590,21 +590,118 @@ ssh_proxy_menu() {
 }
 
 firewall_menu() {
+  firewall_select_role() {
+    local label="$1"
+    local role=""
+    read -r -p "${label} role [server/client]: " role
+    role="$(echo "${role}" | tr '[:upper:]' '[:lower:]')"
+    case "${role}" in
+      server|client) echo "${role}" ;;
+      *)
+        echo "Invalid role. Use: server or client." >&2
+        return 1
+        ;;
+    esac
+  }
+
+  firewall_paqet_menu() {
+    while true; do
+      clear
+      banner
+      echo -e "${BLUE}Firewall (UFW) - Paqet${NC}"
+      echo "-----------------------"
+      echo -e "${GREEN}1)${NC} Enable firewall"
+      echo -e "${GREEN}2)${NC} Remove Paqet firewall rules"
+      echo
+      echo
+      echo -e "${GREEN}0)${NC} Back"
+      echo
+      read -r -p "Select an option: " sub_choice
+
+      case "${sub_choice}" in
+        1)
+          if [ -x "${SCRIPTS_DIR}/enable_firewall.sh" ]; then
+            if role="$(firewall_select_role "Paqet")"; then
+              run_action "${SCRIPTS_DIR}/enable_firewall.sh" "${role}"
+            fi
+          else
+            echo -e "${RED}Script not found or not executable:${NC} ${SCRIPTS_DIR}/enable_firewall.sh" >&2
+          fi
+          pause
+          ;;
+        2)
+          if [ -x "${SCRIPTS_DIR}/firewall_rules_disable.sh" ]; then
+            run_action "${SCRIPTS_DIR}/firewall_rules_disable.sh" paqet 0
+          else
+            echo -e "${RED}Script not found or not executable:${NC} ${SCRIPTS_DIR}/firewall_rules_disable.sh" >&2
+          fi
+          pause
+          ;;
+        0)
+          return 0
+          ;;
+        *)
+          echo -e "${RED}Invalid option:${NC} ${sub_choice}" >&2
+          pause
+          ;;
+      esac
+    done
+  }
+
+  firewall_waterwall_menu() {
+    while true; do
+      clear
+      banner
+      echo -e "${BLUE}Firewall (UFW) - Waterwall${NC}"
+      echo "---------------------------"
+      echo -e "${GREEN}1)${NC} Enable firewall"
+      echo -e "${GREEN}2)${NC} Remove Waterwall firewall rules"
+      echo
+      echo
+      echo -e "${GREEN}0)${NC} Back"
+      echo
+      read -r -p "Select an option: " sub_choice
+
+      case "${sub_choice}" in
+        1)
+          if [ -x "${SCRIPTS_DIR}/enable_firewall_waterwall.sh" ]; then
+            if role="$(firewall_select_role "Waterwall")"; then
+              run_action "${SCRIPTS_DIR}/enable_firewall_waterwall.sh" "${role}"
+            fi
+          else
+            echo -e "${RED}Script not found or not executable:${NC} ${SCRIPTS_DIR}/enable_firewall_waterwall.sh" >&2
+          fi
+          pause
+          ;;
+        2)
+          if [ -x "${SCRIPTS_DIR}/firewall_rules_disable.sh" ]; then
+            run_action "${SCRIPTS_DIR}/firewall_rules_disable.sh" waterwall 0
+          else
+            echo -e "${RED}Script not found or not executable:${NC} ${SCRIPTS_DIR}/firewall_rules_disable.sh" >&2
+          fi
+          pause
+          ;;
+        0)
+          return 0
+          ;;
+        *)
+          echo -e "${RED}Invalid option:${NC} ${sub_choice}" >&2
+          pause
+          ;;
+      esac
+    done
+  }
+
   while true; do
     clear
     banner
     echo -e "${BLUE}Firewall (UFW)${NC}"
     echo "--------------"
-    echo -e "${GREEN}1)${NC} Enable firewall for Paqet server"
-    echo -e "${GREEN}2)${NC} Enable firewall for Paqet client"
-    echo -e "${GREEN}3)${NC} Enable firewall for SSH proxy"
-    echo -e "${GREEN}4)${NC} Enable firewall for Waterwall server"
-    echo -e "${GREEN}5)${NC} Enable firewall for Waterwall client"
-    echo -e "${GREEN}6)${NC} Remove Paqet firewall rules"
-    echo -e "${GREEN}7)${NC} Remove SSH proxy firewall rules"
-    echo -e "${GREEN}8)${NC} Remove Waterwall firewall rules"
-    echo -e "${GREEN}9)${NC} Disable UFW completely"
-    echo -e "${GREEN}10)${NC} UFW status"
+    echo -e "${GREEN}1)${NC} Paqet firewall"
+    echo -e "${GREEN}2)${NC} SSH proxy firewall"
+    echo -e "${GREEN}3)${NC} Waterwall firewall"
+    echo -e "${GREEN}4)${NC} Disable UFW completely"
+    echo -e "${GREEN}5)${NC} UFW status"
     echo
     echo
     echo -e "${GREEN}0)${NC} Back"
@@ -613,22 +710,9 @@ firewall_menu() {
 
     case "${choice}" in
       1)
-        if [ -x "${SCRIPTS_DIR}/enable_firewall.sh" ]; then
-          run_action "${SCRIPTS_DIR}/enable_firewall.sh" server
-        else
-          echo -e "${RED}Script not found or not executable:${NC} ${SCRIPTS_DIR}/enable_firewall.sh" >&2
-        fi
-        pause
+        firewall_paqet_menu
         ;;
       2)
-        if [ -x "${SCRIPTS_DIR}/enable_firewall.sh" ]; then
-          run_action "${SCRIPTS_DIR}/enable_firewall.sh" client
-        else
-          echo -e "${RED}Script not found or not executable:${NC} ${SCRIPTS_DIR}/enable_firewall.sh" >&2
-        fi
-        pause
-        ;;
-      3)
         if [ -x "${SCRIPTS_DIR}/ssh_proxy_enable_firewall.sh" ]; then
           run_action "${SCRIPTS_DIR}/ssh_proxy_enable_firewall.sh"
         else
@@ -636,47 +720,10 @@ firewall_menu() {
         fi
         pause
         ;;
+      3)
+        firewall_waterwall_menu
+        ;;
       4)
-        if [ -x "${SCRIPTS_DIR}/enable_firewall_waterwall.sh" ]; then
-          run_action "${SCRIPTS_DIR}/enable_firewall_waterwall.sh" server
-        else
-          echo -e "${RED}Script not found or not executable:${NC} ${SCRIPTS_DIR}/enable_firewall_waterwall.sh" >&2
-        fi
-        pause
-        ;;
-      5)
-        if [ -x "${SCRIPTS_DIR}/enable_firewall_waterwall.sh" ]; then
-          run_action "${SCRIPTS_DIR}/enable_firewall_waterwall.sh" client
-        else
-          echo -e "${RED}Script not found or not executable:${NC} ${SCRIPTS_DIR}/enable_firewall_waterwall.sh" >&2
-        fi
-        pause
-        ;;
-      6)
-        if [ -x "${SCRIPTS_DIR}/firewall_rules_disable.sh" ]; then
-          run_action "${SCRIPTS_DIR}/firewall_rules_disable.sh" paqet 0
-        else
-          echo -e "${RED}Script not found or not executable:${NC} ${SCRIPTS_DIR}/firewall_rules_disable.sh" >&2
-        fi
-        pause
-        ;;
-      7)
-        if [ -x "${SCRIPTS_DIR}/firewall_rules_disable.sh" ]; then
-          run_action "${SCRIPTS_DIR}/firewall_rules_disable.sh" ssh 0
-        else
-          echo -e "${RED}Script not found or not executable:${NC} ${SCRIPTS_DIR}/firewall_rules_disable.sh" >&2
-        fi
-        pause
-        ;;
-      8)
-        if [ -x "${SCRIPTS_DIR}/firewall_rules_disable.sh" ]; then
-          run_action "${SCRIPTS_DIR}/firewall_rules_disable.sh" waterwall 0
-        else
-          echo -e "${RED}Script not found or not executable:${NC} ${SCRIPTS_DIR}/firewall_rules_disable.sh" >&2
-        fi
-        pause
-        ;;
-      9)
         if [ -x "${SCRIPTS_DIR}/firewall_rules_disable.sh" ]; then
           run_action "${SCRIPTS_DIR}/firewall_rules_disable.sh" all 1
         else
@@ -684,7 +731,7 @@ firewall_menu() {
         fi
         pause
         ;;
-      10)
+      5)
         if command -v ufw >/dev/null 2>&1; then
           ufw status verbose || true
           echo
