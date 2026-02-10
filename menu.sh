@@ -752,6 +752,48 @@ firewall_menu() {
   done
 }
 
+waterwall_direct_server_test_menu() {
+  while true; do
+    clear
+    banner
+    echo -e "${BLUE}Direct Waterwall: Server Tests${NC}"
+    echo "-------------------------------"
+    echo -e "${GREEN}1)${NC} Diagnostic report (share with support)"
+    echo -e "${GREEN}2)${NC} Start test backend service"
+    echo
+    echo
+    echo -e "${GREEN}0)${NC} Back"
+    echo
+    read -r -p "Select an option: " choice
+
+    case "${choice}" in
+      1)
+        if [ -x "${SCRIPTS_DIR}/waterwall_test_all.sh" ]; then
+          run_action "${SCRIPTS_DIR}/waterwall_test_all.sh"
+        else
+          echo -e "${RED}Script not found or not executable:${NC} ${SCRIPTS_DIR}/waterwall_test_all.sh" >&2
+        fi
+        pause
+        ;;
+      2)
+        if [ -x "${SCRIPTS_DIR}/waterwall_start_test_backend.sh" ]; then
+          run_action "${SCRIPTS_DIR}/waterwall_start_test_backend.sh"
+        else
+          echo -e "${RED}Script not found or not executable:${NC} ${SCRIPTS_DIR}/waterwall_start_test_backend.sh" >&2
+        fi
+        pause
+        ;;
+      0)
+        return 0
+        ;;
+      *)
+        echo -e "${RED}Invalid option:${NC} ${choice}" >&2
+        pause
+        ;;
+    esac
+  done
+}
+
 waterwall_direct_server_menu() {
   while true; do
     clear
@@ -763,9 +805,7 @@ waterwall_direct_server_menu() {
     echo -e "${GREEN}3)${NC} Remove systemd service (server)"
     echo -e "${GREEN}4)${NC} Service control (server)"
     echo -e "${GREEN}5)${NC} Show server info"
-    echo -e "${GREEN}6)${NC} Start test backend"
-    echo -e "${GREEN}7)${NC} Complete tunnel test"
-    echo -e "${GREEN}8)${NC} Test All (full report)"
+    echo -e "${GREEN}6)${NC} Tests & Diagnostics"
     echo
     echo
     echo -e "${GREEN}0)${NC} Back"
@@ -814,26 +854,47 @@ waterwall_direct_server_menu() {
         pause
         ;;
       6)
-        if [ -x "${SCRIPTS_DIR}/waterwall_start_test_backend.sh" ]; then
-          run_action "${SCRIPTS_DIR}/waterwall_start_test_backend.sh"
-        else
-          echo -e "${RED}Script not found or not executable:${NC} ${SCRIPTS_DIR}/waterwall_start_test_backend.sh" >&2
-        fi
+        waterwall_direct_server_test_menu
+        ;;
+      0)
+        return 0
+        ;;
+      *)
+        echo -e "${RED}Invalid option:${NC} ${choice}" >&2
         pause
         ;;
-      7)
-        if [ -x "${SCRIPTS_DIR}/waterwall_test_tunnel_complete.sh" ]; then
-          run_action "${SCRIPTS_DIR}/waterwall_test_tunnel_complete.sh"
-        else
-          echo -e "${RED}Script not found or not executable:${NC} ${SCRIPTS_DIR}/waterwall_test_tunnel_complete.sh" >&2
-        fi
-        pause
-        ;;
-      8)
+    esac
+  done
+}
+
+waterwall_direct_client_test_menu() {
+  while true; do
+    clear
+    banner
+    echo -e "${BLUE}Direct Waterwall: Client Tests${NC}"
+    echo "-------------------------------"
+    echo -e "${GREEN}1)${NC} Diagnostic report (share with support)"
+    echo -e "${GREEN}2)${NC} Quick connectivity check"
+    echo
+    echo
+    echo -e "${GREEN}0)${NC} Back"
+    echo
+    read -r -p "Select an option: " choice
+
+    case "${choice}" in
+      1)
         if [ -x "${SCRIPTS_DIR}/waterwall_test_all.sh" ]; then
           run_action "${SCRIPTS_DIR}/waterwall_test_all.sh"
         else
           echo -e "${RED}Script not found or not executable:${NC} ${SCRIPTS_DIR}/waterwall_test_all.sh" >&2
+        fi
+        pause
+        ;;
+      2)
+        if [ -x "${SCRIPTS_DIR}/waterwall_test_client_connection.sh" ]; then
+          run_action "${SCRIPTS_DIR}/waterwall_test_client_connection.sh"
+        else
+          echo -e "${RED}Script not found or not executable:${NC} ${SCRIPTS_DIR}/waterwall_test_client_connection.sh" >&2
         fi
         pause
         ;;
@@ -858,9 +919,7 @@ waterwall_direct_client_menu() {
     echo -e "${GREEN}2)${NC} Install systemd service (client)"
     echo -e "${GREEN}3)${NC} Remove systemd service (client)"
     echo -e "${GREEN}4)${NC} Service control (client)"
-    echo -e "${GREEN}5)${NC} Test connection (quick)"
-    echo -e "${GREEN}6)${NC} Complete tunnel test"
-    echo -e "${GREEN}7)${NC} Test All (full report)"
+    echo -e "${GREEN}5)${NC} Tests & Diagnostics"
     echo
     echo
     echo -e "${GREEN}0)${NC} Back"
@@ -901,28 +960,7 @@ waterwall_direct_client_menu() {
         pause
         ;;
       5)
-        if [ -x "${SCRIPTS_DIR}/waterwall_test_client_connection.sh" ]; then
-          run_action "${SCRIPTS_DIR}/waterwall_test_client_connection.sh"
-        else
-          echo -e "${RED}Script not found or not executable:${NC} ${SCRIPTS_DIR}/waterwall_test_client_connection.sh" >&2
-        fi
-        pause
-        ;;
-      6)
-        if [ -x "${SCRIPTS_DIR}/waterwall_test_tunnel_complete.sh" ]; then
-          run_action "${SCRIPTS_DIR}/waterwall_test_tunnel_complete.sh"
-        else
-          echo -e "${RED}Script not found or not executable:${NC} ${SCRIPTS_DIR}/waterwall_test_tunnel_complete.sh" >&2
-        fi
-        pause
-        ;;
-      7)
-        if [ -x "${SCRIPTS_DIR}/waterwall_test_all.sh" ]; then
-          run_action "${SCRIPTS_DIR}/waterwall_test_all.sh"
-        else
-          echo -e "${RED}Script not found or not executable:${NC} ${SCRIPTS_DIR}/waterwall_test_all.sh" >&2
-        fi
-        pause
+        waterwall_direct_client_test_menu
         ;;
       0)
         return 0
