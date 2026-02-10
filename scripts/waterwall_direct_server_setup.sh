@@ -286,6 +286,9 @@ if [ "${TLS_ENABLED}" = "1" ]; then
   cat > "${ROLE_CONFIG_FILE}" <<EOF
 {
   "name": "secure-direct-server",
+  "author": "paqet-tunnel",
+  "config-version": 1,
+  "core-minimum-version": 1,
   "nodes": [
     {
       "name": "input",
@@ -349,6 +352,9 @@ else
   cat > "${ROLE_CONFIG_FILE}" <<EOF
 {
   "name": "direct-server-no-tls",
+  "author": "paqet-tunnel",
+  "config-version": 1,
+  "core-minimum-version": 1,
   "nodes": [
     {
       "name": "input",
