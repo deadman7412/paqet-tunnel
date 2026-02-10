@@ -1,0 +1,175 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+REPO_OWNER="radkesvat"
+REPO_NAME="WaterWall"
+RELEASES_URL="https://github.com/${REPO_OWNER}/${REPO_NAME}/releases/latest"
+API_URL="https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/releases/latest"
+WATERWALL_DIR="${WATERWALL_DIR:-$HOME/waterwall}"
+DOWNLOAD_DIR="${WATERWALL_DIR}/downloads"
+
+mkdir -p "${WATERWALL_DIR}" "${DOWNLOAD_DIR}"
+
+detect_arch() {
+  case "$(uname -m)" in
+    x86_64|amd64) echo "amd64" ;;
+    aarch64|arm64) echo "arm64" ;;
+    *) echo "unknown" ;;
+  esac
+}
+
+fetch_latest_release_json() {
+  if command -v curl >/dev/null 2>&1; then
+    curl -fsSL --connect-timeout 5 --max-time 15 "${API_URL}" 2>/dev/null || true
+  elif command -v wget >/dev/null 2>&1; then
+    wget -qO- --timeout=15 "${API_URL}" 2>/dev/null || true
+  else
+    echo ""
+  fi
+}
+
+pick_asset_url() {
+  local json="$1"
+  local arch="$2"
+  local urls="" preferred=""
+  urls="$(printf "%s\n" "${json}" | awk -F'"' '/"browser_download_url":/ {print $4}')"
+  [ -n "${urls}" ] || return 1
+
+  case "${arch}" in
+    amd64)
+      preferred="$(printf "%s\n" "${urls}" | grep -Ei '\.zip$' | grep -Ei 'linux' | grep -Ei '(amd64|x86_64|x64|linux-64)' | head -n1 || true)"
+      ;;
+    arm64)
+      preferred="$(printf "%s\n" "${urls}" | grep -Ei '\.zip$' | grep -Ei 'linux' | grep -Ei '(arm64|aarch64)' | head -n1 || true)"
+      ;;
+    *)
+      preferred=""
+      ;;
+  esac
+
+  if [ -z "${preferred}" ]; then
+    preferred="$(printf "%s\n" "${urls}" | grep -Ei '\.zip$' | grep -Ei 'linux' | head -n1 || true)"
+  fi
+  if [ -z "${preferred}" ]; then
+    preferred="$(printf "%s\n" "${urls}" | grep -Ei '\.zip$' | head -n1 || true)"
+  fi
+  [ -n "${preferred}" ] || return 1
+  printf "%s\n" "${preferred}"
+}
+
+download_file() {
+  local url="$1"
+  local out="$2"
+  if command -v curl >/dev/null 2>&1; then
+    curl -fL --connect-timeout 5 --max-time 60 "${url}" -o "${out}"
+  elif command -v wget >/dev/null 2>&1; then
+    wget -O "${out}" --timeout=20 "${url}"
+  else
+    return 1
+  fi
+}
+
+pick_local_zip() {
+  local zip=""
+  zip="$(ls -1t "${WATERWALL_DIR}"/*.zip "${DOWNLOAD_DIR}"/*.zip 2>/dev/null | head -n1 || true)"
+  printf "%s\n" "${zip}"
+}
+
+extract_zip() {
+  local zip_path="$1"
+  local target_dir="$2"
+  local tmp_dir
+  tmp_dir="$(mktemp -d)"
+  trap 'rm -rf "${tmp_dir}"' RETURN
+
+  if command -v unzip >/dev/null 2>&1; then
+    unzip -oq "${zip_path}" -d "${tmp_dir}"
+  elif command -v bsdtar >/dev/null 2>&1; then
+    bsdtar -xf "${zip_path}" -C "${tmp_dir}"
+  else
+    echo "Neither unzip nor bsdtar is available to extract zip files." >&2
+    exit 1
+  fi
+
+  rm -rf "${target_dir}/bin"
+  mkdir -p "${target_dir}/bin"
+  cp -a "${tmp_dir}/." "${target_dir}/bin/"
+}
+
+set_binary_link() {
+  local bin_target=""
+  if [ -f "${WATERWALL_DIR}/bin/Waterwall" ]; then
+    bin_target="${WATERWALL_DIR}/bin/Waterwall"
+  elif [ -f "${WATERWALL_DIR}/bin/waterwall" ]; then
+    bin_target="${WATERWALL_DIR}/bin/waterwall"
+  else
+    bin_target="$(find "${WATERWALL_DIR}/bin" -type f \( -iname 'waterwall' -o -iname 'Waterwall' \) | head -n1 || true)"
+  fi
+
+  if [ -z "${bin_target}" ]; then
+    echo "Waterwall binary was not found after extraction." >&2
+    echo "Please inspect files under: ${WATERWALL_DIR}/bin" >&2
+    exit 1
+  fi
+
+  chmod +x "${bin_target}" || true
+  ln -sf "${bin_target}" "${WATERWALL_DIR}/waterwall"
+}
+
+main() {
+  local arch json tag asset_url local_zip final_zip
+  arch="$(detect_arch)"
+
+  echo "Install dir: ${WATERWALL_DIR}"
+  echo "Release source: ${RELEASES_URL}"
+
+  json="$(fetch_latest_release_json)"
+  tag="$(printf "%s\n" "${json}" | awk -F'"' '/"tag_name":/ {print $4; exit}' || true)"
+  asset_url="$(pick_asset_url "${json}" "${arch}" || true)"
+
+  if [ -n "${tag}" ] && [ -n "${asset_url}" ]; then
+    final_zip="${DOWNLOAD_DIR}/$(basename "${asset_url}")"
+    echo "Detected latest release: ${tag}"
+    echo "Selected asset: $(basename "${asset_url}")"
+    if [ ! -s "${final_zip}" ]; then
+      echo "Downloading asset from GitHub..."
+      if ! download_file "${asset_url}" "${final_zip}"; then
+        rm -f "${final_zip}" || true
+        echo "Download failed. Trying local zip fallback..." >&2
+        final_zip=""
+      fi
+    else
+      echo "Using cached downloaded asset: ${final_zip}"
+    fi
+  else
+    echo "Could not detect latest release from GitHub API."
+    final_zip=""
+  fi
+
+  if [ -z "${final_zip:-}" ] || [ ! -s "${final_zip:-/nonexistent}" ]; then
+    local_zip="$(pick_local_zip)"
+    if [ -n "${local_zip}" ] && [ -s "${local_zip}" ]; then
+      final_zip="${local_zip}"
+      echo "Using local zip fallback: ${final_zip}"
+    else
+      echo "No downloadable asset or local zip file found." >&2
+      echo "Upload a Waterwall zip into one of these folders, then rerun:" >&2
+      echo "  ${WATERWALL_DIR}" >&2
+      echo "  ${DOWNLOAD_DIR}" >&2
+      echo "Releases: ${RELEASES_URL}" >&2
+      exit 1
+    fi
+  fi
+
+  extract_zip "${final_zip}" "${WATERWALL_DIR}"
+  set_binary_link
+  mkdir -p "${WATERWALL_DIR}/configs" "${WATERWALL_DIR}/logs" "${WATERWALL_DIR}/runtime"
+
+  echo
+  echo "Waterwall installed successfully."
+  echo "Binary link: ${WATERWALL_DIR}/waterwall"
+  echo "Configs dir: ${WATERWALL_DIR}/configs"
+  echo "Logs dir: ${WATERWALL_DIR}/logs"
+}
+
+main "$@"

@@ -643,15 +643,59 @@ ssh_proxy_menu() {
   done
 }
 
+waterwall_direct_menu() {
+  while true; do
+    clear
+    banner
+    echo -e "${BLUE}Direct Waterwall Tunnel${NC}"
+    echo "-----------------------"
+    echo -e "${GREEN}1)${NC} Server (foreign VPS) setup"
+    echo -e "${GREEN}2)${NC} Client (local VPS) setup"
+    echo
+    echo
+    echo -e "${GREEN}0)${NC} Back"
+    echo
+    read -r -p "Select an option: " choice
+
+    case "${choice}" in
+      1)
+        if [ -x "${SCRIPTS_DIR}/waterwall_direct_server_setup.sh" ]; then
+          run_action "${SCRIPTS_DIR}/waterwall_direct_server_setup.sh"
+        else
+          echo -e "${RED}Script not found or not executable:${NC} ${SCRIPTS_DIR}/waterwall_direct_server_setup.sh" >&2
+        fi
+        pause
+        ;;
+      2)
+        if [ -x "${SCRIPTS_DIR}/waterwall_direct_client_setup.sh" ]; then
+          run_action "${SCRIPTS_DIR}/waterwall_direct_client_setup.sh"
+        else
+          echo -e "${RED}Script not found or not executable:${NC} ${SCRIPTS_DIR}/waterwall_direct_client_setup.sh" >&2
+        fi
+        pause
+        ;;
+      0)
+        return 0
+        ;;
+      *)
+        echo -e "${RED}Invalid option:${NC} ${choice}" >&2
+        pause
+        ;;
+    esac
+  done
+}
+
 waterwall_menu() {
   while true; do
     clear
     banner
     echo -e "${BLUE}Waterwall Tunnel${NC}"
     echo "----------------"
-    echo -e "${GREEN}1)${NC} Install Waterwall (placeholder)"
-    echo -e "${GREEN}2)${NC} Configure Waterwall (placeholder)"
-    echo -e "${GREEN}3)${NC} Service control (placeholder)"
+    echo -e "${GREEN}1)${NC} Install Waterwall"
+    echo -e "${GREEN}2)${NC} Update Waterwall"
+    echo -e "${GREEN}3)${NC} Direct Waterwall tunnel"
+    echo -e "${GREEN}4)${NC} Reverse Waterwall tunnel"
+    echo -e "${GREEN}5)${NC} Uninstall Waterwall"
     echo
     echo
     echo -e "${GREEN}0)${NC} Back to main menu"
@@ -659,8 +703,39 @@ waterwall_menu() {
     read -r -p "Select an option: " choice
 
     case "${choice}" in
-      1|2|3)
-        echo -e "${YELLOW}Waterwall Tunnel is not implemented yet.${NC}"
+      1)
+        if [ -x "${SCRIPTS_DIR}/waterwall_install.sh" ]; then
+          run_action "${SCRIPTS_DIR}/waterwall_install.sh"
+        else
+          echo -e "${RED}Script not found or not executable:${NC} ${SCRIPTS_DIR}/waterwall_install.sh" >&2
+        fi
+        pause
+        ;;
+      2)
+        if [ -x "${SCRIPTS_DIR}/waterwall_update.sh" ]; then
+          run_action "${SCRIPTS_DIR}/waterwall_update.sh"
+        else
+          echo -e "${RED}Script not found or not executable:${NC} ${SCRIPTS_DIR}/waterwall_update.sh" >&2
+        fi
+        pause
+        ;;
+      3)
+        waterwall_direct_menu
+        ;;
+      4)
+        if [ -x "${SCRIPTS_DIR}/waterwall_configure_reverse.sh" ]; then
+          run_action "${SCRIPTS_DIR}/waterwall_configure_reverse.sh"
+        else
+          echo -e "${RED}Script not found or not executable:${NC} ${SCRIPTS_DIR}/waterwall_configure_reverse.sh" >&2
+        fi
+        pause
+        ;;
+      5)
+        if [ -x "${SCRIPTS_DIR}/waterwall_uninstall.sh" ]; then
+          run_action "${SCRIPTS_DIR}/waterwall_uninstall.sh"
+        else
+          echo -e "${RED}Script not found or not executable:${NC} ${SCRIPTS_DIR}/waterwall_uninstall.sh" >&2
+        fi
         pause
         ;;
       0)

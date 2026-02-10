@@ -16,6 +16,16 @@
 - WARP/DNS core
 - Uninstall / remove components
 
+## Waterwall Tunnel Menu
+
+- Install Waterwall
+- Update Waterwall
+- Direct Waterwall tunnel
+  - Server (foreign VPS) setup
+  - Client (local VPS) setup
+- Reverse Waterwall tunnel
+- Uninstall Waterwall
+
 ## Server Configuration Menu
 
 - Create server config
