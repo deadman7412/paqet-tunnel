@@ -2,16 +2,17 @@
 set -euo pipefail
 
 WATERWALL_DIR="${WATERWALL_DIR:-$HOME/waterwall}"
-CONFIG_DIR="${WATERWALL_DIR}/configs"
-CONFIG_FILE="${WATERWALL_DIR}/config.json"
-CORE_FILE="${WATERWALL_DIR}/core.json"
-ROLE_CONFIG_FILE="${WATERWALL_DIR}/direct_server.config.json"
+ROLE_DIR="${WATERWALL_DIR}/server"
+CONFIG_DIR="${ROLE_DIR}/configs"
+CONFIG_FILE="${ROLE_DIR}/config.json"
+CORE_FILE="${ROLE_DIR}/core.json"
+ROLE_CONFIG_FILE="${ROLE_DIR}/direct_server.config.json"
 RUN_SCRIPT="${WATERWALL_DIR}/run_direct_server.sh"
 INFO_FILE="${WATERWALL_DIR}/direct_server_info.txt"
 INFO_FORMAT_VERSION="1"
 CREATED_AT_UTC="$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
 
-mkdir -p "${WATERWALL_DIR}" "${CONFIG_DIR}" "${WATERWALL_DIR}/logs" "${WATERWALL_DIR}/log" "${WATERWALL_DIR}/runtime" "${WATERWALL_DIR}/certs"
+mkdir -p "${WATERWALL_DIR}" "${ROLE_DIR}" "${CONFIG_DIR}" "${ROLE_DIR}/logs" "${ROLE_DIR}/log" "${ROLE_DIR}/runtime" "${WATERWALL_DIR}/certs"
 
 validate_port() {
   case "$1" in
@@ -463,7 +464,7 @@ EOF
 cat > "${RUN_SCRIPT}" <<EOF
 #!/usr/bin/env bash
 set -euo pipefail
-cd "${WATERWALL_DIR}"
+cd "${ROLE_DIR}"
 exec "${WATERWALL_DIR}/waterwall"
 EOF
 chmod +x "${RUN_SCRIPT}"
@@ -490,6 +491,7 @@ echo "Direct server config written: ${ROLE_CONFIG_FILE}"
 echo "Active config written: ${CONFIG_FILE}"
 echo "Core file written: ${CORE_FILE}"
 echo "Run helper created: ${RUN_SCRIPT}"
+echo "Role dir: ${ROLE_DIR}"
 echo "Client info file written: ${INFO_FILE}"
 echo
 echo "===== COPY/PASTE COMMANDS (CLIENT VPS) ====="

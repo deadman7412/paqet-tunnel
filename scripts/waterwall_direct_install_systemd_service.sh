@@ -12,12 +12,16 @@ case "${ROLE}" in
 esac
 
 WATERWALL_DIR="${WATERWALL_DIR:-$HOME/waterwall}"
+ROLE_DIR="${WATERWALL_DIR}/${ROLE}"
 BIN_PATH="${WATERWALL_DIR}/waterwall"
-ACTIVE_CONFIG="${WATERWALL_DIR}/config.json"
-ACTIVE_CORE="${WATERWALL_DIR}/core.json"
-ROLE_CONFIG="${WATERWALL_DIR}/direct_${ROLE}.config.json"
+ACTIVE_CONFIG="${ROLE_DIR}/config.json"
+ACTIVE_CORE="${ROLE_DIR}/core.json"
+ROLE_CONFIG="${ROLE_DIR}/direct_${ROLE}.config.json"
 LEGACY_ROLE_CONFIG="${WATERWALL_DIR}/configs/direct_${ROLE}.json"
+LEGACY_ROOT_ROLE_CONFIG="${WATERWALL_DIR}/direct_${ROLE}.config.json"
 LEGACY_ROLE_CORE="${WATERWALL_DIR}/core_${ROLE}.json"
+LEGACY_ROOT_CONFIG="${WATERWALL_DIR}/config.json"
+LEGACY_ROOT_CORE="${WATERWALL_DIR}/core.json"
 RUN_SCRIPT="${WATERWALL_DIR}/run_direct_${ROLE}.sh"
 SERVICE_NAME="waterwall-direct-${ROLE}"
 UNIT_PATH="/etc/systemd/system/${SERVICE_NAME}.service"
@@ -54,17 +58,23 @@ ensure_runtime_ready() {
 }
 
 ensure_active_files() {
-  mkdir -p "${WATERWALL_DIR}/log" "${WATERWALL_DIR}/logs" "${WATERWALL_DIR}/runtime"
+  mkdir -p "${ROLE_DIR}/log" "${ROLE_DIR}/logs" "${ROLE_DIR}/runtime"
 
   if [ ! -f "${ACTIVE_CONFIG}" ]; then
     if [ -f "${ROLE_CONFIG}" ]; then
       cp -f "${ROLE_CONFIG}" "${ACTIVE_CONFIG}"
+    elif [ -f "${LEGACY_ROOT_ROLE_CONFIG}" ]; then
+      cp -f "${LEGACY_ROOT_ROLE_CONFIG}" "${ACTIVE_CONFIG}"
     elif [ -f "${LEGACY_ROLE_CONFIG}" ]; then
       cp -f "${LEGACY_ROLE_CONFIG}" "${ACTIVE_CONFIG}"
+    elif [ -f "${LEGACY_ROOT_CONFIG}" ]; then
+      cp -f "${LEGACY_ROOT_CONFIG}" "${ACTIVE_CONFIG}"
     else
       echo "Active config not found: ${ACTIVE_CONFIG}" >&2
       echo "Role config not found: ${ROLE_CONFIG}" >&2
+      echo "Legacy root role config not found: ${LEGACY_ROOT_ROLE_CONFIG}" >&2
       echo "Legacy role config not found: ${LEGACY_ROLE_CONFIG}" >&2
+      echo "Legacy root config not found: ${LEGACY_ROOT_CONFIG}" >&2
       echo "Run Direct Waterwall ${ROLE} setup first." >&2
       exit 1
     fi
@@ -73,6 +83,8 @@ ensure_active_files() {
   if [ ! -f "${ACTIVE_CORE}" ]; then
     if [ -f "${LEGACY_ROLE_CORE}" ]; then
       cp -f "${LEGACY_ROLE_CORE}" "${ACTIVE_CORE}"
+    elif [ -f "${LEGACY_ROOT_CORE}" ]; then
+      cp -f "${LEGACY_ROOT_CORE}" "${ACTIVE_CORE}"
     else
       cat > "${ACTIVE_CORE}" <<EOF
 {
@@ -127,13 +139,14 @@ ensure_runtime_ready
 cat > "${RUN_SCRIPT}" <<EOF
 #!/usr/bin/env bash
 set -euo pipefail
-cd "${WATERWALL_DIR}"
+cd "${ROLE_DIR}"
 exec "${BIN_PATH}"
 EOF
 chmod +x "${RUN_SCRIPT}"
 
 echo "Using:"
 echo "  Waterwall dir: ${WATERWALL_DIR}"
+echo "  Role dir:      ${ROLE_DIR}"
 echo "  Binary:        ${BIN_PATH}"
 echo "  Config:        ${ACTIVE_CONFIG}"
 echo "  Core:          ${ACTIVE_CORE}"
@@ -148,7 +161,7 @@ Wants=network-online.target
 
 [Service]
 Type=simple
-WorkingDirectory=${WATERWALL_DIR}
+WorkingDirectory=${ROLE_DIR}
 ExecStart=${RUN_SCRIPT}
 Restart=on-failure
 RestartSec=2
