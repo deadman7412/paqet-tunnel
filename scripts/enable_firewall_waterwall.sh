@@ -110,6 +110,7 @@ if [ "${ROLE}" = "server" ]; then
 else
   SERVER_IP="$(read_info "${INFO_FILE}" "server_public_ip")"
   SERVER_PORT="$(read_info "${INFO_FILE}" "listen_port")"
+  SERVICE_PORT="$(read_info "${INFO_FILE}" "backend_port")"
   if [ "${SERVER_IP}" = "REPLACE_WITH_SERVER_PUBLIC_IP" ]; then
     SERVER_IP=""
   fi
@@ -120,14 +121,29 @@ else
   if [ -z "${SERVER_PORT}" ]; then
     read -r -p "Waterwall server listen port (required): " SERVER_PORT
   fi
-  if [ -z "${SERVER_IP}" ] || [ -z "${SERVER_PORT}" ]; then
-    echo "Server IP and port are required." >&2
+  if [ -z "${SERVICE_PORT}" ]; then
+    read -r -p "Waterwall client service port (required): " SERVICE_PORT
+  fi
+  if [ -z "${SERVER_IP}" ] || [ -z "${SERVER_PORT}" ] || [ -z "${SERVICE_PORT}" ]; then
+    echo "Server IP, server port, and service port are required." >&2
     exit 1
   fi
 
   remove_existing_waterwall_rules
   ufw allow out to "${SERVER_IP}" port "${SERVER_PORT}" proto tcp comment 'waterwall-tunnel' >/dev/null 2>&1 || true
   echo "Added UFW rule: allow out -> ${SERVER_IP}:${SERVER_PORT} (waterwall client)."
+
+  # Open service port for local users/apps to connect
+  read -r -p "Open service port ${SERVICE_PORT}/tcp for local users? [Y/n]: " OPEN_SERVICE
+  case "${OPEN_SERVICE:-Y}" in
+    n|N|no|NO)
+      echo "Skipped opening service port."
+      ;;
+    *)
+      ufw allow "${SERVICE_PORT}/tcp" comment 'waterwall-service' >/dev/null 2>&1 || true
+      echo "Added UFW rule: allow inbound -> tcp/${SERVICE_PORT} (waterwall service)."
+      ;;
+  esac
 fi
 
 ufw --force enable

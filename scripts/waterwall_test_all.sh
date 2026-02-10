@@ -219,7 +219,7 @@ elif [ "${ROLE}" = "client" ]; then
 
   if timeout 5 bash -c "echo -e 'GET / HTTP/1.0\r\n\r\n' | nc ${LOCAL_ADDR} ${LOCAL_PORT}" 2>/dev/null | head -n1 | grep -q "HTTP"; then
     echo -e "${GREEN}[OK]${NC} Successfully received HTTP response through tunnel!"
-    echo -e "${GREEN}✅ WaterWall tunnel is WORKING CORRECTLY!${NC}"
+    echo -e "${GREEN}[SUCCESS] WaterWall tunnel is WORKING CORRECTLY!${NC}"
   elif timeout 3 bash -c "echo test | nc ${LOCAL_ADDR} ${LOCAL_PORT}" 2>/dev/null; then
     echo -e "${YELLOW}[PARTIAL]${NC} Connection succeeded but no HTTP response"
     echo "     Backend may not be HTTP service or not running"
@@ -282,15 +282,15 @@ echo "=========================================="
 echo -e "${CYAN}TEST SUMMARY${NC}"
 echo "=========================================="
 echo "Role: ${ROLE}"
-echo "Config file: $([ -f "${CONFIG_FILE}" ] && echo "✓" || echo "✗")"
-echo "Service running: $(systemctl is-active --quiet "${SERVICE_NAME}.service" 2>/dev/null && echo "✓" || echo "✗")"
+echo "Config file: $([ -f "${CONFIG_FILE}" ] && echo "[OK]" || echo "[FAIL]")"
+echo "Service running: $(systemctl is-active --quiet "${SERVICE_NAME}.service" 2>/dev/null && echo "[OK]" || echo "[FAIL]")"
 
 if [ "${ROLE}" = "server" ]; then
-  echo "Tunnel listening: $(ss -ltn 2>/dev/null | grep -q ":${LISTEN_PORT}[[:space:]]" && echo "✓" || echo "✗")"
-  echo "Backend running: $(ss -ltn 2>/dev/null | grep -q ":${BACKEND_PORT}[[:space:]]" && echo "✓" || echo "✗")"
+  echo "Tunnel listening: $(ss -ltn 2>/dev/null | grep -q ":${LISTEN_PORT}[[:space:]]" && echo "[OK]" || echo "[FAIL]")"
+  echo "Backend running: $(ss -ltn 2>/dev/null | grep -q ":${BACKEND_PORT}[[:space:]]" && echo "[OK]" || echo "[FAIL]")"
 else
-  echo "Local listening: $(ss -ltn 2>/dev/null | grep -q "${LOCAL_ADDR}:${LOCAL_PORT}[[:space:]]" && echo "✓" || echo "✗")"
-  echo "Server reachable: $(timeout 3 bash -c "echo test > /dev/tcp/${SERVER_ADDR}/${SERVER_PORT}" 2>/dev/null && echo "✓" || echo "✗")"
+  echo "Local listening: $(ss -ltn 2>/dev/null | grep -q "${LOCAL_ADDR}:${LOCAL_PORT}[[:space:]]" && echo "[OK]" || echo "[FAIL]")"
+  echo "Server reachable: $(timeout 3 bash -c "echo test > /dev/tcp/${SERVER_ADDR}/${SERVER_PORT}" 2>/dev/null && echo "[OK]" || echo "[FAIL]")"
 fi
 
 echo

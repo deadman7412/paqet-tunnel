@@ -920,6 +920,7 @@ waterwall_direct_client_menu() {
     echo -e "${GREEN}3)${NC} Remove systemd service (client)"
     echo -e "${GREEN}4)${NC} Service control (client)"
     echo -e "${GREEN}5)${NC} Tests & Diagnostics"
+    echo -e "${GREEN}6)${NC} Show ports for configuration"
     echo
     echo
     echo -e "${GREEN}0)${NC} Back"
@@ -961,6 +962,14 @@ waterwall_direct_client_menu() {
         ;;
       5)
         waterwall_direct_client_test_menu
+        ;;
+      6)
+        if [ -x "${SCRIPTS_DIR}/waterwall_show_ports.sh" ]; then
+          run_action "${SCRIPTS_DIR}/waterwall_show_ports.sh"
+        else
+          echo -e "${RED}Script not found or not executable:${NC} ${SCRIPTS_DIR}/waterwall_show_ports.sh" >&2
+        fi
+        pause
         ;;
       0)
         return 0

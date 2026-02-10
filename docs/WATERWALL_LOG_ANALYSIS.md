@@ -7,9 +7,9 @@
 
 ## Executive Summary
 
-✅ **Tunnel Status: WORKING**
-⚠️ **Configuration Parsing: INCORRECT (but actual config is fine)**
-✅ **All Tests: PASSING**
+[OK] **Tunnel Status: WORKING**
+[WARN] **Configuration Parsing: INCORRECT (but actual config is fine)**
+[OK] **All Tests: PASSING**
 
 ---
 
@@ -30,8 +30,8 @@ TcpConnector: connection succeed FD:c [127.0.0.1:40566] => [127.0.0.1:41358]
 ```
 
 **Analysis:**
-- Server listens on 0.0.0.0:39650 ✅
-- Server forwards to **127.0.0.1:41358** (not 39650!) ✅
+- Server listens on 0.0.0.0:39650 [OK]
+- Server forwards to **127.0.0.1:41358** (not 39650!) [OK]
 - The test script's JSON parsing is reading the wrong "port" value
 
 ---
@@ -50,8 +50,8 @@ TcpConnector: connection succeed FD:d [194.33.105.220:46056] => [108.165.128.88:
 ```
 
 **Analysis:**
-- Client listens on 127.0.0.1:41358 ✅
-- Client connects to **108.165.128.88:39650** (not 127.0.0.1!) ✅
+- Client listens on 127.0.0.1:41358 [OK]
+- Client connects to **108.165.128.88:39650** (not 127.0.0.1!) [OK]
 - The test script's JSON parsing is reading the wrong "address" value
 
 ---
@@ -97,28 +97,28 @@ TcpConnector: connection succeed FD:d [194.33.105.220:46056] => [108.165.128.88:
 
 | Check | Status | Details |
 |-------|--------|---------|
-| WaterWall installed | ✅ | Version 1.41 |
-| Config files | ✅ | Present |
-| Service running | ✅ | Active |
-| Tunnel port listening | ✅ | 0.0.0.0:39650 |
-| Backend service | ✅ | Responding |
-| UFW firewall | ✅ | Active, port 39650 open |
-| DNS configured | ✅ | 8.8.8.8, 1.1.1.1 |
-| Connections | ✅ | 44 established |
+| WaterWall installed | [OK] | Version 1.41 |
+| Config files | [OK] | Present |
+| Service running | [OK] | Active |
+| Tunnel port listening | [OK] | 0.0.0.0:39650 |
+| Backend service | [OK] | Responding |
+| UFW firewall | [OK] | Active, port 39650 open |
+| DNS configured | [OK] | 8.8.8.8, 1.1.1.1 |
+| Connections | [OK] | 44 established |
 
 ### Client Tests
 
 | Check | Status | Details |
 |-------|--------|---------|
-| WaterWall installed | ✅ | Version 1.41 |
-| Config files | ✅ | Present |
-| Service running | ✅ | Active |
-| Local port listening | ✅ | 127.0.0.1:41358 |
-| Server connectivity | ✅ | Reachable |
-| Tunnel functionality | ✅ | HTTP response received |
-| UFW firewall | ✅ | Active, tunnel rule present |
-| DNS configured | ✅ | 8.8.8.8, 1.1.1.1 |
-| Connections | ✅ | 4 established |
+| WaterWall installed | [OK] | Version 1.41 |
+| Config files | [OK] | Present |
+| Service running | [OK] | Active |
+| Local port listening | [OK] | 127.0.0.1:41358 |
+| Server connectivity | [OK] | Reachable |
+| Tunnel functionality | [OK] | HTTP response received |
+| UFW firewall | [OK] | Active, tunnel rule present |
+| DNS configured | [OK] | 8.8.8.8, 1.1.1.1 |
+| Connections | [OK] | 4 established |
 
 ---
 
@@ -155,7 +155,7 @@ DEBUG TcpListener: sent close for FD:a
 
 ## Issues Found
 
-### 1. Test Script JSON Parsing ⚠️
+### 1. Test Script JSON Parsing [WARN]
 
 **Problem:** The `parse_json_value` function uses `head -n1` and `tail -n1` which doesn't correctly distinguish between:
 - Listener address/port (first node)
@@ -167,7 +167,7 @@ DEBUG TcpListener: sent close for FD:a
 - Server: TcpConnector address/port (backend)
 - Client: TcpConnector address/port (remote server)
 
-### 2. Public IP Detection ⚠️
+### 2. Public IP Detection [WARN]
 
 **Output:**
 ```html
@@ -203,7 +203,7 @@ DEBUG TcpListener: sent close for FD:a
 ## Recommendations
 
 ### Immediate Actions
-1. ✅ **None required** - Tunnel is working perfectly
+1. [OK] **None required** - Tunnel is working perfectly
 2. ℹ️ Fix test script JSON parsing (cosmetic)
 3. ℹ️ Fix public IP detection (cosmetic)
 
@@ -264,7 +264,7 @@ The actual configuration files should be:
 
 ## Conclusion
 
-🎉 **The WaterWall tunnel is working correctly!**
+ **The WaterWall tunnel is working correctly!**
 
 - All services running properly
 - Connections established successfully

@@ -8,10 +8,10 @@ WARN  connfd=12 connect error: Transport endpoint is not connected:107
 ```
 
 **What happened:**
-1. ✅ WaterWall client connects successfully to tunnel port
-2. ✅ WaterWall server accepts the tunnel connection
-3. ❌ Server tries to connect to backend service → **BACKEND NOT RUNNING**
-4. ❌ Connection fails immediately
+1. [OK] WaterWall client connects successfully to tunnel port
+2. [OK] WaterWall server accepts the tunnel connection
+3. [ERROR] Server tries to connect to backend service → **BACKEND NOT RUNNING**
+4. [ERROR] Connection fails immediately
 
 **Root Cause:** Your WaterWall tunnel is working perfectly! The problem is the **backend service** on the server (the service you're forwarding to) doesn't exist or isn't running.
 
@@ -46,10 +46,10 @@ WARN  connfd=12 connect error: Transport endpoint is not connected:107
    ```
 
    This checks:
-   - WaterWall service is running ✅
-   - Tunnel port is listening ✅
-   - **Backend service is running** ✅
-   - Backend service is reachable ✅
+   - WaterWall service is running [OK]
+   - Tunnel port is listening [OK]
+   - **Backend service is running** [OK]
+   - Backend service is reachable [OK]
 
 ### Step 2: On Client (Local VPS)
 
@@ -74,7 +74,7 @@ WARN  connfd=12 connect error: Transport endpoint is not connected:107
    [OK] Server is reachable
    [OK] Successfully received HTTP response through tunnel!
 
-   ✅ WaterWall tunnel is working correctly!
+   [OK] WaterWall tunnel is working correctly!
 
    === Full Connection Path ===
    Client app → 127.0.0.1:<port> (WaterWall client)
@@ -255,18 +255,18 @@ Once testing is complete, replace the test backend with your actual service:
 
 ## Summary
 
-✅ **Fixed:**
+[OK] **Fixed:**
 1. Added ALPN configuration for TLS (when supported in future)
 2. Added DNS servers to core.json
 3. Added SSH protection to client UFW setup
 4. Created comprehensive testing tools
 
-✅ **Your Config is Correct:**
+[OK] **Your Config is Correct:**
 - Basic TCP tunnel configuration is valid
 - Both server and client configs follow WaterWall standards
 - Core.json is properly structured
 
-✅ **Testing Tools Added:**
+[OK] **Testing Tools Added:**
 - Easy backend service setup (HTTP echo server)
 - Complete tunnel testing with clear diagnostics
 - Automatic configuration parsing
@@ -275,5 +275,5 @@ Once testing is complete, replace the test backend with your actual service:
 🎯 **Next Steps:**
 1. Run the test backend on server (menu option 6)
 2. Run complete tunnel test from client (menu option 6)
-3. See the "✅ WaterWall tunnel is working correctly!" message
+3. See the "[OK] WaterWall tunnel is working correctly!" message
 4. Replace test backend with your actual service

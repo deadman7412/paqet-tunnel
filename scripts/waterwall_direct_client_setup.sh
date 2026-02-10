@@ -43,11 +43,12 @@ read_info() {
 }
 
 sync_ufw_tunnel_rule_client() {
-  local server_ip="$1" server_port="$2"
+  local server_ip="$1" server_port="$2" service_port="$3"
   local -a rules=()
   local do_install=""
   local do_enable=""
   local do_open=""
+  local do_open_service=""
 
   if ! command -v ufw >/dev/null 2>&1; then
     read -r -p "UFW is not installed. Install it now and allow outbound tunnel to ${server_ip}:${server_port}? [y/N]: " do_install
@@ -110,6 +111,27 @@ sync_ufw_tunnel_rule_client() {
 
   ufw allow out to "${server_ip}" port "${server_port}" proto tcp comment 'waterwall-tunnel' >/dev/null 2>&1 || true
   echo "UFW: allowed outbound waterwall tunnel to ${server_ip}:${server_port}."
+
+  # Open service port for local users/apps to connect
+  if [ -n "${service_port}" ]; then
+    read -r -p "Open service port ${service_port}/tcp for local users? [Y/n]: " do_open_service
+    case "${do_open_service:-Y}" in
+      n|N|no|NO)
+        echo "Skipped opening service port in UFW."
+        ;;
+      *)
+        # Remove existing waterwall-service rules
+        mapfile -t rules < <(ufw status numbered 2>/dev/null | awk '/waterwall-service/ { if (match($0, /^\[[[:space:]]*[0-9]+]/)) { n=substr($0, RSTART+1, RLENGTH-2); gsub(/[[:space:]]/, "", n); print n } }')
+        if [ "${#rules[@]}" -gt 0 ]; then
+          for ((i=${#rules[@]}-1; i>=0; i--)); do
+            ufw --force delete "${rules[$i]}" >/dev/null 2>&1 || true
+          done
+        fi
+        ufw allow "${service_port}/tcp" comment 'waterwall-service' >/dev/null 2>&1 || true
+        echo "UFW: allowed inbound on service port tcp/${service_port}."
+        ;;
+    esac
+  fi
 }
 
 if [ ! -x "${WATERWALL_DIR}/waterwall" ]; then
@@ -407,4 +429,4 @@ if [ -n "${OBF_PASSWORD}" ]; then
   echo "  - obfuscator_password: ${OBF_PASSWORD}"
 fi
 
-sync_ufw_tunnel_rule_client "${FOREIGN_ADDR}" "${FOREIGN_PORT}"
+sync_ufw_tunnel_rule_client "${FOREIGN_ADDR}" "${FOREIGN_PORT}" "${LOCAL_LISTEN_PORT}"

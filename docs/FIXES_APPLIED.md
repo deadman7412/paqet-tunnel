@@ -7,7 +7,7 @@
 
 ## Issues Fixed
 
-### 1. ✅ Public IP Detection (403 Forbidden Error)
+### 1. [FIXED] Public IP Detection (403 Forbidden Error)
 
 **Problem:**
 ```
@@ -30,7 +30,7 @@ Public IP:
 
 ---
 
-### 2. ✅ Configuration Parsing (Incorrect Values Displayed)
+### 2. [FIXED] Configuration Parsing (Incorrect Values Displayed)
 
 **Problem:**
 ```
@@ -74,7 +74,7 @@ parse_json_nodes() {
 
 ---
 
-### 3. ✅ Menu Behavior (Stays in Submenu)
+### 3. [FIXED] Menu Behavior (Stays in Submenu)
 
 **Problem:** User reported menu exits after running tests
 
@@ -100,7 +100,7 @@ waterwall_direct_server_test_menu() {
 
 ---
 
-### 4. ✅ Test Backend Script Improvements
+### 4. [FIXED] Test Backend Script Improvements
 
 **Issues:**
 - Already-running backend detection working
@@ -145,9 +145,9 @@ Run diagnostic report on both server and client:
 ```
 
 **Check:**
-- ✅ Backend target shows correct backend IP:port
-- ✅ Public IP shows actual IP (not HTML error)
-- ✅ After pressing Enter, returns to test menu (not main menu)
+- [FIXED] Backend target shows correct backend IP:port
+- [FIXED] Public IP shows actual IP (not HTML error)
+- [FIXED] After pressing Enter, returns to test menu (not main menu)
 
 ### Client:
 ```bash
@@ -158,9 +158,9 @@ Run diagnostic report on both server and client:
 ```
 
 **Check:**
-- ✅ Server target shows correct remote server IP:port
-- ✅ Public IP shows actual IP (not HTML error)
-- ✅ After pressing Enter, returns to test menu (not main menu)
+- [FIXED] Server target shows correct remote server IP:port
+- [FIXED] Public IP shows actual IP (not HTML error)
+- [FIXED] After pressing Enter, returns to test menu (not main menu)
 
 ---
 
@@ -180,13 +180,12 @@ Run diagnostic report on both server and client:
 
 | Issue | Status | Impact |
 |-------|--------|--------|
-| Public IP detection | ✅ Fixed | Cosmetic |
-| Config parsing | ✅ Fixed | Cosmetic |
-| Menu behavior | ✅ Working | N/A |
-| Backend script | ✅ Enhanced | Functional |
+| Public IP detection | [FIXED] Fixed | Cosmetic |
+| Config parsing | [FIXED] Fixed | Cosmetic |
+| Menu behavior | [FIXED] Working | N/A |
+| Backend script | [FIXED] Enhanced | Functional |
 
-**All issues resolved!** 🎉
-
+**All issues resolved!** 
 ---
 
 ## Notes
@@ -205,6 +204,6 @@ When you run the diagnostic report next time, you should see:
 1. Correct backend/server targets
 2. Actual public IP addresses
 3. Menu stays in test submenu after each test
-4. All checks passing with ✅
+4. All checks passing with [FIXED]
 
-The tunnel is production-ready! 🚀
+The tunnel is production-ready! 

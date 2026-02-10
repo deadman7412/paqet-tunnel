@@ -55,9 +55,9 @@ echo
 # Test 1: Service running
 echo -n "1. Service status... "
 if systemctl is-active --quiet waterwall-direct-client.service 2>/dev/null; then
-  echo -e "${GREEN}✓ Running${NC}"
+  echo -e "${GREEN}[OK]${NC} Running"
 else
-  echo -e "${RED}✗ Not running${NC}"
+  echo -e "${RED}[FAILURE]${NC} Not running"
   echo
   echo "Start with: systemctl start waterwall-direct-client"
   exit 1
@@ -66,37 +66,37 @@ fi
 # Test 2: Local port listening
 echo -n "2. Local port... "
 if timeout 2 bash -c "echo test >/dev/tcp/${LOCAL_ADDR}/${LOCAL_PORT}" 2>/dev/null; then
-  echo -e "${GREEN}✓ Listening${NC}"
+  echo -e "${GREEN}[OK]${NC} Listening"
 else
-  echo -e "${RED}✗ Not listening${NC}"
+  echo -e "${RED}[FAILURE]${NC} Not listening"
   exit 1
 fi
 
 # Test 3: Server reachable
 echo -n "3. Server connectivity... "
 if timeout 3 bash -c "echo test >/dev/tcp/${SERVER_ADDR}/${SERVER_PORT}" 2>/dev/null; then
-  echo -e "${GREEN}✓ Reachable${NC}"
+  echo -e "${GREEN}[OK]${NC} Reachable"
 else
-  echo -e "${RED}✗ Cannot reach server${NC}"
+  echo -e "${RED}[FAILURE]${NC} Cannot reach server"
   exit 1
 fi
 
 # Test 4: Tunnel functionality
 echo -n "4. Tunnel data flow... "
 if timeout 5 bash -c "echo -e 'GET / HTTP/1.0\r\n\r\n' | nc ${LOCAL_ADDR} ${LOCAL_PORT}" 2>/dev/null | head -n1 | grep -q "HTTP"; then
-  echo -e "${GREEN}✓ Working${NC}"
+  echo -e "${GREEN}[OK]${NC} Working"
   TUNNEL_WORKS="yes"
 else
-  echo -e "${YELLOW}⚠ No HTTP response${NC}"
+  echo -e "${YELLOW}[WARN]${NC} No HTTP response"
   TUNNEL_WORKS="partial"
 fi
 
 echo
 echo "=========================================="
 if [ "${TUNNEL_WORKS}" = "yes" ]; then
-  echo -e "${GREEN}✅ Tunnel is fully operational!${NC}"
+  echo -e "${GREEN}[SUCCESS]${NC} Tunnel is fully operational!"
 else
-  echo -e "${YELLOW}⚠️  Tunnel connects but backend may not be HTTP${NC}"
+  echo -e "${YELLOW}[WARN]${NC} Tunnel connects but backend may not be HTTP"
   echo "   This is OK for non-HTTP services (TCP forwarding, etc.)"
 fi
 echo "=========================================="

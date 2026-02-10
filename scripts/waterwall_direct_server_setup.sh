@@ -132,6 +132,21 @@ sync_ufw_tunnel_rule_server() {
       ;;
   esac
 
+  echo
+  echo "IMPORTANT: For security, tunnel port should only accept connections from client IP."
+  read -r -p "Enter client public IPv4 address (required): " client_ip
+  if [ -z "${client_ip}" ]; then
+    echo "[WARN] No client IP provided. Tunnel port will be open to ALL IPs (not recommended)."
+    read -r -p "Continue anyway? [y/N]: " continue_open
+    case "${continue_open}" in
+      y|Y|yes|YES) ;;
+      *)
+        echo "Skipped opening tunnel port in UFW."
+        return 0
+        ;;
+    esac
+  fi
+
   mapfile -t rules < <(ufw status numbered 2>/dev/null | awk '/waterwall-tunnel/ { if (match($0, /^\[[[:space:]]*[0-9]+]/)) { n=substr($0, RSTART+1, RLENGTH-2); gsub(/[[:space:]]/, "", n); print n } }')
   if [ "${#rules[@]}" -gt 0 ]; then
     for ((i=${#rules[@]}-1; i>=0; i--)); do
@@ -139,8 +154,13 @@ sync_ufw_tunnel_rule_server() {
     done
   fi
 
-  ufw allow "${listen_port}/tcp" comment 'waterwall-tunnel' >/dev/null 2>&1 || true
-  echo "UFW: allowed inbound waterwall tunnel on tcp/${listen_port}."
+  if [ -n "${client_ip}" ]; then
+    ufw allow from "${client_ip}" to any port "${listen_port}" proto tcp comment 'waterwall-tunnel' >/dev/null 2>&1 || true
+    echo "UFW: allowed inbound waterwall tunnel on tcp/${listen_port} from ${client_ip} only."
+  else
+    ufw allow "${listen_port}/tcp" comment 'waterwall-tunnel' >/dev/null 2>&1 || true
+    echo "UFW: allowed inbound waterwall tunnel on tcp/${listen_port} from ANY IP."
+  fi
 }
 
 ensure_certbot() {

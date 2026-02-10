@@ -172,7 +172,7 @@ elif [ "${ROLE}" = "client" ]; then
   if timeout 5 bash -c "echo -e 'GET / HTTP/1.0\r\n\r\n' | nc ${LOCAL_ADDR} ${LOCAL_PORT}" 2>/dev/null | head -n1 | grep -q "HTTP"; then
     echo "[OK] Successfully received HTTP response through tunnel!"
     echo
-    echo "✅ WaterWall tunnel is working correctly!"
+    echo "[SUCCESS] WaterWall tunnel is working correctly!"
     echo
     echo "=== Full Connection Path ==="
     echo "Client app → ${LOCAL_ADDR}:${LOCAL_PORT} (WaterWall client)"

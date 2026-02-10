@@ -48,7 +48,7 @@ echo
 
 # Check if port is already in use
 if ss -ltn 2>/dev/null | grep -q ":${BACKEND_PORT}[[:space:]]"; then
-  echo "✅ Port ${BACKEND_PORT} is already in use!"
+  echo "[OK] Port ${BACKEND_PORT} is already in use!"
   echo
   echo "Process using the port:"
   ss -ltnp 2>/dev/null | grep ":${BACKEND_PORT}[[:space:]]" || lsof -i ":${BACKEND_PORT}" 2>/dev/null || echo "(Unable to determine process)"
@@ -106,7 +106,7 @@ class EchoHandler(BaseHTTPRequestHandler):
 <html>
 <head><title>WaterWall Test Backend</title></head>
 <body style="font-family: monospace; padding: 20px;">
-<h1>✅ WaterWall Tunnel Working!</h1>
+<h1>[OK] WaterWall Tunnel Working!</h1>
 <p><strong>Request received at:</strong> {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}</p>
 <p><strong>Request path:</strong> {self.path}</p>
 <p><strong>Client address:</strong> {self.client_address[0]}:{self.client_address[1]}</p>
@@ -158,7 +158,7 @@ EOFPYTHON
 #!/bin/bash
 PORT="$1"
 while true; do
-  echo -e "HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\n\r\n✅ WaterWall TCP Echo - $(date)\r\nConnection working!" | nc -l "${PORT}" -q 1
+  echo -e "HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\n\r\n[OK] WaterWall TCP Echo - $(date)\r\nConnection working!" | nc -l "${PORT}" -q 1
   sleep 0.1
 done
 EOFNC
@@ -175,9 +175,9 @@ EOFNC
     echo "Update your WaterWall server config to forward to 127.0.0.1:22"
     echo
     if ss -ltn | grep -q ":22[[:space:]]"; then
-      echo "✅ SSH is listening on port 22"
+      echo "[OK] SSH is listening on port 22"
     else
-      echo "❌ SSH is not running!"
+      echo "[ERROR] SSH is not running!"
     fi
     exit 0
     ;;
@@ -206,7 +206,7 @@ sleep 2
 # Verify backend is running
 if ss -ltn 2>/dev/null | grep -q ":${BACKEND_PORT}[[:space:]]"; then
   echo
-  echo "✅ Test backend started successfully!"
+  echo "[OK] Test backend started successfully!"
   echo
   echo "Backend PID: ${BACKEND_PID}"
   echo "Backend port: ${BACKEND_PORT}"
@@ -227,7 +227,7 @@ if ss -ltn 2>/dev/null | grep -q ":${BACKEND_PORT}[[:space:]]"; then
   echo "Now test your tunnel from the client!"
 else
   echo
-  echo "❌ Failed to start backend on port ${BACKEND_PORT}"
+  echo "[ERROR] Failed to start backend on port ${BACKEND_PORT}"
   echo "Check logs: cat ${LOG_FILE}"
   exit 1
 fi
