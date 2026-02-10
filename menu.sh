@@ -843,6 +843,7 @@ while true; do
   banner
   echo -e "${GREEN}1)${NC} Paqet Tunnel"
   echo -e "${GREEN}2)${NC} Waterwall Tunnel"
+  echo -e "${GREEN}3)${NC} Update Scripts (git pull)"
   echo
   echo
   echo -e "${GREEN}0)${NC} Exit"
@@ -855,6 +856,14 @@ while true; do
       ;;
     2)
       waterwall_menu
+      ;;
+    3)
+      if [ -x "${SCRIPTS_DIR}/update_scripts.sh" ]; then
+        run_action "${SCRIPTS_DIR}/update_scripts.sh"
+      else
+        echo -e "${RED}Script not found or not executable:${NC} ${SCRIPTS_DIR}/update_scripts.sh" >&2
+      fi
+      pause
       ;;
     0)
       echo -e "${GREEN}Goodbye.${NC}"
