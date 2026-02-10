@@ -54,6 +54,7 @@ INFO_PATH="${INFO_PATH:-${INFO_PATH_DEFAULT}}"
 SERVER_IP_DEFAULT=""
 SERVER_PORT_DEFAULT="443"
 TLS_ENABLED_DEFAULT="1"
+TUNNEL_PROFILE_DEFAULT="basic"
 TLS_SNI_DEFAULT=""
 GRPC_DEFAULT="svc-$(rand_hex 4)"
 OBF_DEFAULT="$(rand_hex 16)"
@@ -62,12 +63,14 @@ if [ -f "${INFO_PATH}" ]; then
   SERVER_IP_DEFAULT="$(read_info "${INFO_PATH}" "server_public_ip")"
   SERVER_PORT_DEFAULT="$(read_info "${INFO_PATH}" "listen_port")"
   TLS_ENABLED_DEFAULT="$(read_info "${INFO_PATH}" "use_tls")"
+  TUNNEL_PROFILE_DEFAULT="$(read_info "${INFO_PATH}" "tunnel_profile")"
   TLS_SNI_DEFAULT="$(read_info "${INFO_PATH}" "tls_sni")"
   GRPC_DEFAULT="$(read_info "${INFO_PATH}" "grpc_service")"
   OBF_DEFAULT="$(read_info "${INFO_PATH}" "obfuscator_password")"
   [ "${SERVER_IP_DEFAULT}" = "REPLACE_WITH_SERVER_PUBLIC_IP" ] && SERVER_IP_DEFAULT=""
   [ -z "${SERVER_PORT_DEFAULT}" ] && SERVER_PORT_DEFAULT="443"
   [ -z "${TLS_ENABLED_DEFAULT}" ] && TLS_ENABLED_DEFAULT="1"
+  [ -z "${TUNNEL_PROFILE_DEFAULT}" ] && TUNNEL_PROFILE_DEFAULT="basic"
   [ -z "${GRPC_DEFAULT}" ] && GRPC_DEFAULT="svc-$(rand_hex 4)"
   [ -z "${OBF_DEFAULT}" ] && OBF_DEFAULT="$(rand_hex 16)"
 fi
@@ -95,27 +98,71 @@ if ! validate_port "${FOREIGN_PORT}"; then
   exit 1
 fi
 
-read -r -p "Use TLS for this tunnel? [${TLS_ENABLED_DEFAULT}] (1/0): " TLS_ENABLED
-TLS_ENABLED="${TLS_ENABLED:-${TLS_ENABLED_DEFAULT}}"
-if [ "${TLS_ENABLED}" != "1" ] && [ "${TLS_ENABLED}" != "0" ]; then
-  echo "TLS value must be 1 or 0." >&2
-  exit 1
+read -r -p "Tunnel profile [basic/advanced] (default ${TUNNEL_PROFILE_DEFAULT}): " TUNNEL_PROFILE
+TUNNEL_PROFILE="$(echo "${TUNNEL_PROFILE:-${TUNNEL_PROFILE_DEFAULT}}" | tr '[:upper:]' '[:lower:]')"
+case "${TUNNEL_PROFILE}" in
+  basic|advanced) ;;
+  *)
+    echo "Tunnel profile must be basic or advanced." >&2
+    exit 1
+    ;;
+esac
+
+TLS_ENABLED="0"
+TLS_SNI=""
+GRPC_SERVICE=""
+OBF_PASSWORD=""
+if [ "${TUNNEL_PROFILE}" = "advanced" ]; then
+  read -r -p "Use TLS for this tunnel? [${TLS_ENABLED_DEFAULT}] (1/0): " TLS_ENABLED
+  TLS_ENABLED="${TLS_ENABLED:-${TLS_ENABLED_DEFAULT}}"
+  if [ "${TLS_ENABLED}" != "1" ] && [ "${TLS_ENABLED}" != "0" ]; then
+    echo "TLS value must be 1 or 0." >&2
+    exit 1
+  fi
+
+  if [ "${TLS_ENABLED}" = "1" ]; then
+    TLS_SNI_DEFAULT="${TLS_SNI_DEFAULT:-www.cloudflare.com}"
+    read -r -p "TLS SNI (domain on cert) [${TLS_SNI_DEFAULT}]: " TLS_SNI
+    TLS_SNI="${TLS_SNI:-${TLS_SNI_DEFAULT}}"
+  fi
+
+  read -r -p "gRPC service name [${GRPC_DEFAULT}]: " GRPC_SERVICE
+  GRPC_SERVICE="${GRPC_SERVICE:-${GRPC_DEFAULT}}"
+  read -r -p "Obfuscator password [auto]: " OBF_PASSWORD
+  OBF_PASSWORD="${OBF_PASSWORD:-${OBF_DEFAULT}}"
 fi
 
-if [ "${TLS_ENABLED}" = "1" ]; then
-  TLS_SNI_DEFAULT="${TLS_SNI_DEFAULT:-www.cloudflare.com}"
-  read -r -p "TLS SNI (domain on cert) [${TLS_SNI_DEFAULT}]: " TLS_SNI
-  TLS_SNI="${TLS_SNI:-${TLS_SNI_DEFAULT}}"
-else
-  TLS_SNI=""
-fi
-
-read -r -p "gRPC service name [${GRPC_DEFAULT}]: " GRPC_SERVICE
-GRPC_SERVICE="${GRPC_SERVICE:-${GRPC_DEFAULT}}"
-read -r -p "Obfuscator password [auto]: " OBF_PASSWORD
-OBF_PASSWORD="${OBF_PASSWORD:-${OBF_DEFAULT}}"
-
-if [ "${TLS_ENABLED}" = "1" ]; then
+if [ "${TUNNEL_PROFILE}" = "basic" ]; then
+  cat > "${ROLE_CONFIG_FILE}" <<EOF
+{
+  "name": "direct-client-basic",
+  "author": "paqet-tunnel",
+  "config-version": 1,
+  "core-minimum-version": 1,
+  "nodes": [
+    {
+      "name": "input",
+      "type": "TcpListener",
+      "settings": {
+        "address": "${LOCAL_LISTEN_ADDR}",
+        "port": ${LOCAL_LISTEN_PORT},
+        "nodelay": true
+      },
+      "next": "output"
+    },
+    {
+      "name": "output",
+      "type": "TcpConnector",
+      "settings": {
+        "address": "${FOREIGN_ADDR}",
+        "port": ${FOREIGN_PORT},
+        "nodelay": true
+      }
+    }
+  ]
+}
+EOF
+elif [ "${TLS_ENABLED}" = "1" ]; then
   cat > "${ROLE_CONFIG_FILE}" <<EOF
 {
   "name": "secure-direct-client",
@@ -183,9 +230,11 @@ if [ "${TLS_ENABLED}" = "1" ]; then
 }
 EOF
 else
+  echo "Advanced mode without TLS is not supported on this host build; using basic chain." >&2
+  TUNNEL_PROFILE="basic"
   cat > "${ROLE_CONFIG_FILE}" <<EOF
 {
-  "name": "direct-client-no-tls",
+  "name": "direct-client-basic",
   "author": "paqet-tunnel",
   "config-version": 1,
   "core-minimum-version": 1,
@@ -198,19 +247,6 @@ else
         "port": ${LOCAL_LISTEN_PORT},
         "nodelay": true
       },
-      "next": "obfuscator_client"
-    },
-    {
-      "name": "obfuscator_client",
-      "type": "ObfuscatorClient",
-      "settings": {
-        "password": "${OBF_PASSWORD}"
-      },
-      "next": "protobuf_client"
-    },
-    {
-      "name": "protobuf_client",
-      "type": "ProtoBufClient",
       "next": "output"
     },
     {
@@ -275,8 +311,13 @@ echo "Active config written: ${CONFIG_FILE}"
 echo "Core file written: ${CORE_FILE}"
 echo "Run helper created: ${RUN_SCRIPT}"
 echo "Using values:"
+echo "  - tunnel_profile: ${TUNNEL_PROFILE}"
 echo "  - foreign_addr: ${FOREIGN_ADDR}"
 echo "  - foreign_port: ${FOREIGN_PORT}"
 echo "  - use_tls: ${TLS_ENABLED}"
-echo "  - grpc_service: ${GRPC_SERVICE}"
-echo "  - obfuscator_password: ${OBF_PASSWORD}"
+if [ -n "${GRPC_SERVICE}" ]; then
+  echo "  - grpc_service: ${GRPC_SERVICE}"
+fi
+if [ -n "${OBF_PASSWORD}" ]; then
+  echo "  - obfuscator_password: ${OBF_PASSWORD}"
+fi
