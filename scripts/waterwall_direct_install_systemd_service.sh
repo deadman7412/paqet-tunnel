@@ -14,6 +14,7 @@ esac
 WATERWALL_DIR="${WATERWALL_DIR:-$HOME/waterwall}"
 BIN_PATH="${WATERWALL_DIR}/waterwall"
 CONFIG_PATH="${WATERWALL_DIR}/direct_${ROLE}.config.json"
+LEGACY_CONFIG_PATH="${WATERWALL_DIR}/configs/direct_${ROLE}.json"
 CORE_PATH="${WATERWALL_DIR}/core_${ROLE}.json"
 RUN_SCRIPT="${WATERWALL_DIR}/run_direct_${ROLE}.sh"
 SERVICE_NAME="waterwall-direct-${ROLE}"
@@ -62,14 +63,49 @@ if [ ! -x "${BIN_PATH}" ]; then
 fi
 
 if [ ! -f "${CONFIG_PATH}" ]; then
-  echo "Config not found: ${CONFIG_PATH}" >&2
-  echo "Run Direct Waterwall ${ROLE} setup first." >&2
-  exit 1
+  if [ -f "${LEGACY_CONFIG_PATH}" ]; then
+    CONFIG_PATH="${LEGACY_CONFIG_PATH}"
+  else
+    echo "Config not found: ${CONFIG_PATH}" >&2
+    echo "Legacy config not found: ${LEGACY_CONFIG_PATH}" >&2
+    echo "Run Direct Waterwall ${ROLE} setup first." >&2
+    exit 1
+  fi
 fi
 if [ ! -f "${CORE_PATH}" ]; then
-  echo "Core file not found: ${CORE_PATH}" >&2
-  echo "Run Direct Waterwall ${ROLE} setup first." >&2
-  exit 1
+  mkdir -p "${WATERWALL_DIR}/log" "${WATERWALL_DIR}/logs" "${WATERWALL_DIR}/runtime"
+  cat > "${CORE_PATH}" <<EOF
+{
+  "log": {
+    "path": "log/",
+    "core": {
+      "loglevel": "DEBUG",
+      "file": "core.log",
+      "console": true
+    },
+    "network": {
+      "loglevel": "DEBUG",
+      "file": "network.log",
+      "console": true
+    },
+    "dns": {
+      "loglevel": "SILENT",
+      "file": "dns.log",
+      "console": false
+    }
+  },
+  "dns": {},
+  "misc": {
+    "workers": 0,
+    "ram-profile": "${ROLE}",
+    "libs-path": "libs/"
+  },
+  "configs": [
+    "${CONFIG_PATH#${WATERWALL_DIR}/}"
+  ]
+}
+EOF
+  echo "Generated missing core file: ${CORE_PATH}"
 fi
 
 if [ ! -f "${RUN_SCRIPT}" ]; then
@@ -79,8 +115,8 @@ set -euo pipefail
 cd "${WATERWALL_DIR}"
 exec "${BIN_PATH}" "${CORE_PATH}"
 EOF
-  chmod +x "${RUN_SCRIPT}"
 fi
+chmod +x "${RUN_SCRIPT}"
 
 ensure_runtime_ready
 
