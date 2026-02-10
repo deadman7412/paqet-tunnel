@@ -32,6 +32,19 @@ port_in_use() {
   fi
 }
 
+can_connect_tcp() {
+  local host="$1" port="$2"
+  if command -v nc >/dev/null 2>&1; then
+    nc -z -w 2 "${host}" "${port}" >/dev/null 2>&1
+    return $?
+  fi
+  if command -v timeout >/dev/null 2>&1; then
+    timeout 2 bash -c "echo > /dev/tcp/${host}/${port}" >/dev/null 2>&1
+    return $?
+  fi
+  bash -c "echo > /dev/tcp/${host}/${port}" >/dev/null 2>&1
+}
+
 random_port() {
   local p tries=0
   while :; do
@@ -185,6 +198,39 @@ BACKEND_PORT="${BACKEND_PORT:-${BACKEND_PORT_DEFAULT}}"
 if ! validate_port "${BACKEND_PORT}"; then
   echo "Invalid backend service port: ${BACKEND_PORT}" >&2
   exit 1
+fi
+
+if ! can_connect_tcp "${BACKEND_HOST}" "${BACKEND_PORT}"; then
+  echo
+  echo "Warning: backend target is not reachable now: ${BACKEND_HOST}:${BACKEND_PORT}" >&2
+  echo "This causes client connects to close immediately (e.g. connect error 107 in server logs)." >&2
+  while true; do
+    read -r -p "Re-enter backend host/port? [Y/n]: " retry_backend
+    case "${retry_backend:-Y}" in
+      y|Y|yes|YES)
+        read -r -p "Backend service host [${BACKEND_HOST}]: " BACKEND_HOST_NEW
+        BACKEND_HOST="${BACKEND_HOST_NEW:-${BACKEND_HOST}}"
+        read -r -p "Backend service port [${BACKEND_PORT}]: " BACKEND_PORT_NEW
+        BACKEND_PORT="${BACKEND_PORT_NEW:-${BACKEND_PORT}}"
+        if ! validate_port "${BACKEND_PORT}"; then
+          echo "Invalid backend service port: ${BACKEND_PORT}" >&2
+          continue
+        fi
+        if can_connect_tcp "${BACKEND_HOST}" "${BACKEND_PORT}"; then
+          echo "Backend reachable: ${BACKEND_HOST}:${BACKEND_PORT}"
+          break
+        fi
+        echo "Still unreachable: ${BACKEND_HOST}:${BACKEND_PORT}" >&2
+        ;;
+      n|N|no|NO)
+        echo "Continuing with unreachable backend (not recommended)." >&2
+        break
+        ;;
+      *)
+        echo "Please answer y or n."
+        ;;
+    esac
+  done
 fi
 
 read -r -p "Tunnel profile [basic/advanced] (default basic): " TUNNEL_PROFILE

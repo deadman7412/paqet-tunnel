@@ -4,6 +4,7 @@ set -euo pipefail
 WATERWALL_DIR="${WATERWALL_DIR:-$HOME/waterwall}"
 ROLE_DIR="${WATERWALL_DIR}/client"
 CONFIG_FILE="${ROLE_DIR}/config.json"
+INFO_FILE="${WATERWALL_DIR}/direct_server_info.txt"
 SERVICE_NAME="waterwall-direct-client"
 
 if [ ! -f "${CONFIG_FILE}" ]; then
@@ -62,6 +63,11 @@ can_connect_tcp() {
 extract_ip_from_json() {
   local payload="$1"
   echo "${payload}" | sed -nE 's/.*"origin"[[:space:]]*:[[:space:]]*"([^"]+)".*/\1/p; s/.*"ip"[[:space:]]*:[[:space:]]*"([^"]+)".*/\1/p' | head -n1
+}
+
+read_info() {
+  local file="$1" key="$2"
+  awk -F= -v k="${key}" '$1==k {sub($1"=",""); print; exit}' "${file}" 2>/dev/null || true
 }
 
 fetch_public_ip_direct() {
@@ -155,6 +161,14 @@ else
   fi
 fi
 
+if [ -f "${INFO_FILE}" ]; then
+  B_HOST="$(read_info "${INFO_FILE}" "backend_host")"
+  B_PORT="$(read_info "${INFO_FILE}" "backend_port")"
+  if [ -n "${B_HOST}" ] || [ -n "${B_PORT}" ]; then
+    echo "[INFO] Server backend target from info file: ${B_HOST:-unknown}:${B_PORT:-unknown}"
+  fi
+fi
+
 if command -v curl >/dev/null 2>&1; then
   DIRECT_IP="$(fetch_public_ip_direct || true)"
   if [ -n "${DIRECT_IP}" ]; then
@@ -163,18 +177,27 @@ if command -v curl >/dev/null 2>&1; then
     echo "[WARN] Could not determine direct public IP."
   fi
 
-  if [ -n "${LISTEN_PORT}" ]; then
-    TUNNEL_IP_SOCKS="$(fetch_public_ip_via_proxy socks5 "${LISTEN_ADDR}" "${LISTEN_PORT}" || true)"
-    TUNNEL_IP_HTTP="$(fetch_public_ip_via_proxy http "${LISTEN_ADDR}" "${LISTEN_PORT}" || true)"
-    if [ -n "${TUNNEL_IP_SOCKS}" ]; then
-      echo "[OK] Reported public IP via Waterwall (SOCKS5): ${TUNNEL_IP_SOCKS}"
-    elif [ -n "${TUNNEL_IP_HTTP}" ]; then
-      echo "[OK] Reported public IP via Waterwall (HTTP proxy): ${TUNNEL_IP_HTTP}"
-    else
-      echo "[WARN] Could not fetch reported IP via Waterwall local port ${LISTEN_ADDR}:${LISTEN_PORT}."
-      echo "[WARN] This is expected if the upstream service is not an HTTP/SOCKS proxy."
-    fi
-  fi
+  read -r -p "Run proxy-mode reported IP test via local Waterwall port? [y/N]: " RUN_PROXY_IP_TEST
+  case "${RUN_PROXY_IP_TEST:-N}" in
+    y|Y|yes|YES)
+      if [ -n "${LISTEN_PORT}" ]; then
+        TUNNEL_IP_SOCKS="$(fetch_public_ip_via_proxy socks5 "${LISTEN_ADDR}" "${LISTEN_PORT}" || true)"
+        TUNNEL_IP_HTTP="$(fetch_public_ip_via_proxy http "${LISTEN_ADDR}" "${LISTEN_PORT}" || true)"
+        if [ -n "${TUNNEL_IP_SOCKS}" ]; then
+          echo "[OK] Reported public IP via Waterwall (SOCKS5): ${TUNNEL_IP_SOCKS}"
+        elif [ -n "${TUNNEL_IP_HTTP}" ]; then
+          echo "[OK] Reported public IP via Waterwall (HTTP proxy): ${TUNNEL_IP_HTTP}"
+        else
+          echo "[FAIL] Could not fetch reported IP via Waterwall local port ${LISTEN_ADDR}:${LISTEN_PORT}."
+          echo "[FAIL] If backend is not an HTTP/SOCKS proxy, skip this specific test."
+          FAILED=1
+        fi
+      fi
+      ;;
+    *)
+      echo "[INFO] Skipped proxy-mode reported IP test."
+      ;;
+  esac
 else
   echo "[WARN] curl not found; skipped reported public IP test."
 fi
