@@ -88,11 +88,12 @@ ensure_certbot() {
 }
 
 list_existing_certs() {
-  local idx=0 d cert key domain
+  local idx=0 d cert key domain base
   CERT_DOMAINS=()
   CERT_FILES=()
   KEY_FILES=()
   CERT_SOURCES=()
+  CERT_KEYS=()
 
   # Let's Encrypt default layout
   if [ -d /etc/letsencrypt/live ]; then
@@ -103,16 +104,30 @@ list_existing_certs() {
       [ -f "${cert}" ] || continue
       [ -f "${key}" ] || continue
       domain="$(basename "${d}")"
+      entry_key="${domain}|${cert}|${key}"
+      if printf "%s\n" "${CERT_KEYS[@]-}" | grep -Fqx "${entry_key}"; then
+        continue
+      fi
       CERT_DOMAINS+=("${domain}")
       CERT_FILES+=("${cert}")
       KEY_FILES+=("${key}")
       CERT_SOURCES+=("letsencrypt")
+      CERT_KEYS+=("${entry_key}")
       idx=$((idx + 1))
     done
   fi
 
   # acme.sh common locations
-  for base in "${HOME}/.acme.sh" /root/.acme.sh; do
+  ACME_BASES=("${HOME}/.acme.sh" /root/.acme.sh)
+  uniq_bases=()
+  for base in "${ACME_BASES[@]}"; do
+    [ -n "${base}" ] || continue
+    if printf "%s\n" "${uniq_bases[@]-}" | grep -Fqx "${base}"; then
+      continue
+    fi
+    uniq_bases+=("${base}")
+  done
+  for base in "${uniq_bases[@]}"; do
     [ -d "${base}" ] || continue
     for d in "${base}"/*; do
       [ -d "${d}" ] || continue
@@ -127,10 +142,15 @@ list_existing_certs() {
       [ -n "${cert}" ] || continue
       [ -n "${key}" ] || continue
       domain="$(basename "${d}")"
+      entry_key="${domain}|${cert}|${key}"
+      if printf "%s\n" "${CERT_KEYS[@]-}" | grep -Fqx "${entry_key}"; then
+        continue
+      fi
       CERT_DOMAINS+=("${domain}")
       CERT_FILES+=("${cert}")
       KEY_FILES+=("${key}")
       CERT_SOURCES+=("acme.sh")
+      CERT_KEYS+=("${entry_key}")
       idx=$((idx + 1))
     done
   done
