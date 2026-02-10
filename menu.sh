@@ -160,14 +160,12 @@ server_menu() {
     echo -e "${GREEN}13)${NC} Disable WARP for paqet-server (unbind)"
     echo -e "${GREEN}14)${NC} WARP status"
     echo -e "${GREEN}15)${NC} Test WARP"
-    echo -e "${GREEN}16)${NC} Enable firewall (ufw)"
-    echo -e "${GREEN}17)${NC} Disable firewall (ufw)"
-    echo -e "${GREEN}18)${NC} Repair networking stack"
-    echo -e "${GREEN}19)${NC} Enable DNS policy for paqet-server (bind)"
-    echo -e "${GREEN}20)${NC} Disable DNS policy for paqet-server (unbind)"
-    echo -e "${GREEN}21)${NC} Update DNS policy list now"
-    echo -e "${GREEN}22)${NC} DNS policy status"
-    echo -e "${GREEN}23)${NC} Show WARP config for 3x-ui"
+    echo -e "${GREEN}16)${NC} Repair networking stack"
+    echo -e "${GREEN}17)${NC} Enable DNS policy for paqet-server (bind)"
+    echo -e "${GREEN}18)${NC} Disable DNS policy for paqet-server (unbind)"
+    echo -e "${GREEN}19)${NC} Update DNS policy list now"
+    echo -e "${GREEN}20)${NC} DNS policy status"
+    echo -e "${GREEN}21)${NC} Show WARP config for 3x-ui"
     echo
     echo
     echo -e "${GREEN}0)${NC} Back to main menu"
@@ -300,22 +298,6 @@ server_menu() {
         pause
         ;;
       16)
-        if [ -x "${SCRIPTS_DIR}/enable_firewall.sh" ]; then
-          run_action "${SCRIPTS_DIR}/enable_firewall.sh" server
-        else
-          echo -e "${RED}Script not found or not executable:${NC} ${SCRIPTS_DIR}/enable_firewall.sh" >&2
-        fi
-        pause
-        ;;
-      17)
-        if [ -x "${SCRIPTS_DIR}/disable_firewall.sh" ]; then
-          run_action "${SCRIPTS_DIR}/disable_firewall.sh" server
-        else
-          echo -e "${RED}Script not found or not executable:${NC} ${SCRIPTS_DIR}/disable_firewall.sh" >&2
-        fi
-        pause
-        ;;
-      18)
         if [ -x "${SCRIPTS_DIR}/repair_networking_stack.sh" ]; then
           run_action "${SCRIPTS_DIR}/repair_networking_stack.sh" server
         else
@@ -323,7 +305,7 @@ server_menu() {
         fi
         pause
         ;;
-      19)
+      17)
         if [ -x "${SCRIPTS_DIR}/enable_dns_policy.sh" ]; then
           run_action "${SCRIPTS_DIR}/enable_dns_policy.sh"
         else
@@ -331,7 +313,7 @@ server_menu() {
         fi
         pause
         ;;
-      20)
+      18)
         if [ -x "${SCRIPTS_DIR}/disable_dns_policy.sh" ]; then
           run_action "${SCRIPTS_DIR}/disable_dns_policy.sh"
         else
@@ -339,7 +321,7 @@ server_menu() {
         fi
         pause
         ;;
-      21)
+      19)
         if [ -x "${SCRIPTS_DIR}/update_dns_policy_list.sh" ]; then
           read -r -p "DNS category [ads/all/proxy] (leave empty to use current): " dns_category
           if [ -n "${dns_category}" ]; then
@@ -352,7 +334,7 @@ server_menu() {
         fi
         pause
         ;;
-      22)
+      20)
         if [ -x "${SCRIPTS_DIR}/dns_policy_status.sh" ]; then
           run_action "${SCRIPTS_DIR}/dns_policy_status.sh"
         else
@@ -360,7 +342,7 @@ server_menu() {
         fi
         pause
         ;;
-      23)
+      21)
         if [ -x "${SCRIPTS_DIR}/show_warp_3xui_config.sh" ]; then
           run_action "${SCRIPTS_DIR}/show_warp_3xui_config.sh"
         else
@@ -395,9 +377,7 @@ client_menu() {
     echo -e "${GREEN}9)${NC} Change MTU"
     echo -e "${GREEN}10)${NC} Health check"
     echo -e "${GREEN}11)${NC} Health logs"
-    echo -e "${GREEN}12)${NC} Enable firewall (ufw)"
-    echo -e "${GREEN}13)${NC} Disable firewall (ufw)"
-    echo -e "${GREEN}14)${NC} Repair networking stack"
+    echo -e "${GREEN}12)${NC} Repair networking stack"
     echo
     echo
     echo -e "${GREEN}0)${NC} Back to main menu"
@@ -486,22 +466,6 @@ client_menu() {
         pause
         ;;
       12)
-        if [ -x "${SCRIPTS_DIR}/enable_firewall.sh" ]; then
-          run_action "${SCRIPTS_DIR}/enable_firewall.sh" client
-        else
-          echo -e "${RED}Script not found or not executable:${NC} ${SCRIPTS_DIR}/enable_firewall.sh" >&2
-        fi
-        pause
-        ;;
-      13)
-        if [ -x "${SCRIPTS_DIR}/disable_firewall.sh" ]; then
-          run_action "${SCRIPTS_DIR}/disable_firewall.sh" client
-        else
-          echo -e "${RED}Script not found or not executable:${NC} ${SCRIPTS_DIR}/disable_firewall.sh" >&2
-        fi
-        pause
-        ;;
-      14)
         if [ -x "${SCRIPTS_DIR}/repair_networking_stack.sh" ]; then
           run_action "${SCRIPTS_DIR}/repair_networking_stack.sh" client
         else
@@ -531,12 +495,10 @@ ssh_proxy_menu() {
     echo -e "${GREEN}3)${NC} Remove SSH proxy user"
     echo -e "${GREEN}4)${NC} List SSH proxy users"
     echo -e "${GREEN}5)${NC} Show simple SSH credentials"
-    echo -e "${GREEN}6)${NC} Enable SSH firewall rules"
-    echo -e "${GREEN}7)${NC} Disable SSH firewall rules"
-    echo -e "${GREEN}8)${NC} Enable WARP for SSH proxy users"
-    echo -e "${GREEN}9)${NC} Disable WARP for SSH proxy users"
-    echo -e "${GREEN}10)${NC} Enable DNS routing for SSH proxy users"
-    echo -e "${GREEN}11)${NC} Disable DNS routing for SSH proxy users"
+    echo -e "${GREEN}6)${NC} Enable WARP for SSH proxy users"
+    echo -e "${GREEN}7)${NC} Disable WARP for SSH proxy users"
+    echo -e "${GREEN}8)${NC} Enable DNS routing for SSH proxy users"
+    echo -e "${GREEN}9)${NC} Disable DNS routing for SSH proxy users"
     echo
     echo
     echo -e "${GREEN}0)${NC} Back to main menu"
@@ -585,22 +547,6 @@ ssh_proxy_menu() {
         pause
         ;;
       6)
-        if [ -x "${SCRIPTS_DIR}/ssh_proxy_enable_firewall.sh" ]; then
-          run_action "${SCRIPTS_DIR}/ssh_proxy_enable_firewall.sh"
-        else
-          echo -e "${YELLOW}Not implemented yet:${NC} ${SCRIPTS_DIR}/ssh_proxy_enable_firewall.sh"
-        fi
-        pause
-        ;;
-      7)
-        if [ -x "${SCRIPTS_DIR}/ssh_proxy_disable_firewall.sh" ]; then
-          run_action "${SCRIPTS_DIR}/ssh_proxy_disable_firewall.sh"
-        else
-          echo -e "${YELLOW}Not implemented yet:${NC} ${SCRIPTS_DIR}/ssh_proxy_disable_firewall.sh"
-        fi
-        pause
-        ;;
-      8)
         if [ -x "${SCRIPTS_DIR}/ssh_proxy_enable_warp.sh" ]; then
           run_action "${SCRIPTS_DIR}/ssh_proxy_enable_warp.sh"
         else
@@ -608,7 +554,7 @@ ssh_proxy_menu() {
         fi
         pause
         ;;
-      9)
+      7)
         if [ -x "${SCRIPTS_DIR}/ssh_proxy_disable_warp.sh" ]; then
           run_action "${SCRIPTS_DIR}/ssh_proxy_disable_warp.sh"
         else
@@ -616,7 +562,7 @@ ssh_proxy_menu() {
         fi
         pause
         ;;
-      10)
+      8)
         if [ -x "${SCRIPTS_DIR}/ssh_proxy_enable_dns_routing.sh" ]; then
           run_action "${SCRIPTS_DIR}/ssh_proxy_enable_dns_routing.sh"
         else
@@ -624,11 +570,127 @@ ssh_proxy_menu() {
         fi
         pause
         ;;
-      11)
+      9)
         if [ -x "${SCRIPTS_DIR}/ssh_proxy_disable_dns_routing.sh" ]; then
           run_action "${SCRIPTS_DIR}/ssh_proxy_disable_dns_routing.sh"
         else
           echo -e "${YELLOW}Not implemented yet:${NC} ${SCRIPTS_DIR}/ssh_proxy_disable_dns_routing.sh"
+        fi
+        pause
+        ;;
+      0)
+        return 0
+        ;;
+      *)
+        echo -e "${RED}Invalid option:${NC} ${choice}" >&2
+        pause
+        ;;
+    esac
+  done
+}
+
+firewall_menu() {
+  while true; do
+    clear
+    banner
+    echo -e "${BLUE}Firewall (UFW)${NC}"
+    echo "--------------"
+    echo -e "${GREEN}1)${NC} Enable firewall for Paqet server"
+    echo -e "${GREEN}2)${NC} Enable firewall for Paqet client"
+    echo -e "${GREEN}3)${NC} Enable firewall for SSH proxy"
+    echo -e "${GREEN}4)${NC} Enable firewall for Waterwall server"
+    echo -e "${GREEN}5)${NC} Enable firewall for Waterwall client"
+    echo -e "${GREEN}6)${NC} Remove Paqet firewall rules"
+    echo -e "${GREEN}7)${NC} Remove SSH proxy firewall rules"
+    echo -e "${GREEN}8)${NC} Remove Waterwall firewall rules"
+    echo -e "${GREEN}9)${NC} Disable UFW completely"
+    echo -e "${GREEN}10)${NC} UFW status"
+    echo
+    echo
+    echo -e "${GREEN}0)${NC} Back"
+    echo
+    read -r -p "Select an option: " choice
+
+    case "${choice}" in
+      1)
+        if [ -x "${SCRIPTS_DIR}/enable_firewall.sh" ]; then
+          run_action "${SCRIPTS_DIR}/enable_firewall.sh" server
+        else
+          echo -e "${RED}Script not found or not executable:${NC} ${SCRIPTS_DIR}/enable_firewall.sh" >&2
+        fi
+        pause
+        ;;
+      2)
+        if [ -x "${SCRIPTS_DIR}/enable_firewall.sh" ]; then
+          run_action "${SCRIPTS_DIR}/enable_firewall.sh" client
+        else
+          echo -e "${RED}Script not found or not executable:${NC} ${SCRIPTS_DIR}/enable_firewall.sh" >&2
+        fi
+        pause
+        ;;
+      3)
+        if [ -x "${SCRIPTS_DIR}/ssh_proxy_enable_firewall.sh" ]; then
+          run_action "${SCRIPTS_DIR}/ssh_proxy_enable_firewall.sh"
+        else
+          echo -e "${RED}Script not found or not executable:${NC} ${SCRIPTS_DIR}/ssh_proxy_enable_firewall.sh" >&2
+        fi
+        pause
+        ;;
+      4)
+        if [ -x "${SCRIPTS_DIR}/enable_firewall_waterwall.sh" ]; then
+          run_action "${SCRIPTS_DIR}/enable_firewall_waterwall.sh" server
+        else
+          echo -e "${RED}Script not found or not executable:${NC} ${SCRIPTS_DIR}/enable_firewall_waterwall.sh" >&2
+        fi
+        pause
+        ;;
+      5)
+        if [ -x "${SCRIPTS_DIR}/enable_firewall_waterwall.sh" ]; then
+          run_action "${SCRIPTS_DIR}/enable_firewall_waterwall.sh" client
+        else
+          echo -e "${RED}Script not found or not executable:${NC} ${SCRIPTS_DIR}/enable_firewall_waterwall.sh" >&2
+        fi
+        pause
+        ;;
+      6)
+        if [ -x "${SCRIPTS_DIR}/firewall_rules_disable.sh" ]; then
+          run_action "${SCRIPTS_DIR}/firewall_rules_disable.sh" paqet 0
+        else
+          echo -e "${RED}Script not found or not executable:${NC} ${SCRIPTS_DIR}/firewall_rules_disable.sh" >&2
+        fi
+        pause
+        ;;
+      7)
+        if [ -x "${SCRIPTS_DIR}/firewall_rules_disable.sh" ]; then
+          run_action "${SCRIPTS_DIR}/firewall_rules_disable.sh" ssh 0
+        else
+          echo -e "${RED}Script not found or not executable:${NC} ${SCRIPTS_DIR}/firewall_rules_disable.sh" >&2
+        fi
+        pause
+        ;;
+      8)
+        if [ -x "${SCRIPTS_DIR}/firewall_rules_disable.sh" ]; then
+          run_action "${SCRIPTS_DIR}/firewall_rules_disable.sh" waterwall 0
+        else
+          echo -e "${RED}Script not found or not executable:${NC} ${SCRIPTS_DIR}/firewall_rules_disable.sh" >&2
+        fi
+        pause
+        ;;
+      9)
+        if [ -x "${SCRIPTS_DIR}/firewall_rules_disable.sh" ]; then
+          run_action "${SCRIPTS_DIR}/firewall_rules_disable.sh" all 1
+        else
+          echo -e "${RED}Script not found or not executable:${NC} ${SCRIPTS_DIR}/firewall_rules_disable.sh" >&2
+        fi
+        pause
+        ;;
+      10)
+        if command -v ufw >/dev/null 2>&1; then
+          ufw status verbose || true
+          echo
+          ufw status numbered || true
+        else
+          echo "ufw is not installed."
         fi
         pause
         ;;
@@ -963,6 +1025,7 @@ while true; do
   echo -e "${GREEN}1)${NC} Paqet Tunnel"
   echo -e "${GREEN}2)${NC} Waterwall Tunnel"
   echo -e "${GREEN}3)${NC} Update Scripts (git pull)"
+  echo -e "${GREEN}4)${NC} Firewall (UFW)"
   echo
   echo
   echo -e "${GREEN}0)${NC} Exit"
@@ -983,6 +1046,9 @@ while true; do
         echo -e "${RED}Script not found or not executable:${NC} ${SCRIPTS_DIR}/update_scripts.sh" >&2
       fi
       pause
+      ;;
+    4)
+      firewall_menu
       ;;
     0)
       echo -e "${GREEN}Goodbye.${NC}"
