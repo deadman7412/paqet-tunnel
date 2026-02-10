@@ -106,7 +106,7 @@ class EchoHandler(BaseHTTPRequestHandler):
 <html>
 <head><title>WaterWall Test Backend</title></head>
 <body style="font-family: monospace; padding: 20px;">
-<h1>[OK] WaterWall Tunnel Working!</h1>
+<h1>[SUCCESS] WaterWall Tunnel Working!</h1>
 <p><strong>Request received at:</strong> {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}</p>
 <p><strong>Request path:</strong> {self.path}</p>
 <p><strong>Client address:</strong> {self.client_address[0]}:{self.client_address[1]}</p>

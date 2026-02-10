@@ -38,6 +38,7 @@ The entry point is `menu.sh`, which presents a hierarchical menu structure:
 - Server config: `~/waterwall/server/config.json` + `core.json`
 - Client config: `~/waterwall/client/config.json` + `core.json`
 - Node-based JSON configuration: TcpListener → TcpConnector chain
+- **Client listens on 0.0.0.0 by default** (accessible from internet for 3x-ui/proxy integration)
 
 **WaterWall JSON Structure:**
 ```json

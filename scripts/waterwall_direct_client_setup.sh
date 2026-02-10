@@ -171,8 +171,8 @@ if [ -f "${INFO_PATH}" ]; then
   [ -z "${OBF_DEFAULT}" ] && OBF_DEFAULT="$(rand_hex 16)"
 fi
 
-read -r -p "Local listen address [127.0.0.1]: " LOCAL_LISTEN_ADDR
-LOCAL_LISTEN_ADDR="${LOCAL_LISTEN_ADDR:-127.0.0.1}"
+read -r -p "Local listen address [0.0.0.0]: " LOCAL_LISTEN_ADDR
+LOCAL_LISTEN_ADDR="${LOCAL_LISTEN_ADDR:-0.0.0.0}"
 
 read -r -p "Foreign server address/IP [${SERVER_IP_DEFAULT}]: " FOREIGN_ADDR
 FOREIGN_ADDR="${FOREIGN_ADDR:-${SERVER_IP_DEFAULT}}"
