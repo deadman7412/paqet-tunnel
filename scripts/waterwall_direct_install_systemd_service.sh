@@ -172,5 +172,10 @@ WantedBy=multi-user.target
 EOF
 
 systemctl daemon-reload
-systemctl enable --now "${SERVICE_NAME}.service"
+systemctl enable "${SERVICE_NAME}.service" >/dev/null 2>&1 || true
+if systemctl is-active --quiet "${SERVICE_NAME}.service"; then
+  systemctl restart "${SERVICE_NAME}.service"
+else
+  systemctl start "${SERVICE_NAME}.service"
+fi
 systemctl status "${SERVICE_NAME}.service" --no-pager

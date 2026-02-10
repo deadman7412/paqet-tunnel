@@ -60,6 +60,17 @@ can_connect_tcp() {
   bash -c "echo > /dev/tcp/${host}/${port}" >/dev/null 2>&1
 }
 
+detect_active_listen_port() {
+  if ! command -v ss >/dev/null 2>&1; then
+    return 0
+  fi
+  ss -lntp 2>/dev/null | awk '/waterwall/ && /127\.0\.0\.1:/ {
+    if (match($4, /127\.0\.0\.1:([0-9]+)/, m)) {
+      print m[1]; exit
+    }
+  }'
+}
+
 extract_ip_from_json() {
   local payload="$1"
   echo "${payload}" | sed -nE 's/.*"origin"[[:space:]]*:[[:space:]]*"([^"]+)".*/\1/p; s/.*"ip"[[:space:]]*:[[:space:]]*"([^"]+)".*/\1/p' | head -n1
@@ -145,8 +156,15 @@ else
   if can_connect_tcp "${LISTEN_ADDR}" "${LISTEN_PORT}"; then
     echo "[OK] Local Waterwall listener is reachable: ${LISTEN_ADDR}:${LISTEN_PORT}"
   else
-    echo "[FAIL] Local Waterwall listener is not reachable: ${LISTEN_ADDR}:${LISTEN_PORT}"
-    FAILED=1
+    ACTIVE_PORT="$(detect_active_listen_port || true)"
+    if [ -n "${ACTIVE_PORT}" ] && [ "${ACTIVE_PORT}" != "${LISTEN_PORT}" ]; then
+      echo "[WARN] Config/runtime mismatch:"
+      echo "      config expects ${LISTEN_ADDR}:${LISTEN_PORT}, but running service listens on 127.0.0.1:${ACTIVE_PORT}"
+      echo "      Reinstall/restart Waterwall client service to load latest config."
+    else
+      echo "[FAIL] Local Waterwall listener is not reachable: ${LISTEN_ADDR}:${LISTEN_PORT}"
+      FAILED=1
+    fi
   fi
 fi
 
