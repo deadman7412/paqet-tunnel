@@ -765,6 +765,7 @@ waterwall_direct_server_menu() {
     echo -e "${GREEN}5)${NC} Show server info"
     echo -e "${GREEN}6)${NC} Start test backend"
     echo -e "${GREEN}7)${NC} Complete tunnel test"
+    echo -e "${GREEN}8)${NC} Test All (full report)"
     echo
     echo
     echo -e "${GREEN}0)${NC} Back"
@@ -828,6 +829,14 @@ waterwall_direct_server_menu() {
         fi
         pause
         ;;
+      8)
+        if [ -x "${SCRIPTS_DIR}/waterwall_test_all.sh" ]; then
+          run_action "${SCRIPTS_DIR}/waterwall_test_all.sh"
+        else
+          echo -e "${RED}Script not found or not executable:${NC} ${SCRIPTS_DIR}/waterwall_test_all.sh" >&2
+        fi
+        pause
+        ;;
       0)
         return 0
         ;;
@@ -851,6 +860,7 @@ waterwall_direct_client_menu() {
     echo -e "${GREEN}4)${NC} Service control (client)"
     echo -e "${GREEN}5)${NC} Test connection (quick)"
     echo -e "${GREEN}6)${NC} Complete tunnel test"
+    echo -e "${GREEN}7)${NC} Test All (full report)"
     echo
     echo
     echo -e "${GREEN}0)${NC} Back"
@@ -903,6 +913,14 @@ waterwall_direct_client_menu() {
           run_action "${SCRIPTS_DIR}/waterwall_test_tunnel_complete.sh"
         else
           echo -e "${RED}Script not found or not executable:${NC} ${SCRIPTS_DIR}/waterwall_test_tunnel_complete.sh" >&2
+        fi
+        pause
+        ;;
+      7)
+        if [ -x "${SCRIPTS_DIR}/waterwall_test_all.sh" ]; then
+          run_action "${SCRIPTS_DIR}/waterwall_test_all.sh"
+        else
+          echo -e "${RED}Script not found or not executable:${NC} ${SCRIPTS_DIR}/waterwall_test_all.sh" >&2
         fi
         pause
         ;;
