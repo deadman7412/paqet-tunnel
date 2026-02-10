@@ -84,17 +84,29 @@ except:
 
 ensure_ssh_rules() {
   local ssh_ports=""
-  ssh_ports="$(grep -Rsh '^[[:space:]]*Port[[:space:]]\+[0-9]\+' /etc/ssh/sshd_config /etc/ssh/sshd_config.d/*.conf 2>/dev/null | awk '{print $2}' | sort -u)"
+  echo "[INFO] Detecting SSH ports..."
+
+  # Detect SSH ports, suppress errors
+  ssh_ports="$(grep -Rsh '^[[:space:]]*Port[[:space:]]\+[0-9]\+' /etc/ssh/sshd_config /etc/ssh/sshd_config.d/*.conf 2>/dev/null | awk '{print $2}' | sort -u || true)"
+
   if [ -z "${ssh_ports}" ]; then
+    echo "[INFO] No custom SSH ports found, using default port 22"
     ssh_ports="22"
   fi
 
-  echo "SSH ports detected: ${ssh_ports}"
+  echo "[INFO] SSH ports detected: ${ssh_ports}"
+
   for p in ${ssh_ports}; do
+    echo "[INFO] Checking SSH port ${p}..."
     if ! ufw status 2>/dev/null | grep -qE "\\b${p}/tcp\\b.*ALLOW IN"; then
+      echo "[INFO] Opening SSH port ${p}..."
       ufw allow "${p}/tcp" comment 'ssh' >/dev/null 2>&1 || true
+      echo "[INFO] SSH port ${p} opened"
+    else
+      echo "[INFO] SSH port ${p} already open"
     fi
   done
+  echo "[INFO] SSH rules check complete"
 }
 
 echo "[INFO] Ensuring UFW is installed..."
