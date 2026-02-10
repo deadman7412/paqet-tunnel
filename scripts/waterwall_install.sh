@@ -62,6 +62,17 @@ pick_asset_url() {
   urls="$(printf "%s\n" "${json}" | awk -F'"' '/"browser_download_url":/ {print $4}')"
   [ -n "${urls}" ] || return 1
 
+  if [ -n "${WATERWALL_ASSET_NAME:-}" ]; then
+    preferred="$(printf "%s\n" "${urls}" | awk -v n="${WATERWALL_ASSET_NAME}" -F/ '$NF==n {print $0; exit}')"
+    if [ -z "${preferred}" ]; then
+      echo "Requested asset not found in latest release: ${WATERWALL_ASSET_NAME}" >&2
+      echo "Set WATERWALL_ASSET_NAME to an exact asset filename from the release page." >&2
+      return 1
+    fi
+    printf "%s\n" "${preferred}"
+    return 0
+  fi
+
   case "${arch}" in
     amd64)
       # Prefer full-featured generic x64 first; old-cpu build is fallback.
@@ -185,6 +196,7 @@ set_binary_link() {
 
 post_install_probe() {
   local probe_out=""
+  local warn=0
   if [ ! -x "${WATERWALL_DIR}/waterwall" ]; then
     return 0
   fi
@@ -196,11 +208,16 @@ post_install_probe() {
   if printf "%s\n" "${probe_out}" | grep -qi "Illegal instruction"; then
     echo "Warning: installed Waterwall binary triggers Illegal instruction on this CPU." >&2
     echo "Try another release asset (for example linux-gcc-x64-old-cpu)." >&2
+    warn=1
   fi
   if printf "%s\n" "${probe_out}" | grep -qi "dynLoadNodeLib not implemented"; then
     echo "Warning: this Waterwall build cannot load dynamic node libraries." >&2
-    echo "Try a different asset (recommended: linux-gcc-x64)." >&2
+    echo "Try a different asset (recommended: linux-clang-x64 or linux-gcc-x64)." >&2
+    echo "Example:" >&2
+    echo "  WATERWALL_ASSET_NAME=Waterwall-linux-clang-x64.zip bash scripts/waterwall_install.sh" >&2
+    warn=1
   fi
+  return "${warn}"
 }
 
 main() {
@@ -250,7 +267,7 @@ main() {
 
   extract_zip "${final_zip}" "${WATERWALL_DIR}"
   set_binary_link
-  post_install_probe
+  post_install_probe || true
   mkdir -p "${WATERWALL_DIR}/configs" "${WATERWALL_DIR}/logs" "${WATERWALL_DIR}/runtime"
 
   echo
