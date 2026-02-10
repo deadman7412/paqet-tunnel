@@ -23,6 +23,9 @@
 - Direct Waterwall tunnel
   - Server (foreign VPS) setup
   - Client (local VPS) setup
+  - Install systemd service (server/client)
+  - Remove systemd service (server/client)
+  - Service control (server/client)
 - Reverse Waterwall tunnel
 - Uninstall Waterwall
 

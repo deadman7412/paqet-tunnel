@@ -651,6 +651,12 @@ waterwall_direct_menu() {
     echo "-----------------------"
     echo -e "${GREEN}1)${NC} Server (foreign VPS) setup"
     echo -e "${GREEN}2)${NC} Client (local VPS) setup"
+    echo -e "${GREEN}3)${NC} Install systemd service (server)"
+    echo -e "${GREEN}4)${NC} Install systemd service (client)"
+    echo -e "${GREEN}5)${NC} Remove systemd service (server)"
+    echo -e "${GREEN}6)${NC} Remove systemd service (client)"
+    echo -e "${GREEN}7)${NC} Service control (server)"
+    echo -e "${GREEN}8)${NC} Service control (client)"
     echo
     echo
     echo -e "${GREEN}0)${NC} Back"
@@ -671,6 +677,54 @@ waterwall_direct_menu() {
           run_action "${SCRIPTS_DIR}/waterwall_direct_client_setup.sh"
         else
           echo -e "${RED}Script not found or not executable:${NC} ${SCRIPTS_DIR}/waterwall_direct_client_setup.sh" >&2
+        fi
+        pause
+        ;;
+      3)
+        if [ -x "${SCRIPTS_DIR}/waterwall_direct_install_systemd_service.sh" ]; then
+          run_action "${SCRIPTS_DIR}/waterwall_direct_install_systemd_service.sh" server
+        else
+          echo -e "${RED}Script not found or not executable:${NC} ${SCRIPTS_DIR}/waterwall_direct_install_systemd_service.sh" >&2
+        fi
+        pause
+        ;;
+      4)
+        if [ -x "${SCRIPTS_DIR}/waterwall_direct_install_systemd_service.sh" ]; then
+          run_action "${SCRIPTS_DIR}/waterwall_direct_install_systemd_service.sh" client
+        else
+          echo -e "${RED}Script not found or not executable:${NC} ${SCRIPTS_DIR}/waterwall_direct_install_systemd_service.sh" >&2
+        fi
+        pause
+        ;;
+      5)
+        if [ -x "${SCRIPTS_DIR}/waterwall_direct_remove_systemd_service.sh" ]; then
+          run_action "${SCRIPTS_DIR}/waterwall_direct_remove_systemd_service.sh" server
+        else
+          echo -e "${RED}Script not found or not executable:${NC} ${SCRIPTS_DIR}/waterwall_direct_remove_systemd_service.sh" >&2
+        fi
+        pause
+        ;;
+      6)
+        if [ -x "${SCRIPTS_DIR}/waterwall_direct_remove_systemd_service.sh" ]; then
+          run_action "${SCRIPTS_DIR}/waterwall_direct_remove_systemd_service.sh" client
+        else
+          echo -e "${RED}Script not found or not executable:${NC} ${SCRIPTS_DIR}/waterwall_direct_remove_systemd_service.sh" >&2
+        fi
+        pause
+        ;;
+      7)
+        if [ -x "${SCRIPTS_DIR}/waterwall_direct_service_control.sh" ]; then
+          run_action "${SCRIPTS_DIR}/waterwall_direct_service_control.sh" server
+        else
+          echo -e "${RED}Script not found or not executable:${NC} ${SCRIPTS_DIR}/waterwall_direct_service_control.sh" >&2
+        fi
+        pause
+        ;;
+      8)
+        if [ -x "${SCRIPTS_DIR}/waterwall_direct_service_control.sh" ]; then
+          run_action "${SCRIPTS_DIR}/waterwall_direct_service_control.sh" client
+        else
+          echo -e "${RED}Script not found or not executable:${NC} ${SCRIPTS_DIR}/waterwall_direct_service_control.sh" >&2
         fi
         pause
         ;;
