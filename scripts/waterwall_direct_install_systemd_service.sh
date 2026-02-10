@@ -106,7 +106,12 @@ ensure_active_files() {
       "console": false
     }
   },
-  "dns": {},
+  "dns": {
+    "servers": [
+      "8.8.8.8",
+      "1.1.1.1"
+    ]
+  },
   "misc": {
     "workers": 0,
     "ram-profile": "${ROLE}",

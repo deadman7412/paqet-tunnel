@@ -423,8 +423,8 @@ elif [ "${TLS_ENABLED}" = "1" ]; then
         "cert-file": "${CERT_FILE}",
         "key-file": "${KEY_FILE}",
         "alpns": [
-          { "value": "h2", "next": "node->next" },
-          { "value": "http/1.1", "next": "node->next" }
+          "h2",
+          "http/1.1"
         ]
       },
       "next": "h2_server"
@@ -520,7 +520,12 @@ cat > "${CORE_FILE}" <<EOF
       "console": false
     }
   },
-  "dns": {},
+  "dns": {
+    "servers": [
+      "8.8.8.8",
+      "1.1.1.1"
+    ]
+  },
   "misc": {
     "workers": 0,
     "ram-profile": "server",

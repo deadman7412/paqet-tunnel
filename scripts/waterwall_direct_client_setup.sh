@@ -79,6 +79,11 @@ sync_ufw_tunnel_rule_client() {
         ufw default deny incoming >/dev/null 2>&1 || true
         ufw default allow outgoing >/dev/null 2>&1 || true
         ufw allow in on lo comment 'waterwall-loopback' >/dev/null 2>&1 || true
+        ssh_ports="$(grep -Rsh '^[[:space:]]*Port[[:space:]]\+[0-9]\+' /etc/ssh/sshd_config /etc/ssh/sshd_config.d/*.conf 2>/dev/null | awk '{print $2}' | sort -u)"
+        [ -z "${ssh_ports}" ] && ssh_ports="22"
+        for p in ${ssh_ports}; do
+          ufw allow "${p}/tcp" comment 'waterwall-ssh' >/dev/null 2>&1 || true
+        done
         ufw --force enable >/dev/null 2>&1 || true
         ;;
       *)
@@ -356,7 +361,12 @@ cat > "${CORE_FILE}" <<EOF
       "console": false
     }
   },
-  "dns": {},
+  "dns": {
+    "servers": [
+      "8.8.8.8",
+      "1.1.1.1"
+    ]
+  },
   "misc": {
     "workers": 0,
     "ram-profile": "client",
