@@ -165,6 +165,7 @@ SERVER_PORT_DEFAULT="443"
 SERVICE_PORT_DEFAULT="1080"
 TLS_ENABLED_DEFAULT="1"
 TUNNEL_PROFILE_DEFAULT="basic"
+TUNNEL_MODE_DEFAULT="forward"
 TLS_SNI_DEFAULT=""
 GRPC_DEFAULT="svc-$(rand_hex 4)"
 OBF_DEFAULT="$(rand_hex 16)"
@@ -173,6 +174,7 @@ if [ -f "${INFO_PATH}" ]; then
   SERVER_IP_DEFAULT="$(read_info "${INFO_PATH}" "server_public_ip")"
   SERVER_PORT_DEFAULT="$(read_info "${INFO_PATH}" "listen_port")"
   SERVICE_PORT_DEFAULT="$(read_info "${INFO_PATH}" "backend_port")"
+  TUNNEL_MODE_DEFAULT="$(read_info "${INFO_PATH}" "tunnel_mode")"
   TLS_ENABLED_DEFAULT="$(read_info "${INFO_PATH}" "use_tls")"
   TUNNEL_PROFILE_DEFAULT="$(read_info "${INFO_PATH}" "tunnel_profile")"
   TLS_SNI_DEFAULT="$(read_info "${INFO_PATH}" "tls_sni")"
@@ -180,11 +182,28 @@ if [ -f "${INFO_PATH}" ]; then
   OBF_DEFAULT="$(read_info "${INFO_PATH}" "obfuscator_password")"
   [ "${SERVER_IP_DEFAULT}" = "REPLACE_WITH_SERVER_PUBLIC_IP" ] && SERVER_IP_DEFAULT=""
   [ -z "${SERVER_PORT_DEFAULT}" ] && SERVER_PORT_DEFAULT="443"
+  [ -z "${TUNNEL_MODE_DEFAULT}" ] && TUNNEL_MODE_DEFAULT="forward"
   [ -z "${SERVICE_PORT_DEFAULT}" ] && SERVICE_PORT_DEFAULT="1080"
   [ -z "${TLS_ENABLED_DEFAULT}" ] && TLS_ENABLED_DEFAULT="1"
   [ -z "${TUNNEL_PROFILE_DEFAULT}" ] && TUNNEL_PROFILE_DEFAULT="basic"
   [ -z "${GRPC_DEFAULT}" ] && GRPC_DEFAULT="svc-$(rand_hex 4)"
   [ -z "${OBF_DEFAULT}" ] && OBF_DEFAULT="$(rand_hex 16)"
+fi
+
+read -r -p "Tunnel mode [forward/internet] (default ${TUNNEL_MODE_DEFAULT}): " TUNNEL_MODE
+TUNNEL_MODE="$(echo "${TUNNEL_MODE:-${TUNNEL_MODE_DEFAULT}}" | tr '[:upper:]' '[:lower:]')"
+case "${TUNNEL_MODE}" in
+  forward|internet) ;;
+  *)
+    echo "Tunnel mode must be forward or internet." >&2
+    exit 1
+    ;;
+esac
+
+if [ "${TUNNEL_MODE}" = "internet" ]; then
+  SERVICE_PORT_DEFAULT="1080"
+elif ! validate_port "${SERVICE_PORT_DEFAULT}"; then
+  SERVICE_PORT_DEFAULT="1080"
 fi
 
 read -r -p "Local listen address [0.0.0.0]: " LOCAL_LISTEN_ADDR
@@ -197,7 +216,11 @@ if [ -z "${FOREIGN_ADDR}" ]; then
   exit 1
 fi
 
-read -r -p "Service port (must match server backend service port) [${SERVICE_PORT_DEFAULT}]: " LOCAL_LISTEN_PORT
+if [ "${TUNNEL_MODE}" = "internet" ]; then
+  read -r -p "Local proxy/service listen port [${SERVICE_PORT_DEFAULT}]: " LOCAL_LISTEN_PORT
+else
+  read -r -p "Service port (must match server backend service port) [${SERVICE_PORT_DEFAULT}]: " LOCAL_LISTEN_PORT
+fi
 LOCAL_LISTEN_PORT="${LOCAL_LISTEN_PORT:-${SERVICE_PORT_DEFAULT}}"
 if ! validate_port "${LOCAL_LISTEN_PORT}"; then
   echo "Invalid service/local listen port: ${LOCAL_LISTEN_PORT}" >&2
@@ -246,7 +269,7 @@ if [ "${TUNNEL_PROFILE}" = "advanced" ]; then
   OBF_PASSWORD="${OBF_PASSWORD:-${OBF_DEFAULT}}"
 fi
 
-if [ "${TUNNEL_PROFILE}" = "basic" ]; then
+if [ "${TUNNEL_PROFILE}" = "basic" ] && [ "${TUNNEL_MODE}" = "forward" ]; then
   cat > "${ROLE_CONFIG_FILE}" <<EOF
 {
   "name": "direct-client-basic",
@@ -276,7 +299,42 @@ if [ "${TUNNEL_PROFILE}" = "basic" ]; then
   ]
 }
 EOF
-elif [ "${TLS_ENABLED}" = "1" ]; then
+elif [ "${TUNNEL_PROFILE}" = "basic" ] && [ "${TUNNEL_MODE}" = "internet" ]; then
+  cat > "${ROLE_CONFIG_FILE}" <<EOF
+{
+  "name": "direct-client-internet-basic",
+  "author": "paqet-tunnel",
+  "config-version": 1,
+  "core-minimum-version": 1,
+  "nodes": [
+    {
+      "name": "input",
+      "type": "TcpListener",
+      "settings": {
+        "address": "${LOCAL_LISTEN_ADDR}",
+        "port": ${LOCAL_LISTEN_PORT},
+        "nodelay": true
+      },
+      "next": "proxy_client"
+    },
+    {
+      "name": "proxy_client",
+      "type": "ProxyClient",
+      "next": "output"
+    },
+    {
+      "name": "output",
+      "type": "TcpConnector",
+      "settings": {
+        "address": "${FOREIGN_ADDR}",
+        "port": ${FOREIGN_PORT},
+        "nodelay": true
+      }
+    }
+  ]
+}
+EOF
+elif [ "${TLS_ENABLED}" = "1" ] && [ "${TUNNEL_MODE}" = "forward" ]; then
   cat > "${ROLE_CONFIG_FILE}" <<EOF
 {
   "name": "secure-direct-client",
@@ -343,10 +401,118 @@ elif [ "${TLS_ENABLED}" = "1" ]; then
   ]
 }
 EOF
+elif [ "${TLS_ENABLED}" = "1" ] && [ "${TUNNEL_MODE}" = "internet" ]; then
+  cat > "${ROLE_CONFIG_FILE}" <<EOF
+{
+  "name": "secure-direct-client-internet",
+  "author": "paqet-tunnel",
+  "config-version": 1,
+  "core-minimum-version": 1,
+  "nodes": [
+    {
+      "name": "input",
+      "type": "TcpListener",
+      "settings": {
+        "address": "${LOCAL_LISTEN_ADDR}",
+        "port": ${LOCAL_LISTEN_PORT},
+        "nodelay": true
+      },
+      "next": "proxy_client"
+    },
+    {
+      "name": "proxy_client",
+      "type": "ProxyClient",
+      "next": "obfuscator_client"
+    },
+    {
+      "name": "obfuscator_client",
+      "type": "ObfuscatorClient",
+      "settings": {
+        "password": "${OBF_PASSWORD}"
+      },
+      "next": "protobuf_client"
+    },
+    {
+      "name": "protobuf_client",
+      "type": "ProtoBufClient",
+      "next": "h2_client"
+    },
+    {
+      "name": "h2_client",
+      "type": "Http2Client",
+      "settings": {
+        "host": "${TLS_SNI}",
+        "path": "/${GRPC_SERVICE}",
+        "mode": "grpc"
+      },
+      "next": "tls_client"
+    },
+    {
+      "name": "tls_client",
+      "type": "OpenSSLClient",
+      "settings": {
+        "sni": "${TLS_SNI}",
+        "verify": true,
+        "alpns": [
+          "h2",
+          "http/1.1"
+        ],
+        "fingerprint": "chrome"
+      },
+      "next": "output"
+    },
+    {
+      "name": "output",
+      "type": "TcpConnector",
+      "settings": {
+        "address": "${FOREIGN_ADDR}",
+        "port": ${FOREIGN_PORT},
+        "nodelay": true
+      }
+    }
+  ]
+}
+EOF
 else
   echo "Advanced mode without TLS is not supported on this host build; using basic chain." >&2
   TUNNEL_PROFILE="basic"
-  cat > "${ROLE_CONFIG_FILE}" <<EOF
+  if [ "${TUNNEL_MODE}" = "internet" ]; then
+    cat > "${ROLE_CONFIG_FILE}" <<EOF
+{
+  "name": "direct-client-internet-basic",
+  "author": "paqet-tunnel",
+  "config-version": 1,
+  "core-minimum-version": 1,
+  "nodes": [
+    {
+      "name": "input",
+      "type": "TcpListener",
+      "settings": {
+        "address": "${LOCAL_LISTEN_ADDR}",
+        "port": ${LOCAL_LISTEN_PORT},
+        "nodelay": true
+      },
+      "next": "proxy_client"
+    },
+    {
+      "name": "proxy_client",
+      "type": "ProxyClient",
+      "next": "output"
+    },
+    {
+      "name": "output",
+      "type": "TcpConnector",
+      "settings": {
+        "address": "${FOREIGN_ADDR}",
+        "port": ${FOREIGN_PORT},
+        "nodelay": true
+      }
+    }
+  ]
+}
+EOF
+  else
+    cat > "${ROLE_CONFIG_FILE}" <<EOF
 {
   "name": "direct-client-basic",
   "author": "paqet-tunnel",
@@ -375,6 +541,7 @@ else
   ]
 }
 EOF
+  fi
 fi
 
 cp -f "${ROLE_CONFIG_FILE}" "${CONFIG_FILE}"
@@ -431,10 +598,15 @@ echo "Core file written: ${CORE_FILE}"
 echo "Run helper created: ${RUN_SCRIPT}"
 echo "Role dir: ${ROLE_DIR}"
 echo "Using values:"
+echo "  - tunnel_mode: ${TUNNEL_MODE}"
 echo "  - tunnel_profile: ${TUNNEL_PROFILE}"
 echo "  - tunnel_port: ${TUNNEL_PORT}"
 echo "  - service_port(local/client): ${LOCAL_LISTEN_PORT}"
-echo "  - service_port(server/backend): ${LOCAL_LISTEN_PORT}"
+if [ "${TUNNEL_MODE}" = "forward" ]; then
+  echo "  - service_port(server/backend): ${LOCAL_LISTEN_PORT}"
+else
+  echo "  - proxy_mode: HTTP/SOCKS destination forwarding via ProxyClient/ProxyServer"
+fi
 echo "  - foreign_addr: ${FOREIGN_ADDR}"
 echo "  - foreign_port: ${FOREIGN_PORT}"
 echo "  - use_tls: ${TLS_ENABLED}"

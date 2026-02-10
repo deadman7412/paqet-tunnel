@@ -874,7 +874,7 @@ waterwall_direct_client_test_menu() {
     echo -e "${BLUE}Direct Waterwall: Client Tests${NC}"
     echo "-------------------------------"
     echo -e "${GREEN}1)${NC} Diagnostic report (share with support)"
-    echo -e "${GREEN}2)${NC} Quick connectivity check"
+    echo -e "${GREEN}2)${NC} Quick connectivity + internet egress check"
     echo
     echo
     echo -e "${GREEN}0)${NC} Back"

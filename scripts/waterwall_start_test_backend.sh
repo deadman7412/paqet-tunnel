@@ -20,16 +20,20 @@ fi
 parse_json_nodes() {
   local file="$1"
   python3 -c "
-import json, sys
+import json, shlex
 try:
     with open('${file}', 'r') as f:
         data = json.load(f)
     nodes = data.get('nodes', [])
-    if len(nodes) >= 2:
-        connector = nodes[1].get('settings', {})
-        print('CONNECT_ADDR=' + str(connector.get('address', '')))
-        print('CONNECT_PORT=' + str(connector.get('port', '')))
-except:
+    connector = next((n for n in nodes if n.get('type') == 'TcpConnector'), {})
+    node_types = {str(n.get('type', '')) for n in nodes}
+    cset = connector.get('settings', {}) if isinstance(connector, dict) else {}
+    def out(k, v):
+        print(f'{k}=' + shlex.quote('' if v is None else str(v)))
+    out('CONNECT_ADDR', cset.get('address', ''))
+    out('CONNECT_PORT', cset.get('port', ''))
+    out('HAS_PROXY_SERVER', '1' if 'ProxyServer' in node_types else '0')
+except Exception:
     pass
 " 2>/dev/null || echo ""
 }
@@ -37,11 +41,29 @@ except:
 eval "$(parse_json_nodes "${CONFIG_FILE}")"
 BACKEND_PORT="${CONNECT_PORT}"
 BACKEND_ADDR="${CONNECT_ADDR}"
+HAS_PROXY_SERVER="${HAS_PROXY_SERVER:-0}"
+
+if [ "${HAS_PROXY_SERVER}" = "1" ]; then
+  echo "[INFO] ProxyServer mode detected in server config."
+  echo "       Dynamic destinations are routed by ProxyServer -> TcpConnector."
+  echo "       A fixed backend test service is not required in this mode."
+  echo
+  echo "Run client-side internet test instead:"
+  echo "  ./scripts/waterwall_test_client_connection.sh"
+  exit 0
+fi
 
 if [ -z "${BACKEND_PORT}" ]; then
   echo "Error: Could not parse backend port from config" >&2
   exit 1
 fi
+
+case "${BACKEND_PORT}" in
+  ''|*[!0-9]*)
+    echo "Error: Parsed backend port is not numeric: ${BACKEND_PORT}" >&2
+    exit 1
+    ;;
+esac
 
 echo "Backend should listen on: ${BACKEND_ADDR}:${BACKEND_PORT}"
 echo

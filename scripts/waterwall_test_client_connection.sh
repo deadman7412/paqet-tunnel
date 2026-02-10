@@ -4,6 +4,7 @@ set -euo pipefail
 WATERWALL_DIR="${WATERWALL_DIR:-$HOME/waterwall}"
 ROLE_DIR="${WATERWALL_DIR}/client"
 CONFIG_FILE="${ROLE_DIR}/config.json"
+INFO_FILE="${WATERWALL_DIR}/direct_server_info.txt"
 
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -21,35 +22,85 @@ if [ ! -f "${CONFIG_FILE}" ]; then
   exit 1
 fi
 
-# Parse config using Python for accurate JSON parsing
+read_info() {
+  local file="$1" key="$2"
+  awk -F= -v k="${key}" '$1==k {sub($1"=",""); print; exit}' "${file}" 2>/dev/null || true
+}
+
 parse_json_nodes() {
   local file="$1"
   python3 -c "
-import json, sys
+import json, shlex
 try:
     with open('${file}', 'r') as f:
         data = json.load(f)
     nodes = data.get('nodes', [])
-    if len(nodes) >= 2:
-        listener = nodes[0].get('settings', {})
-        connector = nodes[1].get('settings', {})
-        print('LISTEN_ADDR=' + str(listener.get('address', '')))
-        print('LISTEN_PORT=' + str(listener.get('port', '')))
-        print('CONNECT_ADDR=' + str(connector.get('address', '')))
-        print('CONNECT_PORT=' + str(connector.get('port', '')))
-except:
+    listener = next((n for n in nodes if n.get('type') == 'TcpListener'), {})
+    connector = next((n for n in nodes if n.get('type') == 'TcpConnector'), {})
+    types = {str(n.get('type', '')) for n in nodes}
+    lset = listener.get('settings', {}) if isinstance(listener, dict) else {}
+    cset = connector.get('settings', {}) if isinstance(connector, dict) else {}
+    def out(k, v):
+        print(f'{k}=' + shlex.quote('' if v is None else str(v)))
+    out('LISTEN_ADDR', lset.get('address', ''))
+    out('LISTEN_PORT', lset.get('port', ''))
+    out('CONNECT_ADDR', cset.get('address', ''))
+    out('CONNECT_PORT', cset.get('port', ''))
+    out('HAS_PROXY_CLIENT', '1' if 'ProxyClient' in types else '0')
+except Exception:
     pass
 " 2>/dev/null || echo ""
 }
 
+extract_ip() {
+  local raw="$1"
+  printf '%s\n' "${raw}" | grep -Eo '([0-9]{1,3}\.){3}[0-9]{1,3}|([0-9A-Fa-f]{0,4}:){2,}[0-9A-Fa-f]{0,4}' | head -n1
+}
+
+probe_internet_via_proxy() {
+  local proxy_url="$1" endpoint body ip
+  for endpoint in \
+    "https://api.ipify.org?format=json" \
+    "https://api.ipify.org" \
+    "https://icanhazip.com"; do
+    body="$(curl -fsS --connect-timeout 5 --max-time 12 --proxy "${proxy_url}" "${endpoint}" 2>/dev/null || true)"
+    [ -z "${body}" ] && continue
+    ip="$(extract_ip "${body}")"
+    if [ -n "${ip}" ]; then
+      LAST_ENDPOINT="${endpoint}"
+      echo "${ip}"
+      return 0
+    fi
+  done
+  return 1
+}
+
 eval "$(parse_json_nodes "${CONFIG_FILE}")"
+
+if [ -z "${LISTEN_ADDR:-}" ] || [ -z "${LISTEN_PORT:-}" ] || [ -z "${CONNECT_ADDR:-}" ] || [ -z "${CONNECT_PORT:-}" ]; then
+  echo -e "${RED}[ERROR] Failed to parse listener/connector from ${CONFIG_FILE}${NC}" >&2
+  exit 1
+fi
+
 LOCAL_ADDR="${LISTEN_ADDR}"
 LOCAL_PORT="${LISTEN_PORT}"
 SERVER_ADDR="${CONNECT_ADDR}"
 SERVER_PORT="${CONNECT_PORT}"
+HAS_PROXY_CLIENT="${HAS_PROXY_CLIENT:-0}"
+
+EXPECTED_SERVER_IP=""
+if [ -f "${INFO_FILE}" ]; then
+  EXPECTED_SERVER_IP="$(read_info "${INFO_FILE}" "server_public_ip")"
+  [ "${EXPECTED_SERVER_IP}" = "REPLACE_WITH_SERVER_PUBLIC_IP" ] && EXPECTED_SERVER_IP=""
+fi
 
 echo "Local:  ${LOCAL_ADDR}:${LOCAL_PORT}"
 echo "Server: ${SERVER_ADDR}:${SERVER_PORT}"
+if [ "${HAS_PROXY_CLIENT}" = "1" ]; then
+  echo "Mode:   Internet proxy mode (ProxyClient detected)"
+else
+  echo "Mode:   Forward mode (no ProxyClient)"
+fi
 echo
 
 # Test 1: Service running
@@ -81,23 +132,65 @@ else
   exit 1
 fi
 
-# Test 4: Tunnel functionality
+# Test 4: Basic data flow
 echo -n "4. Tunnel data flow... "
-if timeout 5 bash -c "echo -e 'GET / HTTP/1.0\r\n\r\n' | nc ${LOCAL_ADDR} ${LOCAL_PORT}" 2>/dev/null | head -n1 | grep -q "HTTP"; then
-  echo -e "${GREEN}[OK]${NC} Working"
-  TUNNEL_WORKS="yes"
+if command -v nc >/dev/null 2>&1; then
+  if timeout 5 bash -c "printf 'GET / HTTP/1.0\r\n\r\n' | nc ${LOCAL_ADDR} ${LOCAL_PORT}" 2>/dev/null | head -n1 | grep -qiE 'HTTP/|[0-9]{3}'; then
+    echo -e "${GREEN}[OK]${NC} Response received"
+    RAW_TUNNEL_OK="yes"
+  else
+    echo -e "${YELLOW}[WARN]${NC} No HTTP-like response"
+    RAW_TUNNEL_OK="partial"
+  fi
 else
-  echo -e "${YELLOW}[WARN]${NC} No HTTP response"
-  TUNNEL_WORKS="partial"
+  echo -e "${YELLOW}[WARN]${NC} nc not installed; skipped"
+  RAW_TUNNEL_OK="unknown"
+fi
+
+# Test 5: Internet egress via tunnel
+INTERNET_OK="no"
+INTERNET_IP=""
+INTERNET_MODE=""
+LAST_ENDPOINT=""
+
+echo -n "5. Internet via tunnel... "
+if command -v curl >/dev/null 2>&1; then
+  if INTERNET_IP="$(probe_internet_via_proxy "http://${LOCAL_ADDR}:${LOCAL_PORT}")"; then
+    INTERNET_OK="yes"
+    INTERNET_MODE="http"
+  elif INTERNET_IP="$(probe_internet_via_proxy "socks5h://${LOCAL_ADDR}:${LOCAL_PORT}")"; then
+    INTERNET_OK="yes"
+    INTERNET_MODE="socks5h"
+  fi
+
+  if [ "${INTERNET_OK}" = "yes" ]; then
+    echo -e "${GREEN}[OK]${NC} ${INTERNET_IP} (mode: ${INTERNET_MODE})"
+    if [ -n "${EXPECTED_SERVER_IP}" ] && [ "${EXPECTED_SERVER_IP}" != "${INTERNET_IP}" ]; then
+      echo -e "   ${YELLOW}[WARN]${NC} Egress IP differs from direct_server_info (${EXPECTED_SERVER_IP})"
+    fi
+  else
+    echo -e "${YELLOW}[WARN]${NC} Could not fetch public IP through local tunnel port"
+  fi
+else
+  echo -e "${YELLOW}[WARN]${NC} curl not installed; skipped"
 fi
 
 echo
 echo "=========================================="
-if [ "${TUNNEL_WORKS}" = "yes" ]; then
-  echo -e "${GREEN}[SUCCESS]${NC} Tunnel is fully operational!"
+EXIT_CODE=0
+if [ "${INTERNET_OK}" = "yes" ]; then
+  echo -e "${GREEN}[SUCCESS]${NC} Tunnel internet egress is working via ${INTERNET_MODE} proxy mode."
+elif [ "${HAS_PROXY_CLIENT}" = "1" ]; then
+  echo -e "${RED}[FAILURE]${NC} ProxyClient mode is enabled but internet egress test failed."
+  echo "   Check server has ProxyServer + TcpConnector dest_context routing and outbound internet access."
+  EXIT_CODE=1
+elif [ "${RAW_TUNNEL_OK}" = "yes" ] || [ "${RAW_TUNNEL_OK}" = "partial" ]; then
+  echo -e "${YELLOW}[WARN]${NC} Tunnel is connected, but this config is not an internet proxy chain."
+  echo "   For internet on client, use tunnel mode 'internet' (ProxyClient/ProxyServer)."
 else
-  echo -e "${YELLOW}[WARN]${NC} Tunnel connects but backend may not be HTTP"
-  echo "   This is OK for non-HTTP services (TCP forwarding, etc.)"
+  echo -e "${YELLOW}[WARN]${NC} Tunnel connectivity is partial. Check backend/proxy service."
 fi
 echo "=========================================="
 echo
+
+exit "${EXIT_CODE}"
