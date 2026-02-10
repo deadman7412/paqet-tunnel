@@ -653,6 +653,7 @@ waterwall_direct_server_menu() {
     echo -e "${GREEN}2)${NC} Install systemd service (server)"
     echo -e "${GREEN}3)${NC} Remove systemd service (server)"
     echo -e "${GREEN}4)${NC} Service control (server)"
+    echo -e "${GREEN}5)${NC} Show server info"
     echo
     echo
     echo -e "${GREEN}0)${NC} Back"
@@ -689,6 +690,14 @@ waterwall_direct_server_menu() {
           run_action "${SCRIPTS_DIR}/waterwall_direct_service_control.sh" server
         else
           echo -e "${RED}Script not found or not executable:${NC} ${SCRIPTS_DIR}/waterwall_direct_service_control.sh" >&2
+        fi
+        pause
+        ;;
+      5)
+        if [ -x "${SCRIPTS_DIR}/waterwall_show_direct_server_info.sh" ]; then
+          run_action "${SCRIPTS_DIR}/waterwall_show_direct_server_info.sh"
+        else
+          echo -e "${RED}Script not found or not executable:${NC} ${SCRIPTS_DIR}/waterwall_show_direct_server_info.sh" >&2
         fi
         pause
         ;;

@@ -13,9 +13,11 @@ esac
 
 WATERWALL_DIR="${WATERWALL_DIR:-$HOME/waterwall}"
 BIN_PATH="${WATERWALL_DIR}/waterwall"
-CONFIG_PATH="${WATERWALL_DIR}/direct_${ROLE}.config.json"
-LEGACY_CONFIG_PATH="${WATERWALL_DIR}/configs/direct_${ROLE}.json"
-CORE_PATH="${WATERWALL_DIR}/core_${ROLE}.json"
+ACTIVE_CONFIG="${WATERWALL_DIR}/config.json"
+ACTIVE_CORE="${WATERWALL_DIR}/core.json"
+ROLE_CONFIG="${WATERWALL_DIR}/direct_${ROLE}.config.json"
+LEGACY_ROLE_CONFIG="${WATERWALL_DIR}/configs/direct_${ROLE}.json"
+LEGACY_ROLE_CORE="${WATERWALL_DIR}/core_${ROLE}.json"
 RUN_SCRIPT="${WATERWALL_DIR}/run_direct_${ROLE}.sh"
 SERVICE_NAME="waterwall-direct-${ROLE}"
 UNIT_PATH="/etc/systemd/system/${SERVICE_NAME}.service"
@@ -51,30 +53,28 @@ ensure_runtime_ready() {
   fi
 }
 
-if [ ! -x "${BIN_PATH}" ]; then
-  if [ -f "${BIN_PATH}" ]; then
-    chmod +x "${BIN_PATH}" || true
-  fi
-fi
-if [ ! -x "${BIN_PATH}" ]; then
-  echo "Waterwall binary not found or not executable: ${BIN_PATH}" >&2
-  echo "Run Waterwall install first." >&2
-  exit 1
-fi
-
-if [ ! -f "${CONFIG_PATH}" ]; then
-  if [ -f "${LEGACY_CONFIG_PATH}" ]; then
-    CONFIG_PATH="${LEGACY_CONFIG_PATH}"
-  else
-    echo "Config not found: ${CONFIG_PATH}" >&2
-    echo "Legacy config not found: ${LEGACY_CONFIG_PATH}" >&2
-    echo "Run Direct Waterwall ${ROLE} setup first." >&2
-    exit 1
-  fi
-fi
-if [ ! -f "${CORE_PATH}" ]; then
+ensure_active_files() {
   mkdir -p "${WATERWALL_DIR}/log" "${WATERWALL_DIR}/logs" "${WATERWALL_DIR}/runtime"
-  cat > "${CORE_PATH}" <<EOF
+
+  if [ ! -f "${ACTIVE_CONFIG}" ]; then
+    if [ -f "${ROLE_CONFIG}" ]; then
+      cp -f "${ROLE_CONFIG}" "${ACTIVE_CONFIG}"
+    elif [ -f "${LEGACY_ROLE_CONFIG}" ]; then
+      cp -f "${LEGACY_ROLE_CONFIG}" "${ACTIVE_CONFIG}"
+    else
+      echo "Active config not found: ${ACTIVE_CONFIG}" >&2
+      echo "Role config not found: ${ROLE_CONFIG}" >&2
+      echo "Legacy role config not found: ${LEGACY_ROLE_CONFIG}" >&2
+      echo "Run Direct Waterwall ${ROLE} setup first." >&2
+      exit 1
+    fi
+  fi
+
+  if [ ! -f "${ACTIVE_CORE}" ]; then
+    if [ -f "${LEGACY_ROLE_CORE}" ]; then
+      cp -f "${LEGACY_ROLE_CORE}" "${ACTIVE_CORE}"
+    else
+      cat > "${ACTIVE_CORE}" <<EOF
 {
   "log": {
     "path": "log/",
@@ -101,30 +101,42 @@ if [ ! -f "${CORE_PATH}" ]; then
     "libs-path": "libs/"
   },
   "configs": [
-    "${CONFIG_PATH#${WATERWALL_DIR}/}"
+    "config.json"
   ]
 }
 EOF
-  echo "Generated missing core file: ${CORE_PATH}"
+    fi
+  fi
+}
+
+if [ ! -x "${BIN_PATH}" ]; then
+  if [ -f "${BIN_PATH}" ]; then
+    chmod +x "${BIN_PATH}" || true
+  fi
+fi
+if [ ! -x "${BIN_PATH}" ]; then
+  echo "Waterwall binary not found or not executable: ${BIN_PATH}" >&2
+  echo "Run Waterwall install first." >&2
+  exit 1
 fi
 
-if [ ! -f "${RUN_SCRIPT}" ]; then
-  cat > "${RUN_SCRIPT}" <<EOF
+ensure_active_files
+ensure_runtime_ready
+
+# Always refresh run script to avoid stale legacy commands.
+cat > "${RUN_SCRIPT}" <<EOF
 #!/usr/bin/env bash
 set -euo pipefail
 cd "${WATERWALL_DIR}"
-exec "${BIN_PATH}" "${CORE_PATH}"
+exec "${BIN_PATH}"
 EOF
-fi
 chmod +x "${RUN_SCRIPT}"
-
-ensure_runtime_ready
 
 echo "Using:"
 echo "  Waterwall dir: ${WATERWALL_DIR}"
 echo "  Binary:        ${BIN_PATH}"
-echo "  Config:        ${CONFIG_PATH}"
-echo "  Core:          ${CORE_PATH}"
+echo "  Config:        ${ACTIVE_CONFIG}"
+echo "  Core:          ${ACTIVE_CORE}"
 echo "  Run script:    ${RUN_SCRIPT}"
 echo "  Service:       ${SERVICE_NAME}"
 

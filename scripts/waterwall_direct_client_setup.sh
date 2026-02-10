@@ -3,8 +3,9 @@ set -euo pipefail
 
 WATERWALL_DIR="${WATERWALL_DIR:-$HOME/waterwall}"
 CONFIG_DIR="${WATERWALL_DIR}/configs"
-CONFIG_FILE="${WATERWALL_DIR}/direct_client.config.json"
-CORE_FILE="${WATERWALL_DIR}/core_client.json"
+CONFIG_FILE="${WATERWALL_DIR}/config.json"
+CORE_FILE="${WATERWALL_DIR}/core.json"
+ROLE_CONFIG_FILE="${WATERWALL_DIR}/direct_client.config.json"
 RUN_SCRIPT="${WATERWALL_DIR}/run_direct_client.sh"
 INFO_FILE="${WATERWALL_DIR}/direct_server_info.txt"
 
@@ -115,7 +116,7 @@ read -r -p "Obfuscator password [auto]: " OBF_PASSWORD
 OBF_PASSWORD="${OBF_PASSWORD:-${OBF_DEFAULT}}"
 
 if [ "${TLS_ENABLED}" = "1" ]; then
-  cat > "${CONFIG_FILE}" <<EOF
+  cat > "${ROLE_CONFIG_FILE}" <<EOF
 {
   "name": "secure-direct-client",
   "nodes": [
@@ -179,7 +180,7 @@ if [ "${TLS_ENABLED}" = "1" ]; then
 }
 EOF
 else
-  cat > "${CONFIG_FILE}" <<EOF
+  cat > "${ROLE_CONFIG_FILE}" <<EOF
 {
   "name": "direct-client-no-tls",
   "nodes": [
@@ -220,6 +221,8 @@ else
 EOF
 fi
 
+cp -f "${ROLE_CONFIG_FILE}" "${CONFIG_FILE}"
+
 cat > "${CORE_FILE}" <<EOF
 {
   "log": {
@@ -247,7 +250,7 @@ cat > "${CORE_FILE}" <<EOF
     "libs-path": "libs/"
   },
   "configs": [
-    "$(basename "${CONFIG_FILE}")"
+    "config.json"
   ]
 }
 EOF
@@ -256,12 +259,13 @@ cat > "${RUN_SCRIPT}" <<EOF
 #!/usr/bin/env bash
 set -euo pipefail
 cd "${WATERWALL_DIR}"
-exec "${WATERWALL_DIR}/waterwall" "${CORE_FILE}"
+exec "${WATERWALL_DIR}/waterwall"
 EOF
 chmod +x "${RUN_SCRIPT}"
 
 echo
-echo "Direct client config written: ${CONFIG_FILE}"
+echo "Direct client config written: ${ROLE_CONFIG_FILE}"
+echo "Active config written: ${CONFIG_FILE}"
 echo "Core file written: ${CORE_FILE}"
 echo "Run helper created: ${RUN_SCRIPT}"
 echo "Using values:"

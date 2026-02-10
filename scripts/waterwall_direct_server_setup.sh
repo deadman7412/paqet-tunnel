@@ -3,8 +3,9 @@ set -euo pipefail
 
 WATERWALL_DIR="${WATERWALL_DIR:-$HOME/waterwall}"
 CONFIG_DIR="${WATERWALL_DIR}/configs"
-CONFIG_FILE="${WATERWALL_DIR}/direct_server.config.json"
-CORE_FILE="${WATERWALL_DIR}/core_server.json"
+CONFIG_FILE="${WATERWALL_DIR}/config.json"
+CORE_FILE="${WATERWALL_DIR}/core.json"
+ROLE_CONFIG_FILE="${WATERWALL_DIR}/direct_server.config.json"
 RUN_SCRIPT="${WATERWALL_DIR}/run_direct_server.sh"
 INFO_FILE="${WATERWALL_DIR}/direct_server_info.txt"
 INFO_FORMAT_VERSION="1"
@@ -282,7 +283,7 @@ if [ "${TLS_ENABLED}" = "1" ]; then
 fi
 
 if [ "${TLS_ENABLED}" = "1" ]; then
-  cat > "${CONFIG_FILE}" <<EOF
+  cat > "${ROLE_CONFIG_FILE}" <<EOF
 {
   "name": "secure-direct-server",
   "nodes": [
@@ -345,7 +346,7 @@ if [ "${TLS_ENABLED}" = "1" ]; then
 }
 EOF
 else
-  cat > "${CONFIG_FILE}" <<EOF
+  cat > "${ROLE_CONFIG_FILE}" <<EOF
 {
   "name": "direct-server-no-tls",
   "nodes": [
@@ -386,6 +387,8 @@ else
 EOF
 fi
 
+cp -f "${ROLE_CONFIG_FILE}" "${CONFIG_FILE}"
+
 cat > "${CORE_FILE}" <<EOF
 {
   "log": {
@@ -413,7 +416,7 @@ cat > "${CORE_FILE}" <<EOF
     "libs-path": "libs/"
   },
   "configs": [
-    "$(basename "${CONFIG_FILE}")"
+    "config.json"
   ]
 }
 EOF
@@ -422,7 +425,7 @@ cat > "${RUN_SCRIPT}" <<EOF
 #!/usr/bin/env bash
 set -euo pipefail
 cd "${WATERWALL_DIR}"
-exec "${WATERWALL_DIR}/waterwall" "${CORE_FILE}"
+exec "${WATERWALL_DIR}/waterwall"
 EOF
 chmod +x "${RUN_SCRIPT}"
 
@@ -443,7 +446,8 @@ tls_sni=${TLS_SNI}
 EOF
 
 echo
-echo "Direct server config written: ${CONFIG_FILE}"
+echo "Direct server config written: ${ROLE_CONFIG_FILE}"
+echo "Active config written: ${CONFIG_FILE}"
 echo "Core file written: ${CORE_FILE}"
 echo "Run helper created: ${RUN_SCRIPT}"
 echo "Client info file written: ${INFO_FILE}"
