@@ -3,11 +3,12 @@ set -euo pipefail
 
 WATERWALL_DIR="${WATERWALL_DIR:-$HOME/waterwall}"
 CONFIG_DIR="${WATERWALL_DIR}/configs"
-CONFIG_FILE="${CONFIG_DIR}/direct_client.json"
+CONFIG_FILE="${WATERWALL_DIR}/direct_client.config.json"
+CORE_FILE="${WATERWALL_DIR}/core_client.json"
 RUN_SCRIPT="${WATERWALL_DIR}/run_direct_client.sh"
 INFO_FILE="${WATERWALL_DIR}/direct_server_info.txt"
 
-mkdir -p "${WATERWALL_DIR}" "${CONFIG_DIR}" "${WATERWALL_DIR}/logs" "${WATERWALL_DIR}/runtime"
+mkdir -p "${WATERWALL_DIR}" "${CONFIG_DIR}" "${WATERWALL_DIR}/logs" "${WATERWALL_DIR}/log" "${WATERWALL_DIR}/runtime"
 
 validate_port() {
   case "$1" in
@@ -219,19 +220,49 @@ else
 EOF
 fi
 
+cat > "${CORE_FILE}" <<EOF
+{
+  "log": {
+    "path": "log/",
+    "core": {
+      "loglevel": "DEBUG",
+      "file": "core.log",
+      "console": true
+    },
+    "network": {
+      "loglevel": "DEBUG",
+      "file": "network.log",
+      "console": true
+    },
+    "dns": {
+      "loglevel": "SILENT",
+      "file": "dns.log",
+      "console": false
+    }
+  },
+  "dns": {},
+  "misc": {
+    "workers": 0,
+    "ram-profile": "client",
+    "libs-path": "libs/"
+  },
+  "configs": [
+    "$(basename "${CONFIG_FILE}")"
+  ]
+}
+EOF
+
 cat > "${RUN_SCRIPT}" <<EOF
 #!/usr/bin/env bash
 set -euo pipefail
-if "${WATERWALL_DIR}/waterwall" --help 2>/dev/null | grep -q -- '-c'; then
-  exec "${WATERWALL_DIR}/waterwall" -c "${CONFIG_FILE}"
-else
-  exec "${WATERWALL_DIR}/waterwall" "${CONFIG_FILE}"
-fi
+cd "${WATERWALL_DIR}"
+exec "${WATERWALL_DIR}/waterwall" "${CORE_FILE}"
 EOF
 chmod +x "${RUN_SCRIPT}"
 
 echo
 echo "Direct client config written: ${CONFIG_FILE}"
+echo "Core file written: ${CORE_FILE}"
 echo "Run helper created: ${RUN_SCRIPT}"
 echo "Using values:"
 echo "  - foreign_addr: ${FOREIGN_ADDR}"

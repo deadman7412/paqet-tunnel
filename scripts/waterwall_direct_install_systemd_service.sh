@@ -13,10 +13,42 @@ esac
 
 WATERWALL_DIR="${WATERWALL_DIR:-$HOME/waterwall}"
 BIN_PATH="${WATERWALL_DIR}/waterwall"
-CONFIG_PATH="${WATERWALL_DIR}/configs/direct_${ROLE}.json"
+CONFIG_PATH="${WATERWALL_DIR}/direct_${ROLE}.config.json"
+CORE_PATH="${WATERWALL_DIR}/core_${ROLE}.json"
 RUN_SCRIPT="${WATERWALL_DIR}/run_direct_${ROLE}.sh"
 SERVICE_NAME="waterwall-direct-${ROLE}"
 UNIT_PATH="/etc/systemd/system/${SERVICE_NAME}.service"
+
+install_runtime_libs() {
+  if command -v apt-get >/dev/null 2>&1; then
+    apt-get update -y
+    DEBIAN_FRONTEND=noninteractive apt-get install -y libatomic1 libstdc++6 >/dev/null 2>&1 || true
+  elif command -v dnf >/dev/null 2>&1; then
+    dnf install -y libatomic libstdc++ >/dev/null 2>&1 || true
+  elif command -v yum >/dev/null 2>&1; then
+    yum install -y libatomic libstdc++ >/dev/null 2>&1 || true
+  fi
+}
+
+ensure_runtime_ready() {
+  local missing=""
+  if ! command -v ldd >/dev/null 2>&1; then
+    return 0
+  fi
+  missing="$(ldd "${BIN_PATH}" 2>/dev/null | awk '/not found/ {print $1}' || true)"
+  if [ -n "${missing}" ]; then
+    echo "Missing shared libraries detected:"
+    echo "${missing}" | sed 's/^/  - /'
+    echo "Installing runtime dependencies..."
+    install_runtime_libs
+    missing="$(ldd "${BIN_PATH}" 2>/dev/null | awk '/not found/ {print $1}' || true)"
+    if [ -n "${missing}" ]; then
+      echo "Still missing shared libraries after install attempt:" >&2
+      echo "${missing}" | sed 's/^/  - /' >&2
+      exit 1
+    fi
+  fi
+}
 
 if [ ! -x "${BIN_PATH}" ]; then
   if [ -f "${BIN_PATH}" ]; then
@@ -34,24 +66,29 @@ if [ ! -f "${CONFIG_PATH}" ]; then
   echo "Run Direct Waterwall ${ROLE} setup first." >&2
   exit 1
 fi
+if [ ! -f "${CORE_PATH}" ]; then
+  echo "Core file not found: ${CORE_PATH}" >&2
+  echo "Run Direct Waterwall ${ROLE} setup first." >&2
+  exit 1
+fi
 
 if [ ! -f "${RUN_SCRIPT}" ]; then
   cat > "${RUN_SCRIPT}" <<EOF
 #!/usr/bin/env bash
 set -euo pipefail
-if "${BIN_PATH}" --help 2>/dev/null | grep -q -- '-c'; then
-  exec "${BIN_PATH}" -c "${CONFIG_PATH}"
-else
-  exec "${BIN_PATH}" "${CONFIG_PATH}"
-fi
+cd "${WATERWALL_DIR}"
+exec "${BIN_PATH}" "${CORE_PATH}"
 EOF
   chmod +x "${RUN_SCRIPT}"
 fi
+
+ensure_runtime_ready
 
 echo "Using:"
 echo "  Waterwall dir: ${WATERWALL_DIR}"
 echo "  Binary:        ${BIN_PATH}"
 echo "  Config:        ${CONFIG_PATH}"
+echo "  Core:          ${CORE_PATH}"
 echo "  Run script:    ${RUN_SCRIPT}"
 echo "  Service:       ${SERVICE_NAME}"
 

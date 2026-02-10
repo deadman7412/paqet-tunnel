@@ -10,6 +10,22 @@ DOWNLOAD_DIR="${WATERWALL_DIR}/downloads"
 
 mkdir -p "${WATERWALL_DIR}" "${DOWNLOAD_DIR}"
 
+ensure_runtime_dependencies() {
+  local pkgs_apt=() pkgs_dnf=() pkgs_yum=()
+  pkgs_apt=(libatomic1 libstdc++6)
+  pkgs_dnf=(libatomic libstdc++)
+  pkgs_yum=(libatomic libstdc++)
+
+  if command -v apt-get >/dev/null 2>&1; then
+    apt-get update -y
+    DEBIAN_FRONTEND=noninteractive apt-get install -y "${pkgs_apt[@]}" >/dev/null 2>&1 || true
+  elif command -v dnf >/dev/null 2>&1; then
+    dnf install -y "${pkgs_dnf[@]}" >/dev/null 2>&1 || true
+  elif command -v yum >/dev/null 2>&1; then
+    yum install -y "${pkgs_yum[@]}" >/dev/null 2>&1 || true
+  fi
+}
+
 detect_arch() {
   case "$(uname -m)" in
     x86_64|amd64) echo "amd64" ;;
@@ -92,19 +108,22 @@ extract_zip() {
     exit 1
   fi
 
-  rm -rf "${target_dir}/bin"
-  mkdir -p "${target_dir}/bin"
-  cp -a "${tmp_dir}/." "${target_dir}/bin/"
+  # Keep user-generated files (configs/logs/runtime) and refresh core payload.
+  cp -a "${tmp_dir}/." "${target_dir}/"
 }
 
 set_binary_link() {
   local bin_target=""
-  if [ -f "${WATERWALL_DIR}/bin/Waterwall" ]; then
+  if [ -f "${WATERWALL_DIR}/Waterwall" ]; then
+    bin_target="${WATERWALL_DIR}/Waterwall"
+  elif [ -f "${WATERWALL_DIR}/waterwall" ] && [ ! -L "${WATERWALL_DIR}/waterwall" ]; then
+    bin_target="${WATERWALL_DIR}/waterwall"
+  elif [ -f "${WATERWALL_DIR}/bin/Waterwall" ]; then
     bin_target="${WATERWALL_DIR}/bin/Waterwall"
   elif [ -f "${WATERWALL_DIR}/bin/waterwall" ]; then
     bin_target="${WATERWALL_DIR}/bin/waterwall"
   else
-    bin_target="$(find "${WATERWALL_DIR}/bin" -type f \( -iname 'waterwall' -o -iname 'Waterwall' \) | head -n1 || true)"
+    bin_target="$(find "${WATERWALL_DIR}" -maxdepth 3 -type f \( -iname 'waterwall' -o -iname 'Waterwall' \) | head -n1 || true)"
   fi
 
   if [ -z "${bin_target}" ]; then
@@ -114,6 +133,7 @@ set_binary_link() {
   fi
 
   chmod +x "${bin_target}" || true
+  ensure_runtime_dependencies
   ln -sf "${bin_target}" "${WATERWALL_DIR}/waterwall"
 }
 
