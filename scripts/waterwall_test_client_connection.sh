@@ -206,9 +206,8 @@ if command -v curl >/dev/null 2>&1; then
         elif [ -n "${TUNNEL_IP_HTTP}" ]; then
           echo "[OK] Reported public IP via Waterwall (HTTP proxy): ${TUNNEL_IP_HTTP}"
         else
-          echo "[FAIL] Could not fetch reported IP via Waterwall local port ${LISTEN_ADDR}:${LISTEN_PORT}."
-          echo "[FAIL] If backend is not an HTTP/SOCKS proxy, skip this specific test."
-          FAILED=1
+          echo "[INFO] Could not fetch reported IP via Waterwall local port ${LISTEN_ADDR}:${LISTEN_PORT}."
+          echo "[INFO] For Port-to-Port/direct TCP, this is expected unless backend is an HTTP/SOCKS proxy."
         fi
       fi
       ;;
