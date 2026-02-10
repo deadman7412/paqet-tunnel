@@ -85,6 +85,29 @@ detect_public_ip() {
   echo "${ip}"
 }
 
+sync_ufw_tunnel_rule_server() {
+  local listen_port="$1"
+  local -a rules=()
+  if ! command -v ufw >/dev/null 2>&1; then
+    echo "UFW not installed; skipped firewall auto-allow."
+    return 0
+  fi
+  if ! ufw status 2>/dev/null | head -n1 | grep -q "Status: active"; then
+    echo "UFW is installed but inactive; skipped firewall auto-allow."
+    return 0
+  fi
+
+  mapfile -t rules < <(ufw status numbered 2>/dev/null | awk '/waterwall-tunnel/ { if (match($0, /^\[[[:space:]]*[0-9]+]/)) { n=substr($0, RSTART+1, RLENGTH-2); gsub(/[[:space:]]/, "", n); print n } }')
+  if [ "${#rules[@]}" -gt 0 ]; then
+    for ((i=${#rules[@]}-1; i>=0; i--)); do
+      ufw --force delete "${rules[$i]}" >/dev/null 2>&1 || true
+    done
+  fi
+
+  ufw allow "${listen_port}/tcp" comment 'waterwall-tunnel' >/dev/null 2>&1 || true
+  echo "UFW: allowed inbound waterwall tunnel on tcp/${listen_port}."
+}
+
 ensure_certbot() {
   if command -v certbot >/dev/null 2>&1; then
     return 0
@@ -202,35 +225,19 @@ fi
 
 if ! can_connect_tcp "${BACKEND_HOST}" "${BACKEND_PORT}"; then
   echo
-  echo "Warning: backend target is not reachable now: ${BACKEND_HOST}:${BACKEND_PORT}" >&2
-  echo "This causes client connects to close immediately (e.g. connect error 107 in server logs)." >&2
-  while true; do
-    read -r -p "Re-enter backend host/port? [Y/n]: " retry_backend
-    case "${retry_backend:-Y}" in
-      y|Y|yes|YES)
-        read -r -p "Backend service host [${BACKEND_HOST}]: " BACKEND_HOST_NEW
-        BACKEND_HOST="${BACKEND_HOST_NEW:-${BACKEND_HOST}}"
-        read -r -p "Backend service port [${BACKEND_PORT}]: " BACKEND_PORT_NEW
-        BACKEND_PORT="${BACKEND_PORT_NEW:-${BACKEND_PORT}}"
-        if ! validate_port "${BACKEND_PORT}"; then
-          echo "Invalid backend service port: ${BACKEND_PORT}" >&2
-          continue
-        fi
-        if can_connect_tcp "${BACKEND_HOST}" "${BACKEND_PORT}"; then
-          echo "Backend reachable: ${BACKEND_HOST}:${BACKEND_PORT}"
-          break
-        fi
-        echo "Still unreachable: ${BACKEND_HOST}:${BACKEND_PORT}" >&2
-        ;;
-      n|N|no|NO)
-        echo "Continuing with unreachable backend (not recommended)." >&2
-        break
-        ;;
-      *)
-        echo "Please answer y or n."
-        ;;
-    esac
-  done
+  echo "Warning: backend app target is not reachable now: ${BACKEND_HOST}:${BACKEND_PORT}" >&2
+  echo "Note: this check is for backend service reachability, not Waterwall tunnel listener." >&2
+  echo "If backend is down, tunnel connections will open then close (e.g. connect error 107)." >&2
+  read -r -p "Continue with this backend anyway? [y/N]: " continue_unreachable_backend
+  case "${continue_unreachable_backend}" in
+    y|Y|yes|YES)
+      echo "Continuing with unreachable backend (you can fix backend later)."
+      ;;
+    *)
+      echo "Setup aborted. Re-run and enter a reachable backend host/port." >&2
+      exit 1
+      ;;
+  esac
 fi
 
 read -r -p "Tunnel profile [basic/advanced] (default basic): " TUNNEL_PROFILE
@@ -563,3 +570,5 @@ if [ "${TUNNEL_PROFILE}" = "advanced" ] && [ "${TLS_ENABLED}" = "1" ]; then
   echo "  - cert_file: ${CERT_FILE}"
   echo "  - key_file: ${KEY_FILE}"
 fi
+
+sync_ufw_tunnel_rule_server "${LISTEN_PORT}"

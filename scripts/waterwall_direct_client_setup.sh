@@ -42,6 +42,29 @@ read_info() {
   awk -F= -v k="${key}" '$1==k {sub($1"=",""); print; exit}' "${file}" 2>/dev/null || true
 }
 
+sync_ufw_tunnel_rule_client() {
+  local server_ip="$1" server_port="$2"
+  local -a rules=()
+  if ! command -v ufw >/dev/null 2>&1; then
+    echo "UFW not installed; skipped firewall auto-allow."
+    return 0
+  fi
+  if ! ufw status 2>/dev/null | head -n1 | grep -q "Status: active"; then
+    echo "UFW is installed but inactive; skipped firewall auto-allow."
+    return 0
+  fi
+
+  mapfile -t rules < <(ufw status numbered 2>/dev/null | awk '/waterwall-tunnel/ { if (match($0, /^\[[[:space:]]*[0-9]+]/)) { n=substr($0, RSTART+1, RLENGTH-2); gsub(/[[:space:]]/, "", n); print n } }')
+  if [ "${#rules[@]}" -gt 0 ]; then
+    for ((i=${#rules[@]}-1; i>=0; i--)); do
+      ufw --force delete "${rules[$i]}" >/dev/null 2>&1 || true
+    done
+  fi
+
+  ufw allow out to "${server_ip}" port "${server_port}" proto tcp comment 'waterwall-tunnel' >/dev/null 2>&1 || true
+  echo "UFW: allowed outbound waterwall tunnel to ${server_ip}:${server_port}."
+}
+
 if [ ! -x "${WATERWALL_DIR}/waterwall" ]; then
   echo "Waterwall binary not found: ${WATERWALL_DIR}/waterwall" >&2
   echo "Run 'Install Waterwall' first." >&2
@@ -331,3 +354,5 @@ fi
 if [ -n "${OBF_PASSWORD}" ]; then
   echo "  - obfuscator_password: ${OBF_PASSWORD}"
 fi
+
+sync_ufw_tunnel_rule_client "${FOREIGN_ADDR}" "${FOREIGN_PORT}"
