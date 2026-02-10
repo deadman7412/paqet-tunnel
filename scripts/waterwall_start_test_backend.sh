@@ -17,13 +17,26 @@ if [ ! -f "${CONFIG_FILE}" ]; then
 fi
 
 # Parse backend port from config
-parse_json_value() {
-  local file="$1" key="$2"
-  grep -o "\"${key}\"[[:space:]]*:[[:space:]]*[^,}]*" "${file}" 2>/dev/null | sed -E 's/.*:[[:space:]]*"?([^",}]+)"?.*/\1/' || echo ""
+parse_json_nodes() {
+  local file="$1"
+  python3 -c "
+import json, sys
+try:
+    with open('${file}', 'r') as f:
+        data = json.load(f)
+    nodes = data.get('nodes', [])
+    if len(nodes) >= 2:
+        connector = nodes[1].get('settings', {})
+        print('CONNECT_ADDR=' + str(connector.get('address', '')))
+        print('CONNECT_PORT=' + str(connector.get('port', '')))
+except:
+    pass
+" 2>/dev/null || echo ""
 }
 
-BACKEND_PORT=$(parse_json_value "${CONFIG_FILE}" "port" | tail -n1)
-BACKEND_ADDR=$(parse_json_value "${CONFIG_FILE}" "address" | tail -n1)
+eval "$(parse_json_nodes "${CONFIG_FILE}")"
+BACKEND_PORT="${CONNECT_PORT}"
+BACKEND_ADDR="${CONNECT_ADDR}"
 
 if [ -z "${BACKEND_PORT}" ]; then
   echo "Error: Could not parse backend port from config" >&2

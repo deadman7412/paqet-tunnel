@@ -34,15 +34,41 @@ fi
 echo -e "${CYAN}=== SYSTEM INFORMATION ===${NC}"
 echo "Role: ${ROLE}"
 echo "Hostname: $(hostname)"
-echo "Public IP: $(curl -s --max-time 3 ifconfig.me 2>/dev/null || echo "Unable to detect")"
+
+# Try multiple IP detection services
+PUBLIC_IP=""
+if command -v curl >/dev/null 2>&1; then
+  PUBLIC_IP=$(curl -s --max-time 3 https://api.ipify.org 2>/dev/null || true)
+  [ -z "${PUBLIC_IP}" ] && PUBLIC_IP=$(curl -s --max-time 3 https://icanhazip.com 2>/dev/null || true)
+  [ -z "${PUBLIC_IP}" ] && PUBLIC_IP=$(curl -s --max-time 3 https://ipecho.net/plain 2>/dev/null || true)
+fi
+[ -z "${PUBLIC_IP}" ] && PUBLIC_IP="Unable to detect"
+echo "Public IP: ${PUBLIC_IP}"
+
 echo "OS: $(uname -s) $(uname -r)"
 echo "Architecture: $(uname -m)"
 echo
 
 # Parse config to get ports and addresses
-parse_json_value() {
-  local file="$1" key="$2"
-  grep -o "\"${key}\"[[:space:]]*:[[:space:]]*[^,}]*" "${file}" 2>/dev/null | head -n1 | sed -E 's/.*:[[:space:]]*"?([^",}]+)"?.*/\1/' || echo ""
+parse_json_nodes() {
+  local file="$1"
+  # Extract the nodes array and parse first and second node
+  python3 -c "
+import json, sys
+try:
+    with open('${file}', 'r') as f:
+        data = json.load(f)
+    nodes = data.get('nodes', [])
+    if len(nodes) >= 2:
+        listener = nodes[0].get('settings', {})
+        connector = nodes[1].get('settings', {})
+        print('LISTEN_ADDR=' + str(listener.get('address', '')))
+        print('LISTEN_PORT=' + str(listener.get('port', '')))
+        print('CONNECT_ADDR=' + str(connector.get('address', '')))
+        print('CONNECT_PORT=' + str(connector.get('port', '')))
+except:
+    pass
+" 2>/dev/null || echo ""
 }
 
 CONFIG_FILE="${ROLE_DIR}/config.json"
@@ -75,13 +101,16 @@ echo
 
 if [ "${ROLE}" = "server" ]; then
   echo -e "${CYAN}=== SERVER CONFIGURATION ===${NC}"
-  LISTEN_ADDR=$(parse_json_value "${CONFIG_FILE}" "address" | head -n1)
-  LISTEN_PORT=$(parse_json_value "${CONFIG_FILE}" "port" | head -n1)
-  BACKEND_ADDR=$(parse_json_value "${CONFIG_FILE}" "address" | tail -n1)
-  BACKEND_PORT=$(parse_json_value "${CONFIG_FILE}" "port" | tail -n1)
+
+  # Parse config using Python for accurate JSON parsing
+  eval "$(parse_json_nodes "${CONFIG_FILE}")"
 
   echo "Tunnel listen: ${LISTEN_ADDR}:${LISTEN_PORT}"
-  echo "Backend target: ${BACKEND_ADDR}:${BACKEND_PORT}"
+  echo "Backend target: ${CONNECT_ADDR}:${CONNECT_PORT}"
+
+  # Store for later use
+  BACKEND_ADDR="${CONNECT_ADDR}"
+  BACKEND_PORT="${CONNECT_PORT}"
   echo
 
   echo -e "${CYAN}=== SERVICE STATUS ===${NC}"
@@ -144,10 +173,14 @@ if [ "${ROLE}" = "server" ]; then
 
 elif [ "${ROLE}" = "client" ]; then
   echo -e "${CYAN}=== CLIENT CONFIGURATION ===${NC}"
-  LOCAL_ADDR=$(parse_json_value "${CONFIG_FILE}" "address" | head -n1)
-  LOCAL_PORT=$(parse_json_value "${CONFIG_FILE}" "port" | head -n1)
-  SERVER_ADDR=$(parse_json_value "${CONFIG_FILE}" "address" | tail -n1)
-  SERVER_PORT=$(parse_json_value "${CONFIG_FILE}" "port" | tail -n1)
+
+  # Parse config using Python for accurate JSON parsing
+  eval "$(parse_json_nodes "${CONFIG_FILE}")"
+
+  LOCAL_ADDR="${LISTEN_ADDR}"
+  LOCAL_PORT="${LISTEN_PORT}"
+  SERVER_ADDR="${CONNECT_ADDR}"
+  SERVER_PORT="${CONNECT_PORT}"
 
   echo "Local listen: ${LOCAL_ADDR}:${LOCAL_PORT}"
   echo "Server target: ${SERVER_ADDR}:${SERVER_PORT}"
