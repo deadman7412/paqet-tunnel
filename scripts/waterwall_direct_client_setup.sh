@@ -77,15 +77,31 @@ sync_ufw_tunnel_rule_client() {
     read -r -p "UFW is installed but inactive. Enable UFW and allow outbound tunnel now? [y/N]: " do_enable
     case "${do_enable}" in
       y|Y|yes|YES)
-        ufw default deny incoming >/dev/null 2>&1 || true
-        ufw default allow outgoing >/dev/null 2>&1 || true
-        ufw allow in on lo comment 'waterwall-loopback' >/dev/null 2>&1 || true
+        echo "[INFO] Setting default UFW policies..."
+        if ! ufw default deny incoming 2>&1; then
+          echo "[ERROR] Failed to set default deny incoming policy" >&2
+          return 1
+        fi
+        if ! ufw default allow outgoing 2>&1; then
+          echo "[ERROR] Failed to set default allow outgoing policy" >&2
+          return 1
+        fi
+        echo "[INFO] Allowing loopback interface..."
+        ufw allow in on lo comment 'waterwall-loopback' 2>&1 || true
+        echo "[INFO] Detecting and opening SSH ports..."
         ssh_ports="$(grep -Rsh '^[[:space:]]*Port[[:space:]]\+[0-9]\+' /etc/ssh/sshd_config /etc/ssh/sshd_config.d/*.conf 2>/dev/null | awk '{print $2}' | sort -u)"
         [ -z "${ssh_ports}" ] && ssh_ports="22"
         for p in ${ssh_ports}; do
-          ufw allow "${p}/tcp" comment 'ssh' >/dev/null 2>&1 || true
+          echo "[INFO] Opening SSH port ${p}..."
+          ufw allow "${p}/tcp" comment 'ssh' 2>&1 || true
         done
-        ufw --force enable >/dev/null 2>&1 || true
+        echo "[INFO] Enabling UFW..."
+        if ! ufw --force enable 2>&1; then
+          echo "[ERROR] Failed to enable UFW" >&2
+          echo "[ERROR] UFW may require kernel modules or specific permissions" >&2
+          return 1
+        fi
+        echo "[SUCCESS] UFW enabled successfully."
         ;;
       *)
         echo "Skipped firewall changes."
