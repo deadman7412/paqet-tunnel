@@ -127,31 +127,72 @@ if [ "${ROLE}" = "server" ]; then
   echo "Added UFW rule: allow ${CLIENT_IP} -> tcp/${LISTEN_PORT} (waterwall server)."
 else
   CLIENT_CONFIG_FILE="${WATERWALL_DIR}/client/config.json"
-  SERVER_IP="$(read_info "${INFO_FILE}" "server_public_ip")"
-  SERVER_PORT="$(read_info "${INFO_FILE}" "listen_port")"
-  SERVICE_PORT="$(read_info "${INFO_FILE}" "backend_port")"
+
+  # Check if client config exists
+  if [ ! -f "${CLIENT_CONFIG_FILE}" ]; then
+    echo "[ERROR] Client config not found: ${CLIENT_CONFIG_FILE}" >&2
+    echo "Run client setup first!" >&2
+    exit 1
+  fi
+
+  # Try to read from info file if it exists
+  if [ -f "${INFO_FILE}" ]; then
+    SERVER_IP="$(read_info "${INFO_FILE}" "server_public_ip")"
+    SERVER_PORT="$(read_info "${INFO_FILE}" "listen_port")"
+    SERVICE_PORT="$(read_info "${INFO_FILE}" "backend_port")"
+  else
+    SERVER_IP=""
+    SERVER_PORT=""
+    SERVICE_PORT=""
+  fi
 
   # Try to parse from client config if not in info file
   if [ -z "${SERVICE_PORT}" ] && [ -f "${CLIENT_CONFIG_FILE}" ]; then
     SERVICE_PORT="$(parse_client_service_port_from_config "${CLIENT_CONFIG_FILE}")"
   fi
 
+  # Parse server IP and port from client config as fallback
+  if [ -z "${SERVER_IP}" ] || [ -z "${SERVER_PORT}" ]; then
+    eval "$(python3 -c "
+import json
+try:
+    with open('${CLIENT_CONFIG_FILE}', 'r') as f:
+        data = json.load(f)
+    nodes = data.get('nodes', [])
+    if len(nodes) >= 2:
+        connector = nodes[1].get('settings', {})
+        print('CONN_ADDR=' + str(connector.get('address', '')))
+        print('CONN_PORT=' + str(connector.get('port', '')))
+except:
+    pass
+" 2>/dev/null || echo "")"
+    [ -z "${SERVER_IP}" ] && SERVER_IP="${CONN_ADDR}"
+    [ -z "${SERVER_PORT}" ] && SERVER_PORT="${CONN_PORT}"
+  fi
+
   if [ "${SERVER_IP}" = "REPLACE_WITH_SERVER_PUBLIC_IP" ]; then
     SERVER_IP=""
   fi
 
+  # Final check and prompt if still empty
   if [ -z "${SERVER_IP}" ]; then
+    echo "[WARN] Could not auto-detect server IP from config"
     read -r -p "Waterwall server public IPv4 (required): " SERVER_IP
   fi
   if [ -z "${SERVER_PORT}" ]; then
+    echo "[WARN] Could not auto-detect server port from config"
     read -r -p "Waterwall server listen port (required): " SERVER_PORT
   fi
-  if [ -z "${SERVICE_PORT}" ]; then
-    read -r -p "Waterwall client service port [skip with Enter]: " SERVICE_PORT
-  fi
+
   if [ -z "${SERVER_IP}" ] || [ -z "${SERVER_PORT}" ]; then
-    echo "Server IP and server port are required." >&2
+    echo "[ERROR] Server IP and server port are required." >&2
     exit 1
+  fi
+
+  echo "Server IP: ${SERVER_IP}"
+  echo "Server port: ${SERVER_PORT}"
+  if [ -n "${SERVICE_PORT}" ]; then
+    echo "Service port: ${SERVICE_PORT}"
   fi
 
   remove_existing_waterwall_rules
