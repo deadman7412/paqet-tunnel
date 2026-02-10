@@ -97,11 +97,18 @@ ensure_ssh_rules() {
   done
 }
 
+echo "[INFO] Ensuring UFW is installed..."
 ensure_ufw
+echo "[INFO] Setting default policies..."
 ufw default deny incoming
 ufw default allow outgoing
+echo "[INFO] Allowing loopback interface..."
 ufw allow in on lo comment 'waterwall-loopback' >/dev/null 2>&1 || true
+echo "[INFO] Ensuring SSH rules..."
 ensure_ssh_rules
+echo "[INFO] SSH rules configured."
+
+echo "[INFO] Configuring firewall for role: ${ROLE}"
 
 if [ "${ROLE}" = "server" ]; then
   LISTEN_PORT="$(read_info "${INFO_FILE}" "listen_port")"
@@ -126,7 +133,9 @@ if [ "${ROLE}" = "server" ]; then
   ufw allow from "${CLIENT_IP}" to any port "${LISTEN_PORT}" proto tcp comment 'waterwall-tunnel' >/dev/null 2>&1 || true
   echo "Added UFW rule: allow ${CLIENT_IP} -> tcp/${LISTEN_PORT} (waterwall server)."
 else
+  echo "[INFO] Configuring client firewall..."
   CLIENT_CONFIG_FILE="${WATERWALL_DIR}/client/config.json"
+  echo "[INFO] Checking for client config: ${CLIENT_CONFIG_FILE}"
 
   # Check if client config exists
   if [ ! -f "${CLIENT_CONFIG_FILE}" ]; then
@@ -134,24 +143,32 @@ else
     echo "Run client setup first!" >&2
     exit 1
   fi
+  echo "[INFO] Client config found."
 
   # Try to read from info file if it exists
+  echo "[INFO] Checking for info file: ${INFO_FILE}"
   if [ -f "${INFO_FILE}" ]; then
+    echo "[INFO] Info file found, reading values..."
     SERVER_IP="$(read_info "${INFO_FILE}" "server_public_ip")"
     SERVER_PORT="$(read_info "${INFO_FILE}" "listen_port")"
     SERVICE_PORT="$(read_info "${INFO_FILE}" "backend_port")"
+    echo "[INFO] Read from info file - IP: ${SERVER_IP}, Port: ${SERVER_PORT}, Service: ${SERVICE_PORT}"
   else
+    echo "[INFO] Info file not found, will parse from config."
     SERVER_IP=""
     SERVER_PORT=""
     SERVICE_PORT=""
   fi
 
   # Try to parse from client config if not in info file
+  echo "[INFO] Parsing service port from client config..."
   if [ -z "${SERVICE_PORT}" ] && [ -f "${CLIENT_CONFIG_FILE}" ]; then
     SERVICE_PORT="$(parse_client_service_port_from_config "${CLIENT_CONFIG_FILE}")"
+    echo "[INFO] Parsed service port: ${SERVICE_PORT}"
   fi
 
   # Parse server IP and port from client config as fallback
+  echo "[INFO] Parsing server connection details from client config..."
   if [ -z "${SERVER_IP}" ] || [ -z "${SERVER_PORT}" ]; then
     eval "$(python3 -c "
 import json
@@ -189,33 +206,40 @@ except:
     exit 1
   fi
 
-  echo "Server IP: ${SERVER_IP}"
-  echo "Server port: ${SERVER_PORT}"
+  echo "[INFO] Server IP: ${SERVER_IP}"
+  echo "[INFO] Server port: ${SERVER_PORT}"
   if [ -n "${SERVICE_PORT}" ]; then
-    echo "Service port: ${SERVICE_PORT}"
+    echo "[INFO] Service port: ${SERVICE_PORT}"
   fi
 
+  echo "[INFO] Removing existing waterwall rules..."
   remove_existing_waterwall_rules
+  echo "[INFO] Adding outbound tunnel rule..."
   ufw allow out to "${SERVER_IP}" port "${SERVER_PORT}" proto tcp comment 'waterwall-tunnel' >/dev/null 2>&1 || true
-  echo "Added UFW rule: allow out -> ${SERVER_IP}:${SERVER_PORT} (waterwall client)."
+  echo "[SUCCESS] Added UFW rule: allow out -> ${SERVER_IP}:${SERVER_PORT} (waterwall client)."
 
   # Open service port for local users/apps to connect (if provided)
+  echo "[INFO] Checking if service port should be opened..."
   if [ -n "${SERVICE_PORT}" ]; then
     read -r -p "Open service port ${SERVICE_PORT}/tcp for local users? [Y/n]: " OPEN_SERVICE
     case "${OPEN_SERVICE:-Y}" in
       n|N|no|NO)
-        echo "Skipped opening service port."
+        echo "[INFO] Skipped opening service port."
         ;;
       *)
+        echo "[INFO] Adding service port rule..."
         ufw allow "${SERVICE_PORT}/tcp" comment 'waterwall-service' >/dev/null 2>&1 || true
-        echo "Added UFW rule: allow inbound -> tcp/${SERVICE_PORT} (waterwall service)."
+        echo "[SUCCESS] Added UFW rule: allow inbound -> tcp/${SERVICE_PORT} (waterwall service)."
         ;;
     esac
   else
-    echo "Service port not provided. Skipped opening service port in UFW."
+    echo "[INFO] Service port not provided. Skipped opening service port in UFW."
     echo "You can open it manually later with: sudo ufw allow <SERVICE_PORT>/tcp"
   fi
 fi
 
+echo "[INFO] Enabling UFW..."
 ufw --force enable
+echo "[INFO] UFW enabled successfully."
+echo "[INFO] Current UFW status:"
 ufw status verbose
