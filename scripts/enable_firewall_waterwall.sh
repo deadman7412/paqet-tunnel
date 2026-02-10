@@ -64,6 +64,24 @@ parse_server_port_from_config() {
   ' "${config_file}" 2>/dev/null || true
 }
 
+parse_client_service_port_from_config() {
+  local config_file="$1"
+  python3 -c "
+import json, sys
+try:
+    with open('${config_file}', 'r') as f:
+        data = json.load(f)
+    nodes = data.get('nodes', [])
+    if len(nodes) >= 1:
+        listener = nodes[0].get('settings', {})
+        port = listener.get('port', '')
+        if port:
+            print(port)
+except:
+    pass
+" 2>/dev/null || true
+}
+
 ensure_ssh_rules() {
   local ssh_ports=""
   ssh_ports="$(grep -Rsh '^[[:space:]]*Port[[:space:]]\+[0-9]\+' /etc/ssh/sshd_config /etc/ssh/sshd_config.d/*.conf 2>/dev/null | awk '{print $2}' | sort -u)"
@@ -74,7 +92,7 @@ ensure_ssh_rules() {
   echo "SSH ports detected: ${ssh_ports}"
   for p in ${ssh_ports}; do
     if ! ufw status 2>/dev/null | grep -qE "\\b${p}/tcp\\b.*ALLOW IN"; then
-      ufw allow "${p}/tcp" comment 'waterwall-ssh' >/dev/null 2>&1 || true
+      ufw allow "${p}/tcp" comment 'ssh' >/dev/null 2>&1 || true
     fi
   done
 }
@@ -108,9 +126,16 @@ if [ "${ROLE}" = "server" ]; then
   ufw allow from "${CLIENT_IP}" to any port "${LISTEN_PORT}" proto tcp comment 'waterwall-tunnel' >/dev/null 2>&1 || true
   echo "Added UFW rule: allow ${CLIENT_IP} -> tcp/${LISTEN_PORT} (waterwall server)."
 else
+  CLIENT_CONFIG_FILE="${WATERWALL_DIR}/client/config.json"
   SERVER_IP="$(read_info "${INFO_FILE}" "server_public_ip")"
   SERVER_PORT="$(read_info "${INFO_FILE}" "listen_port")"
   SERVICE_PORT="$(read_info "${INFO_FILE}" "backend_port")"
+
+  # Try to parse from client config if not in info file
+  if [ -z "${SERVICE_PORT}" ] && [ -f "${CLIENT_CONFIG_FILE}" ]; then
+    SERVICE_PORT="$(parse_client_service_port_from_config "${CLIENT_CONFIG_FILE}")"
+  fi
+
   if [ "${SERVER_IP}" = "REPLACE_WITH_SERVER_PUBLIC_IP" ]; then
     SERVER_IP=""
   fi
@@ -122,10 +147,10 @@ else
     read -r -p "Waterwall server listen port (required): " SERVER_PORT
   fi
   if [ -z "${SERVICE_PORT}" ]; then
-    read -r -p "Waterwall client service port (required): " SERVICE_PORT
+    read -r -p "Waterwall client service port [skip with Enter]: " SERVICE_PORT
   fi
-  if [ -z "${SERVER_IP}" ] || [ -z "${SERVER_PORT}" ] || [ -z "${SERVICE_PORT}" ]; then
-    echo "Server IP, server port, and service port are required." >&2
+  if [ -z "${SERVER_IP}" ] || [ -z "${SERVER_PORT}" ]; then
+    echo "Server IP and server port are required." >&2
     exit 1
   fi
 
@@ -133,17 +158,22 @@ else
   ufw allow out to "${SERVER_IP}" port "${SERVER_PORT}" proto tcp comment 'waterwall-tunnel' >/dev/null 2>&1 || true
   echo "Added UFW rule: allow out -> ${SERVER_IP}:${SERVER_PORT} (waterwall client)."
 
-  # Open service port for local users/apps to connect
-  read -r -p "Open service port ${SERVICE_PORT}/tcp for local users? [Y/n]: " OPEN_SERVICE
-  case "${OPEN_SERVICE:-Y}" in
-    n|N|no|NO)
-      echo "Skipped opening service port."
-      ;;
-    *)
-      ufw allow "${SERVICE_PORT}/tcp" comment 'waterwall-service' >/dev/null 2>&1 || true
-      echo "Added UFW rule: allow inbound -> tcp/${SERVICE_PORT} (waterwall service)."
-      ;;
-  esac
+  # Open service port for local users/apps to connect (if provided)
+  if [ -n "${SERVICE_PORT}" ]; then
+    read -r -p "Open service port ${SERVICE_PORT}/tcp for local users? [Y/n]: " OPEN_SERVICE
+    case "${OPEN_SERVICE:-Y}" in
+      n|N|no|NO)
+        echo "Skipped opening service port."
+        ;;
+      *)
+        ufw allow "${SERVICE_PORT}/tcp" comment 'waterwall-service' >/dev/null 2>&1 || true
+        echo "Added UFW rule: allow inbound -> tcp/${SERVICE_PORT} (waterwall service)."
+        ;;
+    esac
+  else
+    echo "Service port not provided. Skipped opening service port in UFW."
+    echo "You can open it manually later with: sudo ufw allow <SERVICE_PORT>/tcp"
+  fi
 fi
 
 ufw --force enable
