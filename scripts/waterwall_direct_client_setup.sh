@@ -45,14 +45,56 @@ read_info() {
 sync_ufw_tunnel_rule_client() {
   local server_ip="$1" server_port="$2"
   local -a rules=()
+  local do_install=""
+  local do_enable=""
+  local do_open=""
+
   if ! command -v ufw >/dev/null 2>&1; then
-    echo "UFW not installed; skipped firewall auto-allow."
-    return 0
+    read -r -p "UFW is not installed. Install it now and allow outbound tunnel to ${server_ip}:${server_port}? [y/N]: " do_install
+    case "${do_install}" in
+      y|Y|yes|YES)
+        if command -v apt-get >/dev/null 2>&1; then
+          apt-get update -y
+          DEBIAN_FRONTEND=noninteractive apt-get install -y ufw
+        elif command -v dnf >/dev/null 2>&1; then
+          dnf install -y ufw
+        elif command -v yum >/dev/null 2>&1; then
+          yum install -y ufw
+        else
+          echo "No supported package manager found for UFW install." >&2
+          return 0
+        fi
+        ;;
+      *)
+        echo "Skipped firewall changes."
+        return 0
+        ;;
+    esac
   fi
+
   if ! ufw status 2>/dev/null | head -n1 | grep -q "Status: active"; then
-    echo "UFW is installed but inactive; skipped firewall auto-allow."
-    return 0
+    read -r -p "UFW is installed but inactive. Enable UFW and allow outbound tunnel now? [y/N]: " do_enable
+    case "${do_enable}" in
+      y|Y|yes|YES)
+        ufw default deny incoming >/dev/null 2>&1 || true
+        ufw default allow outgoing >/dev/null 2>&1 || true
+        ufw allow in on lo comment 'waterwall-loopback' >/dev/null 2>&1 || true
+        ufw --force enable >/dev/null 2>&1 || true
+        ;;
+      *)
+        echo "Skipped firewall changes."
+        return 0
+        ;;
+    esac
   fi
+
+  read -r -p "Allow outbound tunnel to ${server_ip}:${server_port} in UFW now? [Y/n]: " do_open
+  case "${do_open:-Y}" in
+    n|N|no|NO)
+      echo "Skipped opening outbound tunnel rule in UFW."
+      return 0
+      ;;
+  esac
 
   mapfile -t rules < <(ufw status numbered 2>/dev/null | awk '/waterwall-tunnel/ { if (match($0, /^\[[[:space:]]*[0-9]+]/)) { n=substr($0, RSTART+1, RLENGTH-2); gsub(/[[:space:]]/, "", n); print n } }')
   if [ "${#rules[@]}" -gt 0 ]; then

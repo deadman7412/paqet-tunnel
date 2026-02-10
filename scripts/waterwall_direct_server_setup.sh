@@ -32,19 +32,6 @@ port_in_use() {
   fi
 }
 
-can_connect_tcp() {
-  local host="$1" port="$2"
-  if command -v nc >/dev/null 2>&1; then
-    nc -z -w 2 "${host}" "${port}" >/dev/null 2>&1
-    return $?
-  fi
-  if command -v timeout >/dev/null 2>&1; then
-    timeout 2 bash -c "echo > /dev/tcp/${host}/${port}" >/dev/null 2>&1
-    return $?
-  fi
-  bash -c "echo > /dev/tcp/${host}/${port}" >/dev/null 2>&1
-}
-
 random_port() {
   local p tries=0
   while :; do
@@ -88,14 +75,62 @@ detect_public_ip() {
 sync_ufw_tunnel_rule_server() {
   local listen_port="$1"
   local -a rules=()
+  local ssh_ports=""
+  local do_install=""
+  local do_enable=""
+  local do_open=""
+
   if ! command -v ufw >/dev/null 2>&1; then
-    echo "UFW not installed; skipped firewall auto-allow."
-    return 0
+    read -r -p "UFW is not installed. Install it now and open tunnel port ${listen_port}/tcp? [y/N]: " do_install
+    case "${do_install}" in
+      y|Y|yes|YES)
+        if command -v apt-get >/dev/null 2>&1; then
+          apt-get update -y
+          DEBIAN_FRONTEND=noninteractive apt-get install -y ufw
+        elif command -v dnf >/dev/null 2>&1; then
+          dnf install -y ufw
+        elif command -v yum >/dev/null 2>&1; then
+          yum install -y ufw
+        else
+          echo "No supported package manager found for UFW install." >&2
+          return 0
+        fi
+        ;;
+      *)
+        echo "Skipped firewall changes."
+        return 0
+        ;;
+    esac
   fi
+
   if ! ufw status 2>/dev/null | head -n1 | grep -q "Status: active"; then
-    echo "UFW is installed but inactive; skipped firewall auto-allow."
-    return 0
+    read -r -p "UFW is installed but inactive. Enable UFW and open tunnel port ${listen_port}/tcp now? [y/N]: " do_enable
+    case "${do_enable}" in
+      y|Y|yes|YES)
+        ufw default deny incoming >/dev/null 2>&1 || true
+        ufw default allow outgoing >/dev/null 2>&1 || true
+        ufw allow in on lo comment 'waterwall-loopback' >/dev/null 2>&1 || true
+        ssh_ports="$(grep -Rsh '^[[:space:]]*Port[[:space:]]\+[0-9]\+' /etc/ssh/sshd_config /etc/ssh/sshd_config.d/*.conf 2>/dev/null | awk '{print $2}' | sort -u)"
+        [ -z "${ssh_ports}" ] && ssh_ports="22"
+        for p in ${ssh_ports}; do
+          ufw allow "${p}/tcp" comment 'waterwall-ssh' >/dev/null 2>&1 || true
+        done
+        ufw --force enable >/dev/null 2>&1 || true
+        ;;
+      *)
+        echo "Skipped firewall changes."
+        return 0
+        ;;
+    esac
   fi
+
+  read -r -p "Open server tunnel port ${listen_port}/tcp in UFW now? [Y/n]: " do_open
+  case "${do_open:-Y}" in
+    n|N|no|NO)
+      echo "Skipped opening tunnel port in UFW."
+      return 0
+      ;;
+  esac
 
   mapfile -t rules < <(ufw status numbered 2>/dev/null | awk '/waterwall-tunnel/ { if (match($0, /^\[[[:space:]]*[0-9]+]/)) { n=substr($0, RSTART+1, RLENGTH-2); gsub(/[[:space:]]/, "", n); print n } }')
   if [ "${#rules[@]}" -gt 0 ]; then
@@ -221,23 +256,6 @@ BACKEND_PORT="${BACKEND_PORT:-${BACKEND_PORT_DEFAULT}}"
 if ! validate_port "${BACKEND_PORT}"; then
   echo "Invalid backend service port: ${BACKEND_PORT}" >&2
   exit 1
-fi
-
-if ! can_connect_tcp "${BACKEND_HOST}" "${BACKEND_PORT}"; then
-  echo
-  echo "Warning: backend app target is not reachable now: ${BACKEND_HOST}:${BACKEND_PORT}" >&2
-  echo "Note: this check is for backend service reachability, not Waterwall tunnel listener." >&2
-  echo "If backend is down, tunnel connections will open then close (e.g. connect error 107)." >&2
-  read -r -p "Continue with this backend anyway? [y/N]: " continue_unreachable_backend
-  case "${continue_unreachable_backend}" in
-    y|Y|yes|YES)
-      echo "Continuing with unreachable backend (you can fix backend later)."
-      ;;
-    *)
-      echo "Setup aborted. Re-run and enter a reachable backend host/port." >&2
-      exit 1
-      ;;
-  esac
 fi
 
 read -r -p "Tunnel profile [basic/advanced] (default basic): " TUNNEL_PROFILE
