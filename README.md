@@ -54,8 +54,8 @@ chmod +x menu.sh
 
 ## Quick Setup Flow
 
-1. On destination VPS: `Install Paqet` -> `Server configuration` -> create server config.
-2. On client VPS: `Install Paqet` -> `Client configuration` -> create client config.
+1. On destination VPS: `Paqet Tunnel` -> `Install Paqet` -> `Server configuration` -> create server config.
+2. On client VPS: `Paqet Tunnel` -> `Install Paqet` -> `Client configuration` -> create client config.
 3. Install systemd service on both sides.
 4. Run connection test from client menu.
 

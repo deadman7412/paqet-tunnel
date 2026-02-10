@@ -643,6 +643,38 @@ ssh_proxy_menu() {
   done
 }
 
+waterwall_menu() {
+  while true; do
+    clear
+    banner
+    echo -e "${BLUE}Waterwall Tunnel${NC}"
+    echo "----------------"
+    echo -e "${GREEN}1)${NC} Install Waterwall (placeholder)"
+    echo -e "${GREEN}2)${NC} Configure Waterwall (placeholder)"
+    echo -e "${GREEN}3)${NC} Service control (placeholder)"
+    echo
+    echo
+    echo -e "${GREEN}0)${NC} Back to main menu"
+    echo
+    read -r -p "Select an option: " choice
+
+    case "${choice}" in
+      1|2|3)
+        echo -e "${YELLOW}Waterwall Tunnel is not implemented yet.${NC}"
+        pause
+        ;;
+      0)
+        return 0
+        ;;
+      *)
+        echo -e "${RED}Invalid option:${NC} ${choice}" >&2
+        pause
+        ;;
+    esac
+  done
+}
+
+paqet_tunnel_menu() {
   while true; do
     clear
     banner
@@ -729,3 +761,33 @@ ssh_proxy_menu() {
         ;;
     esac
   done
+}
+
+while true; do
+  clear
+  banner
+  echo -e "${GREEN}1)${NC} Paqet Tunnel"
+  echo -e "${GREEN}2)${NC} Waterwall Tunnel"
+  echo
+  echo
+  echo -e "${GREEN}0)${NC} Exit"
+  echo
+  read -r -p "Select an option: " choice
+
+  case "${choice}" in
+    1)
+      paqet_tunnel_menu
+      ;;
+    2)
+      waterwall_menu
+      ;;
+    0)
+      echo -e "${GREEN}Goodbye.${NC}"
+      exit 0
+      ;;
+    *)
+      echo -e "${RED}Invalid option:${NC} ${choice}" >&2
+      pause
+      ;;
+  esac
+done

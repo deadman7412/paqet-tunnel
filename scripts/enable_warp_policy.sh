@@ -73,7 +73,7 @@ fi
 
 if [ ! -f /etc/wireguard/wgcf.conf ]; then
   echo "WARP core is not installed." >&2
-  echo "Run: Main menu -> WARP/DNS core -> Install WARP core" >&2
+  echo "Run: Paqet Tunnel -> WARP/DNS core -> Install WARP core" >&2
   exit 1
 fi
 

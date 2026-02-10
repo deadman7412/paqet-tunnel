@@ -6,8 +6,8 @@ Use when tunnel connectivity is inconsistent after port/MTU/WARP/firewall change
 
 Run from menu:
 
-- `Server configuration -> Repair networking stack`
-- `Client configuration -> Repair networking stack`
+- `Paqet Tunnel -> Server configuration -> Repair networking stack`
+- `Paqet Tunnel -> Client configuration -> Repair networking stack`
 
 Or script:
 
@@ -19,7 +19,7 @@ sudo ~/paqet_tunnel/scripts/repair_networking_stack.sh auto
 
 WARP is split into:
 
-- Core layer: install/remove `wgcf` from `WARP/DNS core`
+- Core layer: install/remove `wgcf` from `Paqet Tunnel -> WARP/DNS core`
 - Binding layer: enable/disable per consumer (`paqet-server` or SSH proxy users)
 
 Behavior:

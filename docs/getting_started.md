@@ -4,8 +4,8 @@ These steps assume **server first**, then **client**. Tested on **Ubuntu 24.04**
 
 ## Server (Destination VPS)
 
-1. `Install Paqet`
-2. `Server configuration -> Create server config`
+1. `Paqet Tunnel -> Install Paqet`
+2. `Paqet Tunnel -> Server configuration -> Create server config`
 3. Copy printed command and run it on client VPS (creates `server_info.txt`)
 4. `Add iptable rules`
 5. `Install systemd service`
@@ -13,8 +13,8 @@ These steps assume **server first**, then **client**. Tested on **Ubuntu 24.04**
 
 ## Client (Local VPS)
 
-1. `Install Paqet`
-2. `Client configuration -> Create client config`
+1. `Paqet Tunnel -> Install Paqet`
+2. `Paqet Tunnel -> Client configuration -> Create client config`
 3. `Install systemd service`
 4. Optional: restart scheduler and health check
 5. `Test connection`
@@ -31,7 +31,7 @@ These steps assume **server first**, then **client**. Tested on **Ubuntu 24.04**
 
 Install from menu:
 
-- `Client configuration -> Install proxychains4`
+- `Paqet Tunnel -> Client configuration -> Install proxychains4`
 
 Manual:
 
