@@ -54,6 +54,7 @@ INFO_PATH="${INFO_PATH:-${INFO_PATH_DEFAULT}}"
 
 SERVER_IP_DEFAULT=""
 SERVER_PORT_DEFAULT="443"
+SERVICE_PORT_DEFAULT="1080"
 TLS_ENABLED_DEFAULT="1"
 TUNNEL_PROFILE_DEFAULT="basic"
 TLS_SNI_DEFAULT=""
@@ -63,6 +64,7 @@ OBF_DEFAULT="$(rand_hex 16)"
 if [ -f "${INFO_PATH}" ]; then
   SERVER_IP_DEFAULT="$(read_info "${INFO_PATH}" "server_public_ip")"
   SERVER_PORT_DEFAULT="$(read_info "${INFO_PATH}" "listen_port")"
+  SERVICE_PORT_DEFAULT="$(read_info "${INFO_PATH}" "backend_port")"
   TLS_ENABLED_DEFAULT="$(read_info "${INFO_PATH}" "use_tls")"
   TUNNEL_PROFILE_DEFAULT="$(read_info "${INFO_PATH}" "tunnel_profile")"
   TLS_SNI_DEFAULT="$(read_info "${INFO_PATH}" "tls_sni")"
@@ -70,6 +72,7 @@ if [ -f "${INFO_PATH}" ]; then
   OBF_DEFAULT="$(read_info "${INFO_PATH}" "obfuscator_password")"
   [ "${SERVER_IP_DEFAULT}" = "REPLACE_WITH_SERVER_PUBLIC_IP" ] && SERVER_IP_DEFAULT=""
   [ -z "${SERVER_PORT_DEFAULT}" ] && SERVER_PORT_DEFAULT="443"
+  [ -z "${SERVICE_PORT_DEFAULT}" ] && SERVICE_PORT_DEFAULT="1080"
   [ -z "${TLS_ENABLED_DEFAULT}" ] && TLS_ENABLED_DEFAULT="1"
   [ -z "${TUNNEL_PROFILE_DEFAULT}" ] && TUNNEL_PROFILE_DEFAULT="basic"
   [ -z "${GRPC_DEFAULT}" ] && GRPC_DEFAULT="svc-$(rand_hex 4)"
@@ -78,13 +81,6 @@ fi
 
 read -r -p "Local listen address [127.0.0.1]: " LOCAL_LISTEN_ADDR
 LOCAL_LISTEN_ADDR="${LOCAL_LISTEN_ADDR:-127.0.0.1}"
-LOCAL_PORT_DEFAULT="$(random_port)"
-read -r -p "Local listen port [${LOCAL_PORT_DEFAULT}]: " LOCAL_LISTEN_PORT
-LOCAL_LISTEN_PORT="${LOCAL_LISTEN_PORT:-${LOCAL_PORT_DEFAULT}}"
-if ! validate_port "${LOCAL_LISTEN_PORT}"; then
-  echo "Invalid local listen port: ${LOCAL_LISTEN_PORT}" >&2
-  exit 1
-fi
 
 read -r -p "Foreign server address/IP [${SERVER_IP_DEFAULT}]: " FOREIGN_ADDR
 FOREIGN_ADDR="${FOREIGN_ADDR:-${SERVER_IP_DEFAULT}}"
@@ -92,12 +88,21 @@ if [ -z "${FOREIGN_ADDR}" ]; then
   echo "Foreign server address is required." >&2
   exit 1
 fi
-read -r -p "Foreign server port [${SERVER_PORT_DEFAULT}]: " FOREIGN_PORT
-FOREIGN_PORT="${FOREIGN_PORT:-${SERVER_PORT_DEFAULT}}"
-if ! validate_port "${FOREIGN_PORT}"; then
-  echo "Invalid foreign server port: ${FOREIGN_PORT}" >&2
+
+read -r -p "Service port (must match server backend service port) [${SERVICE_PORT_DEFAULT}]: " LOCAL_LISTEN_PORT
+LOCAL_LISTEN_PORT="${LOCAL_LISTEN_PORT:-${SERVICE_PORT_DEFAULT}}"
+if ! validate_port "${LOCAL_LISTEN_PORT}"; then
+  echo "Invalid service/local listen port: ${LOCAL_LISTEN_PORT}" >&2
   exit 1
 fi
+
+read -r -p "Tunnel port (must match server listen port) [${SERVER_PORT_DEFAULT}]: " TUNNEL_PORT
+TUNNEL_PORT="${TUNNEL_PORT:-${SERVER_PORT_DEFAULT}}"
+if ! validate_port "${TUNNEL_PORT}"; then
+  echo "Invalid tunnel/server port: ${TUNNEL_PORT}" >&2
+  exit 1
+fi
+FOREIGN_PORT="${TUNNEL_PORT}"
 
 read -r -p "Tunnel profile [basic/advanced] (default ${TUNNEL_PROFILE_DEFAULT}): " TUNNEL_PROFILE
 TUNNEL_PROFILE="$(echo "${TUNNEL_PROFILE:-${TUNNEL_PROFILE_DEFAULT}}" | tr '[:upper:]' '[:lower:]')"
@@ -314,6 +319,9 @@ echo "Run helper created: ${RUN_SCRIPT}"
 echo "Role dir: ${ROLE_DIR}"
 echo "Using values:"
 echo "  - tunnel_profile: ${TUNNEL_PROFILE}"
+echo "  - tunnel_port: ${TUNNEL_PORT}"
+echo "  - service_port(local/client): ${LOCAL_LISTEN_PORT}"
+echo "  - service_port(server/backend): ${LOCAL_LISTEN_PORT}"
 echo "  - foreign_addr: ${FOREIGN_ADDR}"
 echo "  - foreign_port: ${FOREIGN_PORT}"
 echo "  - use_tls: ${TLS_ENABLED}"

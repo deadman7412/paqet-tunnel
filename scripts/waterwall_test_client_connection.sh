@@ -59,6 +59,50 @@ can_connect_tcp() {
   bash -c "echo > /dev/tcp/${host}/${port}" >/dev/null 2>&1
 }
 
+extract_ip_from_json() {
+  local payload="$1"
+  echo "${payload}" | sed -nE 's/.*"origin"[[:space:]]*:[[:space:]]*"([^"]+)".*/\1/p; s/.*"ip"[[:space:]]*:[[:space:]]*"([^"]+)".*/\1/p' | head -n1
+}
+
+fetch_public_ip_direct() {
+  if ! command -v curl >/dev/null 2>&1; then
+    return 1
+  fi
+  local body=""
+  body="$(curl -fsSL --connect-timeout 5 --max-time 10 https://api.ipify.org?format=json 2>/dev/null || true)"
+  if [ -n "${body}" ]; then
+    extract_ip_from_json "${body}"
+    return 0
+  fi
+  body="$(curl -fsSL --connect-timeout 5 --max-time 10 https://httpbin.org/ip 2>/dev/null || true)"
+  [ -n "${body}" ] || return 1
+  extract_ip_from_json "${body}"
+}
+
+fetch_public_ip_via_proxy() {
+  local proxy_mode="$1"
+  local host="$2"
+  local port="$3"
+  local body=""
+  local ip=""
+  if ! command -v curl >/dev/null 2>&1; then
+    return 1
+  fi
+
+  if [ "${proxy_mode}" = "socks5" ]; then
+    body="$(curl -fsSL --connect-timeout 6 --max-time 12 --proxy "socks5h://${host}:${port}" https://api.ipify.org?format=json 2>/dev/null || true)"
+    [ -z "${body}" ] && body="$(curl -fsSL --connect-timeout 6 --max-time 12 --proxy "socks5h://${host}:${port}" https://httpbin.org/ip 2>/dev/null || true)"
+  elif [ "${proxy_mode}" = "http" ]; then
+    body="$(curl -fsSL --connect-timeout 6 --max-time 12 --proxy "http://${host}:${port}" https://api.ipify.org?format=json 2>/dev/null || true)"
+    [ -z "${body}" ] && body="$(curl -fsSL --connect-timeout 6 --max-time 12 --proxy "http://${host}:${port}" https://httpbin.org/ip 2>/dev/null || true)"
+  fi
+
+  [ -n "${body}" ] || return 1
+  ip="$(extract_ip_from_json "${body}")"
+  [ -n "${ip}" ] || return 1
+  echo "${ip}"
+}
+
 LISTEN_ADDR="$(extract_addr_by_type "TcpListener")"
 LISTEN_PORT="$(extract_port_by_type "TcpListener")"
 FOREIGN_ADDR="$(extract_addr_by_type "TcpConnector")"
@@ -109,6 +153,30 @@ else
     echo "[FAIL] Foreign server is not reachable: ${FOREIGN_ADDR}:${FOREIGN_PORT}"
     FAILED=1
   fi
+fi
+
+if command -v curl >/dev/null 2>&1; then
+  DIRECT_IP="$(fetch_public_ip_direct || true)"
+  if [ -n "${DIRECT_IP}" ]; then
+    echo "[INFO] Direct public IP (no tunnel): ${DIRECT_IP}"
+  else
+    echo "[WARN] Could not determine direct public IP."
+  fi
+
+  if [ -n "${LISTEN_PORT}" ]; then
+    TUNNEL_IP_SOCKS="$(fetch_public_ip_via_proxy socks5 "${LISTEN_ADDR}" "${LISTEN_PORT}" || true)"
+    TUNNEL_IP_HTTP="$(fetch_public_ip_via_proxy http "${LISTEN_ADDR}" "${LISTEN_PORT}" || true)"
+    if [ -n "${TUNNEL_IP_SOCKS}" ]; then
+      echo "[OK] Reported public IP via Waterwall (SOCKS5): ${TUNNEL_IP_SOCKS}"
+    elif [ -n "${TUNNEL_IP_HTTP}" ]; then
+      echo "[OK] Reported public IP via Waterwall (HTTP proxy): ${TUNNEL_IP_HTTP}"
+    else
+      echo "[WARN] Could not fetch reported IP via Waterwall local port ${LISTEN_ADDR}:${LISTEN_PORT}."
+      echo "[WARN] This is expected if the upstream service is not an HTTP/SOCKS proxy."
+    fi
+  fi
+else
+  echo "[WARN] curl not found; skipped reported public IP test."
 fi
 
 echo

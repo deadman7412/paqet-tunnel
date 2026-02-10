@@ -10,7 +10,6 @@ esac
 WATERWALL_DIR="${WATERWALL_DIR:-$HOME/waterwall}"
 INFO_FILE="${WATERWALL_DIR}/direct_server_info.txt"
 SERVER_CONFIG_FILE="${WATERWALL_DIR}/server/config.json"
-CLIENT_CONFIG_FILE="${WATERWALL_DIR}/client/config.json"
 
 ensure_ufw() {
   if command -v ufw >/dev/null 2>&1; then
@@ -65,10 +64,26 @@ parse_server_port_from_config() {
   ' "${config_file}" 2>/dev/null || true
 }
 
+ensure_ssh_rules() {
+  local ssh_ports=""
+  ssh_ports="$(grep -Rsh '^[[:space:]]*Port[[:space:]]\+[0-9]\+' /etc/ssh/sshd_config /etc/ssh/sshd_config.d/*.conf 2>/dev/null | awk '{print $2}' | sort -u)"
+  if [ -z "${ssh_ports}" ]; then
+    ssh_ports="22"
+  fi
+
+  echo "SSH ports detected: ${ssh_ports}"
+  for p in ${ssh_ports}; do
+    if ! ufw status 2>/dev/null | grep -qE "\\b${p}/tcp\\b.*ALLOW IN"; then
+      ufw allow "${p}/tcp" comment 'waterwall-ssh' >/dev/null 2>&1 || true
+    fi
+  done
+}
+
 ensure_ufw
 ufw default deny incoming
 ufw default allow outgoing
 ufw allow in on lo comment 'waterwall-loopback' >/dev/null 2>&1 || true
+ensure_ssh_rules
 
 if [ "${ROLE}" = "server" ]; then
   LISTEN_PORT="$(read_info "${INFO_FILE}" "listen_port")"

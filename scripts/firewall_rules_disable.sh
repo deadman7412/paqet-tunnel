@@ -37,18 +37,18 @@ remove_by_pattern() {
 
 case "${SCOPE}" in
   paqet)
-    remove_by_pattern "paqet-(tunnel|ssh|loopback)"
+    remove_by_pattern "paqet-(tunnel|loopback)"
     ;;
   ssh)
     remove_by_pattern "paqet-ssh-proxy"
     ;;
   waterwall)
-    remove_by_pattern "waterwall-(tunnel|ssh|loopback)"
+    remove_by_pattern "waterwall-(tunnel|loopback)"
     ;;
   all)
-    remove_by_pattern "paqet-(tunnel|ssh|loopback)"
+    remove_by_pattern "paqet-(tunnel|loopback)"
     remove_by_pattern "paqet-ssh-proxy"
-    remove_by_pattern "waterwall-(tunnel|ssh|loopback)"
+    remove_by_pattern "waterwall-(tunnel|loopback)"
     ;;
 esac
 
