@@ -12,9 +12,9 @@ mkdir -p "${WATERWALL_DIR}" "${DOWNLOAD_DIR}"
 
 ensure_runtime_dependencies() {
   local pkgs_apt=() pkgs_dnf=() pkgs_yum=()
-  pkgs_apt=(libatomic1 libstdc++6)
-  pkgs_dnf=(libatomic libstdc++)
-  pkgs_yum=(libatomic libstdc++)
+  pkgs_apt=(libatomic1 libstdc++6 libgcc-s1 libssl3 zlib1g ca-certificates)
+  pkgs_dnf=(libatomic libstdc++ libgcc openssl-libs zlib ca-certificates)
+  pkgs_yum=(libatomic libstdc++ libgcc openssl-libs zlib ca-certificates)
 
   if command -v apt-get >/dev/null 2>&1; then
     apt-get update -y
@@ -64,23 +64,22 @@ pick_asset_url() {
 
   case "${arch}" in
     amd64)
-      # Prioritize broad CPU compatibility to avoid Illegal instruction on older VPS CPUs.
+      # Prefer full-featured generic x64 first; old-cpu build is fallback.
       while IFS= read -r line; do
         case "${line}" in
-          *linux-gcc-x64-old-cpu.zip) preferred="${line}"; break ;;
+          *linux-gcc-x64.zip) preferred="${line}"; break ;;
+        esac
+      done <<< "${urls}"
+      while IFS= read -r line; do
+        [ -z "${preferred}" ] || break
+        case "${line}" in
+          *linux-clang-x64.zip) preferred="${line}"; break ;;
         esac
       done <<< "${urls}"
       if [ -z "${preferred}" ]; then
         while IFS= read -r line; do
           case "${line}" in
-            *linux-gcc-x64.zip) preferred="${line}"; break ;;
-          esac
-        done <<< "${urls}"
-      fi
-      if [ -z "${preferred}" ]; then
-        while IFS= read -r line; do
-          case "${line}" in
-            *linux-clang-x64.zip) preferred="${line}"; break ;;
+            *linux-gcc-x64-old-cpu.zip) preferred="${line}"; break ;;
           esac
         done <<< "${urls}"
       fi
@@ -92,7 +91,11 @@ pick_asset_url() {
         done <<< "${urls}"
       fi
       if [ -z "${preferred}" ]; then
-        preferred="$(printf "%s\n" "${urls}" | grep -Ei '\.zip$' | grep -Ei 'linux' | grep -Ei '(amd64|x86_64|x64|linux-64)' | head -n1 || true)"
+        while IFS= read -r line; do
+          case "${line}" in
+            *linux-*.zip) preferred="${line}"; break ;;
+          esac
+        done <<< "${urls}"
       fi
       ;;
     arm64)
@@ -180,6 +183,26 @@ set_binary_link() {
   ln -sf "${bin_target}" "${WATERWALL_DIR}/waterwall"
 }
 
+post_install_probe() {
+  local probe_out=""
+  if [ ! -x "${WATERWALL_DIR}/waterwall" ]; then
+    return 0
+  fi
+  if ! command -v timeout >/dev/null 2>&1; then
+    return 0
+  fi
+
+  probe_out="$(cd "${WATERWALL_DIR}" && timeout 2 ./waterwall 2>&1 || true)"
+  if printf "%s\n" "${probe_out}" | grep -qi "Illegal instruction"; then
+    echo "Warning: installed Waterwall binary triggers Illegal instruction on this CPU." >&2
+    echo "Try another release asset (for example linux-gcc-x64-old-cpu)." >&2
+  fi
+  if printf "%s\n" "${probe_out}" | grep -qi "dynLoadNodeLib not implemented"; then
+    echo "Warning: this Waterwall build cannot load dynamic node libraries." >&2
+    echo "Try a different asset (recommended: linux-gcc-x64)." >&2
+  fi
+}
+
 main() {
   local arch json tag asset_url local_zip final_zip
   arch="$(detect_arch)"
@@ -227,6 +250,7 @@ main() {
 
   extract_zip "${final_zip}" "${WATERWALL_DIR}"
   set_binary_link
+  post_install_probe
   mkdir -p "${WATERWALL_DIR}/configs" "${WATERWALL_DIR}/logs" "${WATERWALL_DIR}/runtime"
 
   echo
