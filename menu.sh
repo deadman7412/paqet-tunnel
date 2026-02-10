@@ -831,6 +831,7 @@ waterwall_direct_client_menu() {
     echo -e "${GREEN}2)${NC} Install systemd service (client)"
     echo -e "${GREEN}3)${NC} Remove systemd service (client)"
     echo -e "${GREEN}4)${NC} Service control (client)"
+    echo -e "${GREEN}5)${NC} Test connection (client)"
     echo
     echo
     echo -e "${GREEN}0)${NC} Back"
@@ -867,6 +868,14 @@ waterwall_direct_client_menu() {
           run_action "${SCRIPTS_DIR}/waterwall_direct_service_control.sh" client
         else
           echo -e "${RED}Script not found or not executable:${NC} ${SCRIPTS_DIR}/waterwall_direct_service_control.sh" >&2
+        fi
+        pause
+        ;;
+      5)
+        if [ -x "${SCRIPTS_DIR}/waterwall_test_client_connection.sh" ]; then
+          run_action "${SCRIPTS_DIR}/waterwall_test_client_connection.sh"
+        else
+          echo -e "${RED}Script not found or not executable:${NC} ${SCRIPTS_DIR}/waterwall_test_client_connection.sh" >&2
         fi
         pause
         ;;
@@ -1069,9 +1078,9 @@ paqet_tunnel_menu() {
 while true; do
   clear
   banner
-  echo -e "${GREEN}1)${NC} Paqet Tunnel"
-  echo -e "${GREEN}2)${NC} Waterwall Tunnel"
-  echo -e "${GREEN}3)${NC} Update Scripts (git pull)"
+  echo -e "${GREEN}1)${NC} Update Scripts (git pull)"
+  echo -e "${GREEN}2)${NC} Paqet Tunnel"
+  echo -e "${GREEN}3)${NC} Waterwall Tunnel"
   echo -e "${GREEN}4)${NC} Firewall (UFW)"
   echo
   echo
@@ -1081,18 +1090,18 @@ while true; do
 
   case "${choice}" in
     1)
-      paqet_tunnel_menu
-      ;;
-    2)
-      waterwall_menu
-      ;;
-    3)
       if [ -x "${SCRIPTS_DIR}/update_scripts.sh" ]; then
         run_action "${SCRIPTS_DIR}/update_scripts.sh"
       else
         echo -e "${RED}Script not found or not executable:${NC} ${SCRIPTS_DIR}/update_scripts.sh" >&2
       fi
       pause
+      ;;
+    2)
+      paqet_tunnel_menu
+      ;;
+    3)
+      waterwall_menu
       ;;
     4)
       firewall_menu
