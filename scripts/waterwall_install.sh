@@ -80,7 +80,8 @@ extract_zip() {
   local target_dir="$2"
   local tmp_dir
   tmp_dir="$(mktemp -d)"
-  trap 'rm -rf "${tmp_dir}"' RETURN
+  # Expand tmp_dir now so cleanup does not depend on variable scope at trap time.
+  trap 'rm -rf '"'"${tmp_dir}"'"'' RETURN
 
   if command -v unzip >/dev/null 2>&1; then
     unzip -oq "${zip_path}" -d "${tmp_dir}"
