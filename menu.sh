@@ -763,6 +763,8 @@ waterwall_direct_server_menu() {
     echo -e "${GREEN}3)${NC} Remove systemd service (server)"
     echo -e "${GREEN}4)${NC} Service control (server)"
     echo -e "${GREEN}5)${NC} Show server info"
+    echo -e "${GREEN}6)${NC} Start test backend"
+    echo -e "${GREEN}7)${NC} Complete tunnel test"
     echo
     echo
     echo -e "${GREEN}0)${NC} Back"
@@ -810,6 +812,22 @@ waterwall_direct_server_menu() {
         fi
         pause
         ;;
+      6)
+        if [ -x "${SCRIPTS_DIR}/waterwall_start_test_backend.sh" ]; then
+          run_action "${SCRIPTS_DIR}/waterwall_start_test_backend.sh"
+        else
+          echo -e "${RED}Script not found or not executable:${NC} ${SCRIPTS_DIR}/waterwall_start_test_backend.sh" >&2
+        fi
+        pause
+        ;;
+      7)
+        if [ -x "${SCRIPTS_DIR}/waterwall_test_tunnel_complete.sh" ]; then
+          run_action "${SCRIPTS_DIR}/waterwall_test_tunnel_complete.sh"
+        else
+          echo -e "${RED}Script not found or not executable:${NC} ${SCRIPTS_DIR}/waterwall_test_tunnel_complete.sh" >&2
+        fi
+        pause
+        ;;
       0)
         return 0
         ;;
@@ -831,7 +849,8 @@ waterwall_direct_client_menu() {
     echo -e "${GREEN}2)${NC} Install systemd service (client)"
     echo -e "${GREEN}3)${NC} Remove systemd service (client)"
     echo -e "${GREEN}4)${NC} Service control (client)"
-    echo -e "${GREEN}5)${NC} Test connection (client)"
+    echo -e "${GREEN}5)${NC} Test connection (quick)"
+    echo -e "${GREEN}6)${NC} Complete tunnel test"
     echo
     echo
     echo -e "${GREEN}0)${NC} Back"
@@ -876,6 +895,14 @@ waterwall_direct_client_menu() {
           run_action "${SCRIPTS_DIR}/waterwall_test_client_connection.sh"
         else
           echo -e "${RED}Script not found or not executable:${NC} ${SCRIPTS_DIR}/waterwall_test_client_connection.sh" >&2
+        fi
+        pause
+        ;;
+      6)
+        if [ -x "${SCRIPTS_DIR}/waterwall_test_tunnel_complete.sh" ]; then
+          run_action "${SCRIPTS_DIR}/waterwall_test_tunnel_complete.sh"
+        else
+          echo -e "${RED}Script not found or not executable:${NC} ${SCRIPTS_DIR}/waterwall_test_tunnel_complete.sh" >&2
         fi
         pause
         ;;
