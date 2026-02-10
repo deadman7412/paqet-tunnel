@@ -34,7 +34,6 @@ try:
     nodes = data.get('nodes', [])
     listener = next((n for n in nodes if n.get('type') == 'TcpListener'), {})
     connector = next((n for n in nodes if n.get('type') == 'TcpConnector'), {})
-    node_types = {str(n.get('type', '')) for n in nodes}
     lset = listener.get('settings', {}) if isinstance(listener, dict) else {}
     cset = connector.get('settings', {}) if isinstance(connector, dict) else {}
     def out(k, v):
@@ -43,7 +42,6 @@ try:
     out('LISTEN_PORT', lset.get('port', ''))
     out('CONNECT_ADDR', cset.get('address', ''))
     out('CONNECT_PORT', cset.get('port', ''))
-    out('HAS_PROXY_CLIENT', '1' if 'ProxyClient' in node_types else '0')
 except Exception:
     pass
 " 2>/dev/null || echo ""
@@ -53,7 +51,6 @@ eval "$(parse_json_nodes "${CONFIG_FILE}")"
 SERVICE_PORT="${LISTEN_PORT}"
 TUNNEL_PORT="${CONNECT_PORT}"
 SERVER_IP="${CONNECT_ADDR}"
-HAS_PROXY_CLIENT="${HAS_PROXY_CLIENT:-0}"
 
 if [ -z "${SERVICE_PORT}" ] || [ -z "${TUNNEL_PORT}" ]; then
   echo -e "${RED}[ERROR]${NC} Could not parse ports from config" >&2
@@ -77,38 +74,18 @@ echo "=========================================="
 echo -e "${CYAN}=== USAGE INFORMATION ===${NC}"
 echo "=========================================="
 echo
-if [ "${HAS_PROXY_CLIENT}" = "1" ]; then
-  echo -e "${GREEN}Proxy mode detected:${NC} ProxyClient is enabled in client config."
-  echo
-  echo -e "${BLUE}Use Case 1: HTTP proxy from client VPS${NC}"
-  echo "   curl --proxy http://127.0.0.1:${SERVICE_PORT} https://api.ipify.org"
-  echo
-  echo -e "${BLUE}Use Case 2: SOCKS5 proxy from client VPS${NC}"
-  echo "   curl --proxy socks5h://127.0.0.1:${SERVICE_PORT} https://api.ipify.org"
-  echo
-  echo -e "${BLUE}Use Case 3: Desktop/mobile proxy apps${NC}"
-  echo "   Proxy host: <CLIENT_PUBLIC_IP>"
-  echo "   Proxy port: ${SERVICE_PORT}"
-  echo "   Protocol: HTTP or SOCKS5"
-else
-  echo -e "${YELLOW}Forward mode detected:${NC} This is a TCP forward tunnel (fixed backend)."
-  echo
-  echo -e "${BLUE}Use Case 1: Local Testing (from client VPS)${NC}"
-  echo "   curl http://127.0.0.1:${SERVICE_PORT}/"
-  echo
-  echo -e "${BLUE}Use Case 2: With 3x-ui/Xray Proxy${NC}"
-  echo "   1. Install 3x-ui on server VPS"
-  echo "   2. Configure inbound on server backend port"
-  echo "   3. Connect clients to <CLIENT_PUBLIC_IP>:${SERVICE_PORT}"
-  echo
-  echo -e "${BLUE}Use Case 3: SSH Access${NC}"
-  echo "   1. Change server backend port to 22 (SSH port)"
-  echo "   2. From client VPS: ssh -p ${SERVICE_PORT} user@127.0.0.1"
-  echo
-  echo -e "${BLUE}Use Case 4: Database Access${NC}"
-  echo "   1. Set server backend to database port (e.g., 3306)"
-  echo "   2. From client VPS: mysql -h 127.0.0.1 -P ${SERVICE_PORT}"
-fi
+echo -e "${YELLOW}Direct forward mode:${NC} This tunnel forwards TCP to fixed backend on server."
+echo
+echo -e "${BLUE}Recommended Internet Use (3x-ui/Xray backend)${NC}"
+echo "   1. Install 3x-ui on server VPS"
+echo "   2. Create inbound on backend port (same as ${SERVICE_PORT})"
+echo "   3. Point inbound to listen on 127.0.0.1:${SERVICE_PORT} (or your chosen backend host/port)"
+echo "   4. Clients connect to <CLIENT_PUBLIC_IP>:${SERVICE_PORT} (not server IP)"
+echo
+echo -e "${BLUE}Quick Internet Check From Client VPS${NC}"
+echo "   curl --proxy http://127.0.0.1:${SERVICE_PORT} https://api.ipify.org"
+echo "   curl --proxy socks5h://127.0.0.1:${SERVICE_PORT} https://api.ipify.org"
+echo "   (works only if backend protocol is HTTP/SOCKS; VLESS/VMess/Trojan need compatible clients)"
 echo
 echo "=========================================="
 echo -e "${YELLOW}Note:${NC} Service port ${SERVICE_PORT} should be open in UFW for local connections."

@@ -19,14 +19,12 @@ WARN  connfd=12 connect error: Transport endpoint is not connected:107
 
 ## Solution: Testing Workflow
 
-### Choose the Correct Tunnel Mode
+### Recommended Topology (Single Stable Mode)
 
-- **`forward` mode**: fixed backend port forward (`TcpListener -> TcpConnector`)
-  - Good for SSH/database/single-service forwarding
-  - Does **not** provide generic internet proxy access on client by itself
-- **`internet` mode**: proxy routing (`ProxyClient -> ... -> ProxyServer -> TcpConnector(dest_context)`)
-  - Enables client-side HTTP/SOCKS internet access through the tunnel
-  - This is the mode you want when the client must browse/use internet via server egress
+- Use **direct forward mode** only (`TcpListener -> TcpConnector`)
+- Put your proxy service on the server backend (for example: 3x-ui/Xray inbound)
+- Set server backend port = client local service port
+- Users connect to **client IP:service_port** and traffic is forwarded to server backend proxy
 
 ### Step 1: On Server (Foreign VPS)
 
@@ -75,7 +73,7 @@ WARN  connfd=12 connect error: Transport endpoint is not connected:107
    - Test connectivity to server
    - **Send HTTP request through tunnel**
    - Verify response from backend
-   - In `internet` mode: verify public IP retrieval through local tunnel port
+   - Verify public IP retrieval through local tunnel port (when backend is proxy service)
 
 2. **Successful Test Output:**
    ```
@@ -178,7 +176,7 @@ cd scripts
 # Test tunnel with simple HTTP request
 curl http://127.0.0.1:<local_port>/
 
-# Test internet through tunnel (internet mode)
+# Test internet through tunnel (proxy backend on server)
 curl --proxy http://127.0.0.1:<local_port> https://api.ipify.org
 curl --proxy socks5h://127.0.0.1:<local_port> https://api.ipify.org
 

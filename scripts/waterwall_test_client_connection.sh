@@ -37,7 +37,6 @@ try:
     nodes = data.get('nodes', [])
     listener = next((n for n in nodes if n.get('type') == 'TcpListener'), {})
     connector = next((n for n in nodes if n.get('type') == 'TcpConnector'), {})
-    types = {str(n.get('type', '')) for n in nodes}
     lset = listener.get('settings', {}) if isinstance(listener, dict) else {}
     cset = connector.get('settings', {}) if isinstance(connector, dict) else {}
     def out(k, v):
@@ -46,7 +45,6 @@ try:
     out('LISTEN_PORT', lset.get('port', ''))
     out('CONNECT_ADDR', cset.get('address', ''))
     out('CONNECT_PORT', cset.get('port', ''))
-    out('HAS_PROXY_CLIENT', '1' if 'ProxyClient' in types else '0')
 except Exception:
     pass
 " 2>/dev/null || echo ""
@@ -86,7 +84,6 @@ LOCAL_ADDR="${LISTEN_ADDR}"
 LOCAL_PORT="${LISTEN_PORT}"
 SERVER_ADDR="${CONNECT_ADDR}"
 SERVER_PORT="${CONNECT_PORT}"
-HAS_PROXY_CLIENT="${HAS_PROXY_CLIENT:-0}"
 
 EXPECTED_SERVER_IP=""
 if [ -f "${INFO_FILE}" ]; then
@@ -96,11 +93,7 @@ fi
 
 echo "Local:  ${LOCAL_ADDR}:${LOCAL_PORT}"
 echo "Server: ${SERVER_ADDR}:${SERVER_PORT}"
-if [ "${HAS_PROXY_CLIENT}" = "1" ]; then
-  echo "Mode:   Internet proxy mode (ProxyClient detected)"
-else
-  echo "Mode:   Forward mode (no ProxyClient)"
-fi
+echo "Mode:   Direct forward (internet works when backend is proxy service, e.g., 3x-ui)"
 echo
 
 # Test 1: Service running
@@ -180,15 +173,15 @@ echo "=========================================="
 EXIT_CODE=0
 if [ "${INTERNET_OK}" = "yes" ]; then
   echo -e "${GREEN}[SUCCESS]${NC} Tunnel internet egress is working via ${INTERNET_MODE} proxy mode."
-elif [ "${HAS_PROXY_CLIENT}" = "1" ]; then
-  echo -e "${RED}[FAILURE]${NC} ProxyClient mode is enabled but internet egress test failed."
-  echo "   Check server has ProxyServer + TcpConnector dest_context routing and outbound internet access."
-  EXIT_CODE=1
 elif [ "${RAW_TUNNEL_OK}" = "yes" ] || [ "${RAW_TUNNEL_OK}" = "partial" ]; then
-  echo -e "${YELLOW}[WARN]${NC} Tunnel is connected, but this config is not an internet proxy chain."
-  echo "   For internet on client, use tunnel mode 'internet' (ProxyClient/ProxyServer)."
+  echo -e "${YELLOW}[WARN]${NC} Tunnel is connected, but HTTP/SOCKS internet probe failed."
+  echo "   If backend protocol is VLESS/VMess/Trojan, test with a compatible client app."
+  if [ "${STRICT_INTERNET_TEST:-0}" = "1" ]; then
+    EXIT_CODE=1
+  fi
 else
   echo -e "${YELLOW}[WARN]${NC} Tunnel connectivity is partial. Check backend/proxy service."
+  EXIT_CODE=1
 fi
 echo "=========================================="
 echo

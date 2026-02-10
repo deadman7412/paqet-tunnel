@@ -268,30 +268,15 @@ if ! validate_port "${LISTEN_PORT}"; then
   exit 1
 fi
 
-read -r -p "Tunnel mode [forward/internet] (default forward): " TUNNEL_MODE
-TUNNEL_MODE="$(echo "${TUNNEL_MODE:-forward}" | tr '[:upper:]' '[:lower:]')"
-case "${TUNNEL_MODE}" in
-  forward|internet) ;;
-  *)
-    echo "Tunnel mode must be forward or internet." >&2
-    exit 1
-    ;;
-esac
-
-if [ "${TUNNEL_MODE}" = "forward" ]; then
-  read -r -p "Backend service host [127.0.0.1]: " BACKEND_HOST
-  BACKEND_HOST="${BACKEND_HOST:-127.0.0.1}"
-  BACKEND_PORT_DEFAULT="$(random_port)"
-  read -r -p "Backend service port [${BACKEND_PORT_DEFAULT}]: " BACKEND_PORT
-  BACKEND_PORT="${BACKEND_PORT:-${BACKEND_PORT_DEFAULT}}"
-  if ! validate_port "${BACKEND_PORT}"; then
-    echo "Invalid backend service port: ${BACKEND_PORT}" >&2
-    exit 1
-  fi
-else
-  BACKEND_HOST="dest_context->destination_address"
-  BACKEND_PORT="dest_context->destination_port"
-  echo "Internet mode selected: server will route destinations received from client ProxyClient."
+echo "Tunnel mode: forward (stable mode; backend service required, e.g., 3x-ui/xray inbound)"
+read -r -p "Backend service host [127.0.0.1]: " BACKEND_HOST
+BACKEND_HOST="${BACKEND_HOST:-127.0.0.1}"
+BACKEND_PORT_DEFAULT="$(random_port)"
+read -r -p "Backend service port [${BACKEND_PORT_DEFAULT}]: " BACKEND_PORT
+BACKEND_PORT="${BACKEND_PORT:-${BACKEND_PORT_DEFAULT}}"
+if ! validate_port "${BACKEND_PORT}"; then
+  echo "Invalid backend service port: ${BACKEND_PORT}" >&2
+  exit 1
 fi
 
 read -r -p "Tunnel profile [basic/advanced] (default basic): " TUNNEL_PROFILE
@@ -404,7 +389,7 @@ if [ "${TUNNEL_PROFILE}" = "advanced" ] && [ "${TLS_ENABLED}" = "1" ]; then
   fi
 fi
 
-if [ "${TUNNEL_PROFILE}" = "basic" ] && [ "${TUNNEL_MODE}" = "forward" ]; then
+if [ "${TUNNEL_PROFILE}" = "basic" ]; then
   cat > "${ROLE_CONFIG_FILE}" <<EOF
 {
   "name": "direct-server-basic",
@@ -434,42 +419,7 @@ if [ "${TUNNEL_PROFILE}" = "basic" ] && [ "${TUNNEL_MODE}" = "forward" ]; then
   ]
 }
 EOF
-elif [ "${TUNNEL_PROFILE}" = "basic" ] && [ "${TUNNEL_MODE}" = "internet" ]; then
-  cat > "${ROLE_CONFIG_FILE}" <<EOF
-{
-  "name": "direct-server-internet-basic",
-  "author": "paqet-tunnel",
-  "config-version": 1,
-  "core-minimum-version": 1,
-  "nodes": [
-    {
-      "name": "input",
-      "type": "TcpListener",
-      "settings": {
-        "address": "${LISTEN_ADDR}",
-        "port": ${LISTEN_PORT},
-        "nodelay": true
-      },
-      "next": "proxy_server"
-    },
-    {
-      "name": "proxy_server",
-      "type": "ProxyServer",
-      "next": "output"
-    },
-    {
-      "name": "output",
-      "type": "TcpConnector",
-      "settings": {
-        "address": "dest_context->destination_address",
-        "port": "dest_context->destination_port",
-        "nodelay": true
-      }
-    }
-  ]
-}
-EOF
-elif [ "${TLS_ENABLED}" = "1" ] && [ "${TUNNEL_MODE}" = "forward" ]; then
+elif [ "${TLS_ENABLED}" = "1" ]; then
   cat > "${ROLE_CONFIG_FILE}" <<EOF
 {
   "name": "secure-direct-server",
@@ -535,117 +485,10 @@ elif [ "${TLS_ENABLED}" = "1" ] && [ "${TUNNEL_MODE}" = "forward" ]; then
   ]
 }
 EOF
-elif [ "${TLS_ENABLED}" = "1" ] && [ "${TUNNEL_MODE}" = "internet" ]; then
-  cat > "${ROLE_CONFIG_FILE}" <<EOF
-{
-  "name": "secure-direct-server-internet",
-  "author": "paqet-tunnel",
-  "config-version": 1,
-  "core-minimum-version": 1,
-  "nodes": [
-    {
-      "name": "input",
-      "type": "TcpListener",
-      "settings": {
-        "address": "${LISTEN_ADDR}",
-        "port": ${LISTEN_PORT},
-        "nodelay": true
-      },
-      "next": "tls_server"
-    },
-    {
-      "name": "tls_server",
-      "type": "OpenSSLServer",
-      "settings": {
-        "cert-file": "${CERT_FILE}",
-        "key-file": "${KEY_FILE}",
-        "alpns": [
-          "h2",
-          "http/1.1"
-        ]
-      },
-      "next": "h2_server"
-    },
-    {
-      "name": "h2_server",
-      "type": "Http2Server",
-      "settings": {
-        "host": "${TLS_SNI}",
-        "path": "/${GRPC_SERVICE}",
-        "mode": "grpc"
-      },
-      "next": "protobuf_server"
-    },
-    {
-      "name": "protobuf_server",
-      "type": "ProtoBufServer",
-      "next": "obfuscator_server"
-    },
-    {
-      "name": "obfuscator_server",
-      "type": "ObfuscatorServer",
-      "settings": {
-        "password": "${OBF_PASSWORD}"
-      },
-      "next": "proxy_server"
-    },
-    {
-      "name": "proxy_server",
-      "type": "ProxyServer",
-      "next": "output"
-    },
-    {
-      "name": "output",
-      "type": "TcpConnector",
-      "settings": {
-        "address": "dest_context->destination_address",
-        "port": "dest_context->destination_port",
-        "nodelay": true
-      }
-    }
-  ]
-}
-EOF
 else
   echo "Advanced mode without TLS is not supported on this host build; using basic chain." >&2
   TUNNEL_PROFILE="basic"
-  if [ "${TUNNEL_MODE}" = "internet" ]; then
-    cat > "${ROLE_CONFIG_FILE}" <<EOF
-{
-  "name": "direct-server-internet-basic",
-  "author": "paqet-tunnel",
-  "config-version": 1,
-  "core-minimum-version": 1,
-  "nodes": [
-    {
-      "name": "input",
-      "type": "TcpListener",
-      "settings": {
-        "address": "${LISTEN_ADDR}",
-        "port": ${LISTEN_PORT},
-        "nodelay": true
-      },
-      "next": "proxy_server"
-    },
-    {
-      "name": "proxy_server",
-      "type": "ProxyServer",
-      "next": "output"
-    },
-    {
-      "name": "output",
-      "type": "TcpConnector",
-      "settings": {
-        "address": "dest_context->destination_address",
-        "port": "dest_context->destination_port",
-        "nodelay": true
-      }
-    }
-  ]
-}
-EOF
-  else
-    cat > "${ROLE_CONFIG_FILE}" <<EOF
+  cat > "${ROLE_CONFIG_FILE}" <<EOF
 {
   "name": "direct-server-basic",
   "author": "paqet-tunnel",
@@ -674,7 +517,6 @@ EOF
   ]
 }
 EOF
-  fi
 fi
 
 cp -f "${ROLE_CONFIG_FILE}" "${CONFIG_FILE}"
@@ -729,7 +571,6 @@ cat > "${INFO_FILE}" <<EOF
 # Copy this file to the client VPS and place it at ${INFO_FILE}
 format_version=${INFO_FORMAT_VERSION}
 created_at=${CREATED_AT_UTC}
-tunnel_mode=${TUNNEL_MODE}
 use_tls=${TLS_ENABLED}
 tunnel_profile=${TUNNEL_PROFILE}
 server_public_ip=${SERVER_PUBLIC_IP:-REPLACE_WITH_SERVER_PUBLIC_IP}
@@ -758,17 +599,12 @@ echo "EOF"
 echo "============================================="
 echo
 echo "Generated secrets/values:"
-echo "  - tunnel_mode: ${TUNNEL_MODE}"
 echo "  - tunnel_profile: ${TUNNEL_PROFILE}"
 echo "  - use_tls: ${TLS_ENABLED}"
 echo "  - server_public_ip: ${SERVER_PUBLIC_IP:-REPLACE_WITH_SERVER_PUBLIC_IP}"
 echo "  - listen_port: ${LISTEN_PORT}"
-if [ "${TUNNEL_MODE}" = "forward" ]; then
-  echo "  - backend_host: ${BACKEND_HOST}"
-  echo "  - backend_port: ${BACKEND_PORT}"
-else
-  echo "  - backend routing: ProxyServer -> dest_context->destination_address:destination_port"
-fi
+echo "  - backend_host: ${BACKEND_HOST}"
+echo "  - backend_port: ${BACKEND_PORT}"
 if [ -n "${GRPC_SERVICE}" ]; then
   echo "  - grpc_service: ${GRPC_SERVICE}"
 fi

@@ -60,7 +60,6 @@ try:
     nodes = data.get('nodes', [])
     listener = next((n for n in nodes if n.get('type') == 'TcpListener'), {})
     connector = next((n for n in nodes if n.get('type') == 'TcpConnector'), {})
-    node_types = {str(n.get('type', '')) for n in nodes}
     lset = listener.get('settings', {}) if isinstance(listener, dict) else {}
     cset = connector.get('settings', {}) if isinstance(connector, dict) else {}
     def out(k, v):
@@ -69,8 +68,6 @@ try:
     out('LISTEN_PORT', lset.get('port', ''))
     out('CONNECT_ADDR', cset.get('address', ''))
     out('CONNECT_PORT', cset.get('port', ''))
-    out('HAS_PROXY_CLIENT', '1' if 'ProxyClient' in node_types else '0')
-    out('HAS_PROXY_SERVER', '1' if 'ProxyServer' in node_types else '0')
 except Exception:
     pass
 " 2>/dev/null || echo ""
@@ -144,15 +141,9 @@ if [ "${ROLE}" = "server" ]; then
 
   # Parse config using Python for accurate JSON parsing
   eval "$(parse_json_nodes "${CONFIG_FILE}")"
-  HAS_PROXY_SERVER="${HAS_PROXY_SERVER:-0}"
-
   echo "Tunnel listen: ${LISTEN_ADDR}:${LISTEN_PORT}"
   echo "Backend target: ${CONNECT_ADDR}:${CONNECT_PORT}"
-  if [ "${HAS_PROXY_SERVER}" = "1" ]; then
-    echo "Tunnel mode: internet proxy (ProxyServer)"
-  else
-    echo "Tunnel mode: forward (fixed backend)"
-  fi
+  echo "Tunnel mode: direct forward (fixed backend)"
 
   # Store for later use
   BACKEND_ADDR="${CONNECT_ADDR}"
@@ -179,10 +170,7 @@ if [ "${ROLE}" = "server" ]; then
   echo
 
   echo -e "${CYAN}=== BACKEND SERVICE STATUS ===${NC}"
-  if [ "${HAS_PROXY_SERVER}" = "1" ]; then
-    echo -e "${GREEN}[OK]${NC} ProxyServer chain detected (dynamic internet routing)"
-    echo "     TcpConnector target: ${BACKEND_ADDR}:${BACKEND_PORT}"
-  elif is_numeric_port "${BACKEND_PORT}"; then
+  if is_numeric_port "${BACKEND_PORT}"; then
     if ss -ltn 2>/dev/null | grep -q ":${BACKEND_PORT}[[:space:]]"; then
       echo -e "${GREEN}[OK]${NC} Backend service is running on port ${BACKEND_PORT}"
       ss -ltnp 2>/dev/null | grep ":${BACKEND_PORT}[[:space:]]" | head -n1
@@ -234,15 +222,10 @@ elif [ "${ROLE}" = "client" ]; then
   LOCAL_PORT="${LISTEN_PORT}"
   SERVER_ADDR="${CONNECT_ADDR}"
   SERVER_PORT="${CONNECT_PORT}"
-  HAS_PROXY_CLIENT="${HAS_PROXY_CLIENT:-0}"
 
   echo "Local listen: ${LOCAL_ADDR}:${LOCAL_PORT}"
   echo "Server target: ${SERVER_ADDR}:${SERVER_PORT}"
-  if [ "${HAS_PROXY_CLIENT}" = "1" ]; then
-    echo "Tunnel mode: internet proxy (ProxyClient)"
-  else
-    echo "Tunnel mode: forward (no ProxyClient)"
-  fi
+  echo "Tunnel mode: direct forward (internet works when backend is proxy service)"
   echo
 
   echo -e "${CYAN}=== SERVICE STATUS ===${NC}"
@@ -315,12 +298,10 @@ elif [ "${ROLE}" = "client" ]; then
       if [ -n "${EXPECTED_SERVER_IP}" ] && [ "${EXPECTED_SERVER_IP}" != "${INTERNET_IP}" ]; then
         echo -e "${YELLOW}[WARN]${NC} Egress IP differs from direct_server_info (${EXPECTED_SERVER_IP})"
       fi
-    elif [ "${HAS_PROXY_CLIENT}" = "1" ]; then
-      echo -e "${RED}[FAIL]${NC} ProxyClient mode enabled but internet test failed via local tunnel port"
-      echo "     Check server ProxyServer/dest_context chain and outbound firewall"
     else
-      echo -e "${YELLOW}[WARN]${NC} This tunnel config is not an internet proxy chain (no ProxyClient)"
-      echo "     Use tunnel mode 'internet' if you need browser/proxy internet on client."
+      echo -e "${RED}[FAIL]${NC} Internet test failed via local tunnel port"
+      echo "     If backend protocol is VLESS/VMess/Trojan, this HTTP/SOCKS probe is expected to fail."
+      echo "     Validate with a compatible client profile pointed to <CLIENT_IP>:${LOCAL_PORT}."
     fi
   else
     echo -e "${YELLOW}[WARN]${NC} curl not installed; skipping internet egress test"
@@ -385,9 +366,7 @@ echo "Service running: $(systemctl is-active --quiet "${SERVICE_NAME}.service" 2
 
 if [ "${ROLE}" = "server" ]; then
   echo "Tunnel listening: $(ss -ltn 2>/dev/null | grep -q ":${LISTEN_PORT}[[:space:]]" && echo "[OK]" || echo "[FAIL]")"
-  if [ "${HAS_PROXY_SERVER:-0}" = "1" ]; then
-    echo "Backend running: [N/A] (ProxyServer dynamic routing)"
-  elif is_numeric_port "${BACKEND_PORT}"; then
+  if is_numeric_port "${BACKEND_PORT}"; then
     echo "Backend running: $(ss -ltn 2>/dev/null | grep -q ":${BACKEND_PORT}[[:space:]]" && echo "[OK]" || echo "[FAIL]")"
   else
     echo "Backend running: [SKIP] (non-numeric backend port)"
