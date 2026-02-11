@@ -72,13 +72,12 @@ policy_core_menu() {
   while true; do
     clear
     banner
-    echo -e "${BLUE}WARP/DNS Core${NC}"
-    echo "-------------"
+    echo -e "${BLUE}WARP/DNS Installation${NC}"
+    echo "---------------------"
     echo -e "${GREEN}1)${NC} Install WARP core (wgcf)"
     echo -e "${GREEN}2)${NC} Uninstall WARP core (wgcf)"
     echo -e "${GREEN}3)${NC} Install DNS policy core"
     echo -e "${GREEN}4)${NC} Uninstall DNS policy core"
-    echo -e "${GREEN}5)${NC} Reconcile server/SSH policy bindings"
     echo
     echo
     echo -e "${GREEN}0)${NC} Back to main menu"
@@ -120,6 +119,123 @@ policy_core_menu() {
         fi
         pause
         ;;
+      0)
+        return 0
+        ;;
+      *)
+        echo -e "${RED}Invalid option:${NC} ${choice}" >&2
+        pause
+        ;;
+    esac
+  done
+}
+
+select_policy_proxy_type() {
+  local proxy_type=""
+  read -r -p "Proxy type [paqet/ssh]: " proxy_type
+  proxy_type="$(echo "${proxy_type}" | tr '[:upper:]' '[:lower:]')"
+  case "${proxy_type}" in
+    paqet|ssh)
+      echo "${proxy_type}"
+      return 0
+      ;;
+    *)
+      echo "Invalid proxy type. Use: paqet or ssh." >&2
+      return 1
+      ;;
+  esac
+}
+
+policy_bindings_menu() {
+  while true; do
+    clear
+    banner
+    echo -e "${BLUE}WARP/DNS Rule Application${NC}"
+    echo "-------------------------"
+    echo -e "${GREEN}1)${NC} Apply WARP rule (proxy type: paqet/ssh)"
+    echo -e "${GREEN}2)${NC} Remove WARP rule (proxy type: paqet/ssh)"
+    echo -e "${GREEN}3)${NC} Apply DNS rule (proxy type: paqet/ssh)"
+    echo -e "${GREEN}4)${NC} Remove DNS rule (proxy type: paqet/ssh)"
+    echo -e "${GREEN}5)${NC} Reconcile saved bindings (server/SSH)"
+    echo
+    echo
+    echo -e "${GREEN}0)${NC} Back to main menu"
+    echo
+    read -r -p "Select an option: " choice
+
+    case "${choice}" in
+      1)
+        if proxy_type="$(select_policy_proxy_type)"; then
+          if [ "${proxy_type}" = "paqet" ]; then
+            if [ -x "${SCRIPTS_DIR}/enable_warp_policy.sh" ]; then
+              run_action "${SCRIPTS_DIR}/enable_warp_policy.sh" server
+            else
+              echo -e "${RED}Script not found or not executable:${NC} ${SCRIPTS_DIR}/enable_warp_policy.sh" >&2
+            fi
+          else
+            if [ -x "${SCRIPTS_DIR}/ssh_proxy_enable_warp.sh" ]; then
+              run_action "${SCRIPTS_DIR}/ssh_proxy_enable_warp.sh"
+            else
+              echo -e "${RED}Script not found or not executable:${NC} ${SCRIPTS_DIR}/ssh_proxy_enable_warp.sh" >&2
+            fi
+          fi
+        fi
+        pause
+        ;;
+      2)
+        if proxy_type="$(select_policy_proxy_type)"; then
+          if [ "${proxy_type}" = "paqet" ]; then
+            if [ -x "${SCRIPTS_DIR}/disable_warp_policy.sh" ]; then
+              run_action "${SCRIPTS_DIR}/disable_warp_policy.sh" server
+            else
+              echo -e "${RED}Script not found or not executable:${NC} ${SCRIPTS_DIR}/disable_warp_policy.sh" >&2
+            fi
+          else
+            if [ -x "${SCRIPTS_DIR}/ssh_proxy_disable_warp.sh" ]; then
+              run_action "${SCRIPTS_DIR}/ssh_proxy_disable_warp.sh"
+            else
+              echo -e "${RED}Script not found or not executable:${NC} ${SCRIPTS_DIR}/ssh_proxy_disable_warp.sh" >&2
+            fi
+          fi
+        fi
+        pause
+        ;;
+      3)
+        if proxy_type="$(select_policy_proxy_type)"; then
+          if [ "${proxy_type}" = "paqet" ]; then
+            if [ -x "${SCRIPTS_DIR}/enable_dns_policy.sh" ]; then
+              run_action "${SCRIPTS_DIR}/enable_dns_policy.sh"
+            else
+              echo -e "${RED}Script not found or not executable:${NC} ${SCRIPTS_DIR}/enable_dns_policy.sh" >&2
+            fi
+          else
+            if [ -x "${SCRIPTS_DIR}/ssh_proxy_enable_dns_routing.sh" ]; then
+              run_action "${SCRIPTS_DIR}/ssh_proxy_enable_dns_routing.sh"
+            else
+              echo -e "${RED}Script not found or not executable:${NC} ${SCRIPTS_DIR}/ssh_proxy_enable_dns_routing.sh" >&2
+            fi
+          fi
+        fi
+        pause
+        ;;
+      4)
+        if proxy_type="$(select_policy_proxy_type)"; then
+          if [ "${proxy_type}" = "paqet" ]; then
+            if [ -x "${SCRIPTS_DIR}/disable_dns_policy.sh" ]; then
+              run_action "${SCRIPTS_DIR}/disable_dns_policy.sh"
+            else
+              echo -e "${RED}Script not found or not executable:${NC} ${SCRIPTS_DIR}/disable_dns_policy.sh" >&2
+            fi
+          else
+            if [ -x "${SCRIPTS_DIR}/ssh_proxy_disable_dns_routing.sh" ]; then
+              run_action "${SCRIPTS_DIR}/ssh_proxy_disable_dns_routing.sh"
+            else
+              echo -e "${RED}Script not found or not executable:${NC} ${SCRIPTS_DIR}/ssh_proxy_disable_dns_routing.sh" >&2
+            fi
+          fi
+        fi
+        pause
+        ;;
       5)
         if [ -x "${SCRIPTS_DIR}/reconcile_policy_bindings.sh" ]; then
           run_action "${SCRIPTS_DIR}/reconcile_policy_bindings.sh" all
@@ -156,16 +272,12 @@ server_menu() {
     echo -e "${GREEN}9)${NC} Change MTU"
     echo -e "${GREEN}10)${NC} Health check"
     echo -e "${GREEN}11)${NC} Health logs"
-    echo -e "${GREEN}12)${NC} Enable WARP for paqet-server (bind)"
-    echo -e "${GREEN}13)${NC} Disable WARP for paqet-server (unbind)"
-    echo -e "${GREEN}14)${NC} WARP status"
-    echo -e "${GREEN}15)${NC} Test WARP"
-    echo -e "${GREEN}16)${NC} Repair networking stack"
-    echo -e "${GREEN}17)${NC} Enable DNS policy for paqet-server (bind)"
-    echo -e "${GREEN}18)${NC} Disable DNS policy for paqet-server (unbind)"
-    echo -e "${GREEN}19)${NC} Update DNS policy list now"
-    echo -e "${GREEN}20)${NC} DNS policy status"
-    echo -e "${GREEN}21)${NC} Show WARP config for 3x-ui"
+    echo -e "${GREEN}12)${NC} WARP status"
+    echo -e "${GREEN}13)${NC} Test WARP"
+    echo -e "${GREEN}14)${NC} Repair networking stack"
+    echo -e "${GREEN}15)${NC} Update DNS policy list now"
+    echo -e "${GREEN}16)${NC} DNS policy status"
+    echo -e "${GREEN}17)${NC} Show WARP config for 3x-ui"
     echo
     echo
     echo -e "${GREEN}0)${NC} Back to main menu"
@@ -264,22 +376,6 @@ server_menu() {
         pause
         ;;
       12)
-        if [ -x "${SCRIPTS_DIR}/enable_warp_policy.sh" ]; then
-          run_action "${SCRIPTS_DIR}/enable_warp_policy.sh" server
-        else
-          echo -e "${RED}Script not found or not executable:${NC} ${SCRIPTS_DIR}/enable_warp_policy.sh" >&2
-        fi
-        pause
-        ;;
-      13)
-        if [ -x "${SCRIPTS_DIR}/disable_warp_policy.sh" ]; then
-          run_action "${SCRIPTS_DIR}/disable_warp_policy.sh" server
-        else
-          echo -e "${RED}Script not found or not executable:${NC} ${SCRIPTS_DIR}/disable_warp_policy.sh" >&2
-        fi
-        pause
-        ;;
-      14)
         if [ -x "${SCRIPTS_DIR}/warp_status.sh" ]; then
           run_action "${SCRIPTS_DIR}/warp_status.sh" server
         else
@@ -287,7 +383,7 @@ server_menu() {
         fi
         pause
         ;;
-      15)
+      13)
         if [ -x "${SCRIPTS_DIR}/test_warp_full.sh" ]; then
           run_action "${SCRIPTS_DIR}/test_warp_full.sh"
         elif [ -x "${SCRIPTS_DIR}/test_warp.sh" ]; then
@@ -297,7 +393,7 @@ server_menu() {
         fi
         pause
         ;;
-      16)
+      14)
         if [ -x "${SCRIPTS_DIR}/repair_networking_stack.sh" ]; then
           run_action "${SCRIPTS_DIR}/repair_networking_stack.sh" server
         else
@@ -305,23 +401,7 @@ server_menu() {
         fi
         pause
         ;;
-      17)
-        if [ -x "${SCRIPTS_DIR}/enable_dns_policy.sh" ]; then
-          run_action "${SCRIPTS_DIR}/enable_dns_policy.sh"
-        else
-          echo -e "${RED}Script not found or not executable:${NC} ${SCRIPTS_DIR}/enable_dns_policy.sh" >&2
-        fi
-        pause
-        ;;
-      18)
-        if [ -x "${SCRIPTS_DIR}/disable_dns_policy.sh" ]; then
-          run_action "${SCRIPTS_DIR}/disable_dns_policy.sh"
-        else
-          echo -e "${RED}Script not found or not executable:${NC} ${SCRIPTS_DIR}/disable_dns_policy.sh" >&2
-        fi
-        pause
-        ;;
-      19)
+      15)
         if [ -x "${SCRIPTS_DIR}/update_dns_policy_list.sh" ]; then
           read -r -p "DNS category [ads/all/proxy] (leave empty to use current): " dns_category
           if [ -n "${dns_category}" ]; then
@@ -334,7 +414,7 @@ server_menu() {
         fi
         pause
         ;;
-      20)
+      16)
         if [ -x "${SCRIPTS_DIR}/dns_policy_status.sh" ]; then
           run_action "${SCRIPTS_DIR}/dns_policy_status.sh"
         else
@@ -342,7 +422,7 @@ server_menu() {
         fi
         pause
         ;;
-      21)
+      17)
         if [ -x "${SCRIPTS_DIR}/show_warp_3xui_config.sh" ]; then
           run_action "${SCRIPTS_DIR}/show_warp_3xui_config.sh"
         else
@@ -495,10 +575,6 @@ ssh_proxy_menu() {
     echo -e "${GREEN}3)${NC} Remove SSH proxy user"
     echo -e "${GREEN}4)${NC} List SSH proxy users"
     echo -e "${GREEN}5)${NC} Show simple SSH credentials"
-    echo -e "${GREEN}6)${NC} Enable WARP for SSH proxy users"
-    echo -e "${GREEN}7)${NC} Disable WARP for SSH proxy users"
-    echo -e "${GREEN}8)${NC} Enable DNS routing for SSH proxy users"
-    echo -e "${GREEN}9)${NC} Disable DNS routing for SSH proxy users"
     echo
     echo
     echo -e "${GREEN}0)${NC} Back to main menu"
@@ -543,38 +619,6 @@ ssh_proxy_menu() {
           run_action "${SCRIPTS_DIR}/ssh_proxy_create_simple_credentials.sh"
         else
           echo -e "${YELLOW}Not implemented yet:${NC} ${SCRIPTS_DIR}/ssh_proxy_create_simple_credentials.sh"
-        fi
-        pause
-        ;;
-      6)
-        if [ -x "${SCRIPTS_DIR}/ssh_proxy_enable_warp.sh" ]; then
-          run_action "${SCRIPTS_DIR}/ssh_proxy_enable_warp.sh"
-        else
-          echo -e "${YELLOW}Not implemented yet:${NC} ${SCRIPTS_DIR}/ssh_proxy_enable_warp.sh"
-        fi
-        pause
-        ;;
-      7)
-        if [ -x "${SCRIPTS_DIR}/ssh_proxy_disable_warp.sh" ]; then
-          run_action "${SCRIPTS_DIR}/ssh_proxy_disable_warp.sh"
-        else
-          echo -e "${YELLOW}Not implemented yet:${NC} ${SCRIPTS_DIR}/ssh_proxy_disable_warp.sh"
-        fi
-        pause
-        ;;
-      8)
-        if [ -x "${SCRIPTS_DIR}/ssh_proxy_enable_dns_routing.sh" ]; then
-          run_action "${SCRIPTS_DIR}/ssh_proxy_enable_dns_routing.sh"
-        else
-          echo -e "${YELLOW}Not implemented yet:${NC} ${SCRIPTS_DIR}/ssh_proxy_enable_dns_routing.sh"
-        fi
-        pause
-        ;;
-      9)
-        if [ -x "${SCRIPTS_DIR}/ssh_proxy_disable_dns_routing.sh" ]; then
-          run_action "${SCRIPTS_DIR}/ssh_proxy_disable_dns_routing.sh"
-        else
-          echo -e "${YELLOW}Not implemented yet:${NC} ${SCRIPTS_DIR}/ssh_proxy_disable_dns_routing.sh"
         fi
         pause
         ;;
@@ -1098,15 +1142,12 @@ paqet_tunnel_menu() {
     fi
     echo -e "${GREEN}1)${NC} Install Paqet"
     echo -e "${GREEN}2)${NC} Update Paqet"
-    echo -e "${GREEN}3)${NC} Update Scripts (git pull)"
-    echo -e "${GREEN}4)${NC} Server configuration"
-    echo -e "${GREEN}5)${NC} Client configuration"
-    echo -e "${GREEN}6)${NC} SSH proxy"
-    echo -e "${GREEN}7)${NC} WARP/DNS core"
-    echo -e "${GREEN}8)${NC} Uninstall / remove components"
+    echo -e "${GREEN}3)${NC} Server configuration"
+    echo -e "${GREEN}4)${NC} Client configuration"
+    echo -e "${GREEN}5)${NC} Uninstall / remove components"
     echo
     echo
-    echo -e "${GREEN}0)${NC} Exit"
+    echo -e "${GREEN}0)${NC} Back to main menu"
   echo
   read -r -p "Select an option: " choice
 
@@ -1128,26 +1169,12 @@ paqet_tunnel_menu() {
         pause
         ;;
       3)
-        if [ -x "${SCRIPTS_DIR}/update_scripts.sh" ]; then
-          run_action "${SCRIPTS_DIR}/update_scripts.sh"
-        else
-          echo -e "${RED}Script not found or not executable:${NC} ${SCRIPTS_DIR}/update_scripts.sh" >&2
-        fi
-        pause
-        ;;
-      4)
         server_menu
         ;;
-      5)
+      4)
         client_menu
         ;;
-      6)
-        ssh_proxy_menu
-        ;;
-      7)
-        policy_core_menu
-        ;;
-      8)
+      5)
         if [ -x "${SCRIPTS_DIR}/uninstall_paqet.sh" ]; then
           run_action "${SCRIPTS_DIR}/uninstall_paqet.sh"
         else
@@ -1156,8 +1183,7 @@ paqet_tunnel_menu() {
         pause
         ;;
       0)
-        echo -e "${GREEN}Goodbye.${NC}"
-        exit 0
+        return 0
         ;;
       *)
         echo -e "${RED}Invalid option:${NC} ${choice}" >&2
@@ -1172,8 +1198,11 @@ while true; do
   banner
   echo -e "${GREEN}1)${NC} Update Scripts (git pull)"
   echo -e "${GREEN}2)${NC} Paqet Tunnel"
-  echo -e "${GREEN}3)${NC} Waterwall Tunnel"
-  echo -e "${GREEN}4)${NC} Firewall (UFW)"
+  echo -e "${GREEN}3)${NC} SSH Proxy"
+  echo -e "${GREEN}4)${NC} WARP/DNS Installation"
+  echo -e "${GREEN}5)${NC} WARP/DNS Rule Application"
+  echo -e "${GREEN}6)${NC} Waterwall Tunnel"
+  echo -e "${GREEN}7)${NC} Firewall (UFW)"
   echo
   echo
   echo -e "${GREEN}0)${NC} Exit"
@@ -1193,9 +1222,18 @@ while true; do
       paqet_tunnel_menu
       ;;
     3)
-      waterwall_menu
+      ssh_proxy_menu
       ;;
     4)
+      policy_core_menu
+      ;;
+    5)
+      policy_bindings_menu
+      ;;
+    6)
+      waterwall_menu
+      ;;
+    7)
       firewall_menu
       ;;
     0)
