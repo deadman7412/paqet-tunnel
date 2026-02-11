@@ -70,15 +70,15 @@ run_action() {
 
 select_policy_proxy_type() {
   local proxy_type=""
-  read -r -p "Proxy type [paqet/ssh]: " proxy_type
+  read -r -p "Proxy type [paqet/ssh/waterwall]: " proxy_type
   proxy_type="$(echo "${proxy_type}" | tr '[:upper:]' '[:lower:]')"
   case "${proxy_type}" in
-    paqet|ssh)
+    paqet|ssh|waterwall)
       echo "${proxy_type}"
       return 0
       ;;
     *)
-      echo "Invalid proxy type. Use: paqet or ssh." >&2
+      echo "Invalid proxy type. Use: paqet, ssh, or waterwall." >&2
       return 1
       ;;
   esac
@@ -92,8 +92,8 @@ warp_configuration_menu() {
     echo "------------------"
     echo -e "${GREEN}1)${NC} Install WARP core (wgcf)"
     echo -e "${GREEN}2)${NC} Uninstall WARP core (wgcf)"
-    echo -e "${GREEN}3)${NC} Apply WARP rule (proxy type: paqet/ssh)"
-    echo -e "${GREEN}4)${NC} Remove WARP rule (proxy type: paqet/ssh)"
+    echo -e "${GREEN}3)${NC} Apply WARP rule (proxy type: paqet/ssh/waterwall)"
+    echo -e "${GREEN}4)${NC} Remove WARP rule (proxy type: paqet/ssh/waterwall)"
     echo -e "${GREEN}5)${NC} WARP status"
     echo -e "${GREEN}6)${NC} Test WARP"
     echo -e "${GREEN}7)${NC} Show WARP config for 3x-ui"
@@ -129,11 +129,17 @@ warp_configuration_menu() {
             else
               echo -e "${RED}Script not found or not executable:${NC} ${SCRIPTS_DIR}/enable_warp_policy.sh" >&2
             fi
-          else
+          elif [ "${proxy_type}" = "ssh" ]; then
             if [ -x "${SCRIPTS_DIR}/ssh_proxy_enable_warp.sh" ]; then
               run_action "${SCRIPTS_DIR}/ssh_proxy_enable_warp.sh"
             else
               echo -e "${RED}Script not found or not executable:${NC} ${SCRIPTS_DIR}/ssh_proxy_enable_warp.sh" >&2
+            fi
+          elif [ "${proxy_type}" = "waterwall" ]; then
+            if [ -x "${SCRIPTS_DIR}/waterwall_enable_warp_policy.sh" ]; then
+              run_action "${SCRIPTS_DIR}/waterwall_enable_warp_policy.sh" server
+            else
+              echo -e "${RED}Script not found or not executable:${NC} ${SCRIPTS_DIR}/waterwall_enable_warp_policy.sh" >&2
             fi
           fi
         fi
@@ -147,11 +153,17 @@ warp_configuration_menu() {
             else
               echo -e "${RED}Script not found or not executable:${NC} ${SCRIPTS_DIR}/disable_warp_policy.sh" >&2
             fi
-          else
+          elif [ "${proxy_type}" = "ssh" ]; then
             if [ -x "${SCRIPTS_DIR}/ssh_proxy_disable_warp.sh" ]; then
               run_action "${SCRIPTS_DIR}/ssh_proxy_disable_warp.sh"
             else
               echo -e "${RED}Script not found or not executable:${NC} ${SCRIPTS_DIR}/ssh_proxy_disable_warp.sh" >&2
+            fi
+          elif [ "${proxy_type}" = "waterwall" ]; then
+            if [ -x "${SCRIPTS_DIR}/waterwall_disable_warp_policy.sh" ]; then
+              run_action "${SCRIPTS_DIR}/waterwall_disable_warp_policy.sh" server
+            else
+              echo -e "${RED}Script not found or not executable:${NC} ${SCRIPTS_DIR}/waterwall_disable_warp_policy.sh" >&2
             fi
           fi
         fi
@@ -210,8 +222,8 @@ dns_configuration_menu() {
     echo "-----------------"
     echo -e "${GREEN}1)${NC} Install DNS policy core"
     echo -e "${GREEN}2)${NC} Uninstall DNS policy core"
-    echo -e "${GREEN}3)${NC} Apply DNS rule (proxy type: paqet/ssh)"
-    echo -e "${GREEN}4)${NC} Remove DNS rule (proxy type: paqet/ssh)"
+    echo -e "${GREEN}3)${NC} Apply DNS rule (proxy type: paqet/ssh/waterwall)"
+    echo -e "${GREEN}4)${NC} Remove DNS rule (proxy type: paqet/ssh/waterwall)"
     echo -e "${GREEN}5)${NC} Update DNS policy list now"
     echo -e "${GREEN}6)${NC} DNS policy status"
     echo -e "${GREEN}7)${NC} Reconcile DNS bindings"
@@ -248,11 +260,17 @@ dns_configuration_menu() {
             else
               echo -e "${RED}Script not found or not executable:${NC} ${SCRIPTS_DIR}/enable_dns_policy.sh" >&2
             fi
-          else
+          elif [ "${proxy_type}" = "ssh" ]; then
             if [ -x "${SCRIPTS_DIR}/ssh_proxy_enable_dns_routing.sh" ]; then
               run_action "${SCRIPTS_DIR}/ssh_proxy_enable_dns_routing.sh"
             else
               echo -e "${RED}Script not found or not executable:${NC} ${SCRIPTS_DIR}/ssh_proxy_enable_dns_routing.sh" >&2
+            fi
+          elif [ "${proxy_type}" = "waterwall" ]; then
+            if [ -x "${SCRIPTS_DIR}/waterwall_enable_dns_policy.sh" ]; then
+              run_action "${SCRIPTS_DIR}/waterwall_enable_dns_policy.sh"
+            else
+              echo -e "${RED}Script not found or not executable:${NC} ${SCRIPTS_DIR}/waterwall_enable_dns_policy.sh" >&2
             fi
           fi
         fi
@@ -266,11 +284,17 @@ dns_configuration_menu() {
             else
               echo -e "${RED}Script not found or not executable:${NC} ${SCRIPTS_DIR}/disable_dns_policy.sh" >&2
             fi
-          else
+          elif [ "${proxy_type}" = "ssh" ]; then
             if [ -x "${SCRIPTS_DIR}/ssh_proxy_disable_dns_routing.sh" ]; then
               run_action "${SCRIPTS_DIR}/ssh_proxy_disable_dns_routing.sh"
             else
               echo -e "${RED}Script not found or not executable:${NC} ${SCRIPTS_DIR}/ssh_proxy_disable_dns_routing.sh" >&2
+            fi
+          elif [ "${proxy_type}" = "waterwall" ]; then
+            if [ -x "${SCRIPTS_DIR}/waterwall_disable_dns_policy.sh" ]; then
+              run_action "${SCRIPTS_DIR}/waterwall_disable_dns_policy.sh"
+            else
+              echo -e "${RED}Script not found or not executable:${NC} ${SCRIPTS_DIR}/waterwall_disable_dns_policy.sh" >&2
             fi
           fi
         fi
