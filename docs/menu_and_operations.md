@@ -2,14 +2,29 @@
 
 ## Main Menu
 
+- Paqet Tunnel
+- Waterwall Tunnel
+
+## Paqet Tunnel Menu
+
 - Install Paqet
 - Update Paqet
 - Update Scripts (git pull)
 - Server configuration
 - Client configuration
 - SSH proxy
-- Uninstall Paqet
 - WARP/DNS core
+- Uninstall / remove components
+
+## Waterwall Tunnel Menu
+
+- Install Waterwall
+- Update Waterwall
+- Direct Waterwall tunnel
+- Direct Waterwall tunnel -> Server menu
+- Direct Waterwall tunnel -> Client menu
+- Reverse Waterwall tunnel
+- Uninstall Waterwall
 
 ## Server Configuration Menu
 

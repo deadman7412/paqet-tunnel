@@ -18,6 +18,14 @@ github_reachable() {
   fi
 }
 
+ensure_executable_files() {
+  chmod +x "${REPO_DIR}/menu.sh" 2>/dev/null || true
+  chmod +x "${REPO_DIR}/scripts/"*.sh 2>/dev/null || true
+  if [ -d "${REPO_DIR}/scripts/hooks" ]; then
+    chmod +x "${REPO_DIR}/scripts/hooks/"* 2>/dev/null || true
+  fi
+}
+
 get_socks_listen() {
   local socks=""
   if [ -f "${CLIENT_CONFIG}" ]; then
@@ -150,5 +158,7 @@ if [ "${STASHED}" -eq 1 ]; then
     exit 1
   fi
 fi
+
+ensure_executable_files
 
 echo "Update complete."

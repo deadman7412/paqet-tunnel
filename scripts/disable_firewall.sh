@@ -16,8 +16,8 @@ if ! command -v ufw >/dev/null 2>&1; then
   exit 0
 fi
 
-# Remove rules created by this script (by comment)
-mapfile -t RULES < <(ufw status numbered | awk '/paqet-(tunnel|ssh)/ { if (match($0, /^\[[[:space:]]*[0-9]+]/)) { n=substr($0, RSTART+1, RLENGTH-2); gsub(/[[:space:]]/, "", n); print n } }')
+# Remove only tunnel rules; keep SSH rules to avoid lockout
+mapfile -t RULES < <(ufw status numbered | awk '/paqet-tunnel/ { if (match($0, /^\[[[:space:]]*[0-9]+]/)) { n=substr($0, RSTART+1, RLENGTH-2); gsub(/[[:space:]]/, "", n); print n } }')
 
 if [ "${#RULES[@]}" -gt 0 ]; then
   # Delete from highest number to avoid reindex issues

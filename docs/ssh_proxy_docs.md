@@ -19,12 +19,12 @@ cd ~/paqet_tunnel
 
 Open:
 
-- `SSH Proxy`
+- `Paqet Tunnel -> SSH Proxy`
 
 ## Recommended Order
 
-1. `WARP/DNS core -> Install WARP core` (optional, if you want SSH users over WARP)
-2. `WARP/DNS core -> Install DNS policy core` (optional, if you want DNS routing)
+1. `Paqet Tunnel -> WARP/DNS core -> Install WARP core` (optional, if you want SSH users over WARP)
+2. `Paqet Tunnel -> WARP/DNS core -> Install DNS policy core` (optional, if you want DNS routing)
 3. `Manage SSH proxy port`
 4. `Create SSH proxy user`
 5. `Enable SSH firewall rules`

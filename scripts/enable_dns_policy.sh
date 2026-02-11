@@ -28,7 +28,7 @@ fi
 
 if [ ! -f /etc/dnsmasq.d/paqet-dns-policy.conf ]; then
   echo "DNS policy core is not installed/configured." >&2
-  echo "Run: Main menu -> WARP/DNS core -> Install DNS policy core" >&2
+  echo "Run: Paqet Tunnel -> WARP/DNS core -> Install DNS policy core" >&2
   exit 1
 fi
 

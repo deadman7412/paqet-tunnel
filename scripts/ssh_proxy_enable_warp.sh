@@ -10,13 +10,13 @@ TABLE_ID=51820
 ensure_wgcf_route_table() {
   if [ ! -f /etc/wireguard/wgcf.conf ]; then
     echo "WARP is not installed/configured on this server." >&2
-    echo "Run: Main menu -> WARP/DNS core -> Install WARP core" >&2
+    echo "Run: Paqet Tunnel -> WARP/DNS core -> Install WARP core" >&2
     exit 1
   fi
 
   if ! ip link show wgcf >/dev/null 2>&1; then
     echo "WARP is installed but wgcf interface is not active." >&2
-    echo "Run: Main menu -> WARP/DNS core -> Install WARP core" >&2
+    echo "Run: Paqet Tunnel -> WARP/DNS core -> Install WARP core" >&2
     exit 1
   fi
 
