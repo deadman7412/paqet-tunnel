@@ -70,15 +70,15 @@ run_action() {
 
 select_policy_proxy_type() {
   local proxy_type=""
-  read -r -p "Proxy type [paqet/ssh/waterwall]: " proxy_type
+  read -r -p "Proxy type [paqet/ssh/waterwall/icmptunnel]: " proxy_type
   proxy_type="$(echo "${proxy_type}" | tr '[:upper:]' '[:lower:]')"
   case "${proxy_type}" in
-    paqet|ssh|waterwall)
+    paqet|ssh|waterwall|icmptunnel)
       echo "${proxy_type}"
       return 0
       ;;
     *)
-      echo "Invalid proxy type. Use: paqet, ssh, or waterwall." >&2
+      echo "Invalid proxy type. Use: paqet, ssh, waterwall, or icmptunnel." >&2
       return 1
       ;;
   esac
@@ -141,6 +141,12 @@ warp_configuration_menu() {
             else
               echo -e "${RED}Script not found or not executable:${NC} ${SCRIPTS_DIR}/waterwall_enable_warp_policy.sh" >&2
             fi
+          elif [ "${proxy_type}" = "icmptunnel" ]; then
+            if [ -x "${SCRIPTS_DIR}/icmptunnel_enable_warp_policy.sh" ]; then
+              run_action "${SCRIPTS_DIR}/icmptunnel_enable_warp_policy.sh" server
+            else
+              echo -e "${RED}Script not found or not executable:${NC} ${SCRIPTS_DIR}/icmptunnel_enable_warp_policy.sh" >&2
+            fi
           fi
         fi
         pause
@@ -164,6 +170,12 @@ warp_configuration_menu() {
               run_action "${SCRIPTS_DIR}/waterwall_disable_warp_policy.sh" server
             else
               echo -e "${RED}Script not found or not executable:${NC} ${SCRIPTS_DIR}/waterwall_disable_warp_policy.sh" >&2
+            fi
+          elif [ "${proxy_type}" = "icmptunnel" ]; then
+            if [ -x "${SCRIPTS_DIR}/icmptunnel_disable_warp_policy.sh" ]; then
+              run_action "${SCRIPTS_DIR}/icmptunnel_disable_warp_policy.sh" server
+            else
+              echo -e "${RED}Script not found or not executable:${NC} ${SCRIPTS_DIR}/icmptunnel_disable_warp_policy.sh" >&2
             fi
           fi
         fi
@@ -272,6 +284,12 @@ dns_configuration_menu() {
             else
               echo -e "${RED}Script not found or not executable:${NC} ${SCRIPTS_DIR}/waterwall_enable_dns_policy.sh" >&2
             fi
+          elif [ "${proxy_type}" = "icmptunnel" ]; then
+            if [ -x "${SCRIPTS_DIR}/icmptunnel_enable_dns_policy.sh" ]; then
+              run_action "${SCRIPTS_DIR}/icmptunnel_enable_dns_policy.sh"
+            else
+              echo -e "${RED}Script not found or not executable:${NC} ${SCRIPTS_DIR}/icmptunnel_enable_dns_policy.sh" >&2
+            fi
           fi
         fi
         pause
@@ -295,6 +313,12 @@ dns_configuration_menu() {
               run_action "${SCRIPTS_DIR}/waterwall_disable_dns_policy.sh"
             else
               echo -e "${RED}Script not found or not executable:${NC} ${SCRIPTS_DIR}/waterwall_disable_dns_policy.sh" >&2
+            fi
+          elif [ "${proxy_type}" = "icmptunnel" ]; then
+            if [ -x "${SCRIPTS_DIR}/icmptunnel_disable_dns_policy.sh" ]; then
+              run_action "${SCRIPTS_DIR}/icmptunnel_disable_dns_policy.sh"
+            else
+              echo -e "${RED}Script not found or not executable:${NC} ${SCRIPTS_DIR}/icmptunnel_disable_dns_policy.sh" >&2
             fi
           fi
         fi
@@ -769,6 +793,50 @@ firewall_menu() {
     done
   }
 
+  firewall_icmptunnel_menu() {
+    while true; do
+      clear
+      banner
+      echo -e "${BLUE}Firewall (UFW) - ICMP Tunnel${NC}"
+      echo "-----------------------------"
+      echo -e "${GREEN}1)${NC} Enable firewall"
+      echo -e "${GREEN}2)${NC} Remove ICMP Tunnel firewall rules"
+      echo
+      echo
+      echo -e "${GREEN}0)${NC} Back"
+      echo
+      read -r -p "Select an option: " sub_choice
+
+      case "${sub_choice}" in
+        1)
+          if [ -x "${SCRIPTS_DIR}/enable_firewall_icmptunnel.sh" ]; then
+            if role="$(firewall_select_role "ICMP Tunnel")"; then
+              run_action "${SCRIPTS_DIR}/enable_firewall_icmptunnel.sh" "${role}"
+            fi
+          else
+            echo -e "${RED}Script not found or not executable:${NC} ${SCRIPTS_DIR}/enable_firewall_icmptunnel.sh" >&2
+          fi
+          pause
+          ;;
+        2)
+          if [ -x "${SCRIPTS_DIR}/firewall_rules_disable.sh" ]; then
+            run_action "${SCRIPTS_DIR}/firewall_rules_disable.sh" icmptunnel 0
+          else
+            echo -e "${RED}Script not found or not executable:${NC} ${SCRIPTS_DIR}/firewall_rules_disable.sh" >&2
+          fi
+          pause
+          ;;
+        0)
+          return 0
+          ;;
+        *)
+          echo -e "${RED}Invalid option:${NC} ${sub_choice}" >&2
+          pause
+          ;;
+      esac
+    done
+  }
+
   while true; do
     clear
     banner
@@ -777,8 +845,9 @@ firewall_menu() {
     echo -e "${GREEN}1)${NC} Paqet firewall"
     echo -e "${GREEN}2)${NC} SSH proxy firewall"
     echo -e "${GREEN}3)${NC} Waterwall firewall"
-    echo -e "${GREEN}4)${NC} Disable UFW completely"
-    echo -e "${GREEN}5)${NC} UFW status"
+    echo -e "${GREEN}4)${NC} ICMP Tunnel firewall"
+    echo -e "${GREEN}5)${NC} Disable UFW completely"
+    echo -e "${GREEN}6)${NC} UFW status"
     echo
     echo
     echo -e "${GREEN}0)${NC} Back"
@@ -801,6 +870,9 @@ firewall_menu() {
         firewall_waterwall_menu
         ;;
       4)
+        firewall_icmptunnel_menu
+        ;;
+      5)
         if [ -x "${SCRIPTS_DIR}/firewall_rules_disable.sh" ]; then
           run_action "${SCRIPTS_DIR}/firewall_rules_disable.sh" all 1
         else
@@ -808,7 +880,7 @@ firewall_menu() {
         fi
         pause
         ;;
-      5)
+      6)
         if command -v ufw >/dev/null 2>&1; then
           ufw status verbose || true
           echo
@@ -1155,6 +1227,331 @@ waterwall_menu() {
   done
 }
 
+icmptunnel_server_test_menu() {
+  while true; do
+    clear
+    banner
+    echo -e "${BLUE}ICMP Tunnel: Server Tests${NC}"
+    echo "-------------------------"
+    echo -e "${GREEN}1)${NC} Diagnostic report (share with support)"
+    echo -e "${GREEN}2)${NC} Check WARP status"
+    echo -e "${GREEN}3)${NC} Check DNS policy status"
+    echo -e "${GREEN}4)${NC} Show service logs"
+    echo
+    echo
+    echo -e "${GREEN}0)${NC} Back"
+    echo
+    read -r -p "Select an option: " choice
+
+    case "${choice}" in
+      1)
+        if [ -x "${SCRIPTS_DIR}/icmptunnel_test_all.sh" ]; then
+          run_action "${SCRIPTS_DIR}/icmptunnel_test_all.sh"
+        else
+          echo -e "${RED}Script not found or not executable:${NC} ${SCRIPTS_DIR}/icmptunnel_test_all.sh" >&2
+        fi
+        pause
+        ;;
+      2)
+        if [ -x "${SCRIPTS_DIR}/icmptunnel_warp_status.sh" ]; then
+          run_action "${SCRIPTS_DIR}/icmptunnel_warp_status.sh"
+        else
+          echo -e "${RED}Script not found or not executable:${NC} ${SCRIPTS_DIR}/icmptunnel_warp_status.sh" >&2
+        fi
+        pause
+        ;;
+      3)
+        if [ -x "${SCRIPTS_DIR}/icmptunnel_dns_status.sh" ]; then
+          run_action "${SCRIPTS_DIR}/icmptunnel_dns_status.sh"
+        else
+          echo -e "${RED}Script not found or not executable:${NC} ${SCRIPTS_DIR}/icmptunnel_dns_status.sh" >&2
+        fi
+        pause
+        ;;
+      4)
+        if systemctl list-unit-files | grep -q "^icmptunnel-server.service"; then
+          journalctl -u icmptunnel-server.service -n 100 --no-pager || true
+        else
+          echo -e "${YELLOW}Service not installed.${NC}"
+        fi
+        pause
+        ;;
+      0)
+        return 0
+        ;;
+      *)
+        echo -e "${RED}Invalid option:${NC} ${choice}" >&2
+        pause
+        ;;
+    esac
+  done
+}
+
+icmptunnel_server_menu() {
+  while true; do
+    clear
+    banner
+    echo -e "${BLUE}ICMP Tunnel: Server${NC}"
+    echo "-------------------"
+    echo -e "${GREEN}1)${NC} Server (foreign VPS) setup"
+    echo -e "${GREEN}2)${NC} Install systemd service (server)"
+    echo -e "${GREEN}3)${NC} Remove systemd service (server)"
+    echo -e "${GREEN}4)${NC} Service control (server)"
+    echo -e "${GREEN}5)${NC} Show server info"
+    echo -e "${GREEN}6)${NC} Tests & Diagnostics"
+    echo
+    echo
+    echo -e "${GREEN}0)${NC} Back"
+    echo
+    read -r -p "Select an option: " choice
+
+    case "${choice}" in
+      1)
+        if [ -x "${SCRIPTS_DIR}/icmptunnel_server_setup.sh" ]; then
+          run_action "${SCRIPTS_DIR}/icmptunnel_server_setup.sh"
+        else
+          echo -e "${RED}Script not found or not executable:${NC} ${SCRIPTS_DIR}/icmptunnel_server_setup.sh" >&2
+        fi
+        pause
+        ;;
+      2)
+        if [ -x "${SCRIPTS_DIR}/icmptunnel_install_systemd_service.sh" ]; then
+          run_action "${SCRIPTS_DIR}/icmptunnel_install_systemd_service.sh" server
+        else
+          echo -e "${RED}Script not found or not executable:${NC} ${SCRIPTS_DIR}/icmptunnel_install_systemd_service.sh" >&2
+        fi
+        pause
+        ;;
+      3)
+        if [ -x "${SCRIPTS_DIR}/icmptunnel_remove_systemd_service.sh" ]; then
+          run_action "${SCRIPTS_DIR}/icmptunnel_remove_systemd_service.sh" server
+        else
+          echo -e "${RED}Script not found or not executable:${NC} ${SCRIPTS_DIR}/icmptunnel_remove_systemd_service.sh" >&2
+        fi
+        pause
+        ;;
+      4)
+        if [ -x "${SCRIPTS_DIR}/icmptunnel_service_control.sh" ]; then
+          run_action "${SCRIPTS_DIR}/icmptunnel_service_control.sh" server
+        else
+          echo -e "${RED}Script not found or not executable:${NC} ${SCRIPTS_DIR}/icmptunnel_service_control.sh" >&2
+        fi
+        pause
+        ;;
+      5)
+        if [ -x "${SCRIPTS_DIR}/icmptunnel_show_server_info.sh" ]; then
+          run_action "${SCRIPTS_DIR}/icmptunnel_show_server_info.sh"
+        else
+          echo -e "${RED}Script not found or not executable:${NC} ${SCRIPTS_DIR}/icmptunnel_show_server_info.sh" >&2
+        fi
+        pause
+        ;;
+      6)
+        icmptunnel_server_test_menu
+        ;;
+      0)
+        return 0
+        ;;
+      *)
+        echo -e "${RED}Invalid option:${NC} ${choice}" >&2
+        pause
+        ;;
+    esac
+  done
+}
+
+icmptunnel_client_test_menu() {
+  while true; do
+    clear
+    banner
+    echo -e "${BLUE}ICMP Tunnel: Client Tests${NC}"
+    echo "-------------------------"
+    echo -e "${GREEN}1)${NC} Diagnostic report (share with support)"
+    echo -e "${GREEN}2)${NC} Quick connectivity + SOCKS proxy test"
+    echo -e "${GREEN}3)${NC} Check WARP status"
+    echo -e "${GREEN}4)${NC} Check DNS policy status"
+    echo -e "${GREEN}5)${NC} Show service logs"
+    echo
+    echo
+    echo -e "${GREEN}0)${NC} Back"
+    echo
+    read -r -p "Select an option: " choice
+
+    case "${choice}" in
+      1)
+        if [ -x "${SCRIPTS_DIR}/icmptunnel_test_all.sh" ]; then
+          run_action "${SCRIPTS_DIR}/icmptunnel_test_all.sh"
+        else
+          echo -e "${RED}Script not found or not executable:${NC} ${SCRIPTS_DIR}/icmptunnel_test_all.sh" >&2
+        fi
+        pause
+        ;;
+      2)
+        if [ -x "${SCRIPTS_DIR}/icmptunnel_test_client_connection.sh" ]; then
+          run_action "${SCRIPTS_DIR}/icmptunnel_test_client_connection.sh"
+        else
+          echo -e "${RED}Script not found or not executable:${NC} ${SCRIPTS_DIR}/icmptunnel_test_client_connection.sh" >&2
+        fi
+        pause
+        ;;
+      3)
+        if [ -x "${SCRIPTS_DIR}/icmptunnel_warp_status.sh" ]; then
+          run_action "${SCRIPTS_DIR}/icmptunnel_warp_status.sh"
+        else
+          echo -e "${RED}Script not found or not executable:${NC} ${SCRIPTS_DIR}/icmptunnel_warp_status.sh" >&2
+        fi
+        pause
+        ;;
+      4)
+        if [ -x "${SCRIPTS_DIR}/icmptunnel_dns_status.sh" ]; then
+          run_action "${SCRIPTS_DIR}/icmptunnel_dns_status.sh"
+        else
+          echo -e "${RED}Script not found or not executable:${NC} ${SCRIPTS_DIR}/icmptunnel_dns_status.sh" >&2
+        fi
+        pause
+        ;;
+      5)
+        if systemctl list-unit-files | grep -q "^icmptunnel-client.service"; then
+          journalctl -u icmptunnel-client.service -n 100 --no-pager || true
+        else
+          echo -e "${YELLOW}Service not installed.${NC}"
+        fi
+        pause
+        ;;
+      0)
+        return 0
+        ;;
+      *)
+        echo -e "${RED}Invalid option:${NC} ${choice}" >&2
+        pause
+        ;;
+    esac
+  done
+}
+
+icmptunnel_client_menu() {
+  while true; do
+    clear
+    banner
+    echo -e "${BLUE}ICMP Tunnel: Client${NC}"
+    echo "-------------------"
+    echo -e "${GREEN}1)${NC} Client (local VPS) setup"
+    echo -e "${GREEN}2)${NC} Install systemd service (client)"
+    echo -e "${GREEN}3)${NC} Remove systemd service (client)"
+    echo -e "${GREEN}4)${NC} Service control (client)"
+    echo -e "${GREEN}5)${NC} Tests & Diagnostics"
+    echo
+    echo
+    echo -e "${GREEN}0)${NC} Back"
+    echo
+    read -r -p "Select an option: " choice
+
+    case "${choice}" in
+      1)
+        if [ -x "${SCRIPTS_DIR}/icmptunnel_client_setup.sh" ]; then
+          run_action "${SCRIPTS_DIR}/icmptunnel_client_setup.sh"
+        else
+          echo -e "${RED}Script not found or not executable:${NC} ${SCRIPTS_DIR}/icmptunnel_client_setup.sh" >&2
+        fi
+        pause
+        ;;
+      2)
+        if [ -x "${SCRIPTS_DIR}/icmptunnel_install_systemd_service.sh" ]; then
+          run_action "${SCRIPTS_DIR}/icmptunnel_install_systemd_service.sh" client
+        else
+          echo -e "${RED}Script not found or not executable:${NC} ${SCRIPTS_DIR}/icmptunnel_install_systemd_service.sh" >&2
+        fi
+        pause
+        ;;
+      3)
+        if [ -x "${SCRIPTS_DIR}/icmptunnel_remove_systemd_service.sh" ]; then
+          run_action "${SCRIPTS_DIR}/icmptunnel_remove_systemd_service.sh" client
+        else
+          echo -e "${RED}Script not found or not executable:${NC} ${SCRIPTS_DIR}/icmptunnel_remove_systemd_service.sh" >&2
+        fi
+        pause
+        ;;
+      4)
+        if [ -x "${SCRIPTS_DIR}/icmptunnel_service_control.sh" ]; then
+          run_action "${SCRIPTS_DIR}/icmptunnel_service_control.sh" client
+        else
+          echo -e "${RED}Script not found or not executable:${NC} ${SCRIPTS_DIR}/icmptunnel_service_control.sh" >&2
+        fi
+        pause
+        ;;
+      5)
+        icmptunnel_client_test_menu
+        ;;
+      0)
+        return 0
+        ;;
+      *)
+        echo -e "${RED}Invalid option:${NC} ${choice}" >&2
+        pause
+        ;;
+    esac
+  done
+}
+
+icmptunnel_menu() {
+  while true; do
+    clear
+    banner
+    echo -e "${BLUE}ICMP Tunnel${NC}"
+    echo "-----------"
+    echo -e "${GREEN}1)${NC} Install ICMP Tunnel"
+    echo -e "${GREEN}2)${NC} Update ICMP Tunnel"
+    echo -e "${GREEN}3)${NC} Server menu (foreign VPS)"
+    echo -e "${GREEN}4)${NC} Client menu (local VPS)"
+    echo -e "${GREEN}5)${NC} Uninstall ICMP Tunnel"
+    echo
+    echo
+    echo -e "${GREEN}0)${NC} Back to main menu"
+    echo
+    read -r -p "Select an option: " choice
+
+    case "${choice}" in
+      1)
+        if [ -x "${SCRIPTS_DIR}/icmptunnel_install.sh" ]; then
+          run_action "${SCRIPTS_DIR}/icmptunnel_install.sh"
+        else
+          echo -e "${RED}Script not found or not executable:${NC} ${SCRIPTS_DIR}/icmptunnel_install.sh" >&2
+        fi
+        pause
+        ;;
+      2)
+        if [ -x "${SCRIPTS_DIR}/icmptunnel_update.sh" ]; then
+          run_action "${SCRIPTS_DIR}/icmptunnel_update.sh"
+        else
+          echo -e "${RED}Script not found or not executable:${NC} ${SCRIPTS_DIR}/icmptunnel_update.sh" >&2
+        fi
+        pause
+        ;;
+      3)
+        icmptunnel_server_menu
+        ;;
+      4)
+        icmptunnel_client_menu
+        ;;
+      5)
+        if [ -x "${SCRIPTS_DIR}/icmptunnel_uninstall.sh" ]; then
+          run_action "${SCRIPTS_DIR}/icmptunnel_uninstall.sh"
+        else
+          echo -e "${RED}Script not found or not executable:${NC} ${SCRIPTS_DIR}/icmptunnel_uninstall.sh" >&2
+        fi
+        pause
+        ;;
+      0)
+        return 0
+        ;;
+      *)
+        echo -e "${RED}Invalid option:${NC} ${choice}" >&2
+        pause
+        ;;
+    esac
+  done
+}
+
 paqet_tunnel_menu() {
   while true; do
     clear
@@ -1232,10 +1629,11 @@ while true; do
   echo -e "${GREEN}1)${NC} Update Scripts (git pull)"
   echo -e "${GREEN}2)${NC} Paqet Tunnel"
   echo -e "${GREEN}3)${NC} Waterwall Tunnel"
-  echo -e "${GREEN}4)${NC} SSH Proxy"
-  echo -e "${GREEN}5)${NC} WARP Configuration"
-  echo -e "${GREEN}6)${NC} DNS Configuration"
-  echo -e "${GREEN}7)${NC} Firewall (UFW)"
+  echo -e "${GREEN}4)${NC} ICMP Tunnel"
+  echo -e "${GREEN}5)${NC} SSH Proxy"
+  echo -e "${GREEN}6)${NC} WARP Configuration"
+  echo -e "${GREEN}7)${NC} DNS Configuration"
+  echo -e "${GREEN}8)${NC} Firewall (UFW)"
   echo
   echo
   echo -e "${GREEN}0)${NC} Exit"
@@ -1258,15 +1656,18 @@ while true; do
       waterwall_menu
       ;;
     4)
-      ssh_proxy_menu
+      icmptunnel_menu
       ;;
     5)
-      warp_configuration_menu
+      ssh_proxy_menu
       ;;
     6)
-      dns_configuration_menu
+      warp_configuration_menu
       ;;
     7)
+      dns_configuration_menu
+      ;;
+    8)
       firewall_menu
       ;;
     0)
