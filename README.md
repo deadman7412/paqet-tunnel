@@ -11,7 +11,7 @@ This repo provides a menu-driven setup for installing, configuring, and operatin
 **Credits:**
 - Paqet is created and maintained by [hanselime/paqet](https://github.com/hanselime/paqet)
 - WaterWall is created and maintained by [radkesvat/WaterWall](https://github.com/radkesvat/WaterWall)
-- ICMP Tunnel is created and maintained by [jakev/ICMPTunnel](https://github.com/jakev/ICMPTunnel)
+- ICMP Tunnel is created and maintained by [Qteam-official/ICMPTunnel](https://github.com/Qteam-official/ICMPTunnel)
 
 This project only provides helper scripts for easy installation and management.
 

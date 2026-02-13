@@ -6,7 +6,7 @@ This guide covers installation, setup, and management of ICMP Tunnel (ICMPTunnel
 
 ICMP Tunnel creates a covert network tunnel using ICMP (ping) packets, allowing you to bypass restrictive firewalls that only allow ICMP traffic. The client exposes a SOCKS5 proxy that routes traffic through the ICMP tunnel to the server.
 
-**Credit:** ICMP Tunnel is created and maintained by [jakev/ICMPTunnel](https://github.com/jakev/ICMPTunnel). This project only provides helper scripts for installation and management.
+**Credit:** ICMP Tunnel is created and maintained by [Qteam-official/ICMPTunnel](https://github.com/Qteam-official/ICMPTunnel). This project only provides helper scripts for installation and management.
 
 **Use Cases:**
 - Networks that block all TCP/UDP but allow ICMP (ping)
@@ -793,7 +793,7 @@ For testing only, disable encryption:
 
 ## Additional Resources
 
-- **ICMP Tunnel GitHub**: https://github.com/jakev/ICMPTunnel
+- **ICMP Tunnel GitHub**: https://github.com/Qteam-official/ICMPTunnel
 - **Project Issues**: https://github.com/deadman7412/paqet-tunnel/issues
 - **ICMP Protocol**: RFC 792
 - **Network Testing**: Use diagnostic report for comprehensive troubleshooting
