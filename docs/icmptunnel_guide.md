@@ -339,25 +339,63 @@ Route ICMP Tunnel traffic through Cloudflare WARP for additional IP masking.
 2. **Apply WARP rule to ICMP Tunnel:**
    ```
    Main Menu → 6) WARP/DNS core → 1) WARP Configuration → 3) Apply WARP rule
-   Select proxy type: icmptunnel
+   Select proxy type: icmp (or icmptunnel)
    ```
 
 **What it does:**
 - Creates `icmptunnel` system user
+- Detects iproute2 ipproto support for protocol-level filtering
+- **Critical:** Routes only TCP/UDP through WARP, **excludes ICMP** to preserve tunnel functionality
 - Sets up uidrange routing to WARP table (51820)
 - Adds Linux capabilities (CAP_NET_RAW, CAP_NET_ADMIN)
 - Creates systemd drop-in to run service as icmptunnel user
-- Adds ICMP NOTRACK iptables rules (server only)
+- Provides detailed debug output showing configuration steps
+
+**Important technical details:**
+- ICMP Tunnel uses ICMP packets for the tunnel protocol itself
+- If ICMP packets are routed through WARP, the tunnel breaks
+- The script uses `ipproto tcp` and `ipproto udp` filters to route only encapsulated traffic through WARP
+- ICMP echo requests/replies go directly to/from server (not through WARP)
+- Requires iproute2 v4.17+ (Ubuntu 18.04+) for ipproto support
+
+**Expected output on modern systems:**
+```
+[DEBUG] Starting ipproto support detection...
+[DEBUG] iproute2 version: ip utility, iproute2-6.1.0
+[DEBUG] ipproto support: DETECTED
+[INFO] Adding uidrange rule for TCP/UDP only (excluding ICMP)...
+[SUCCESS] TCP rule added
+[SUCCESS] UDP rule added
+[INFO] WARP routing: TCP/UDP only (ICMP excluded to preserve tunnel replies)
+```
+
+**On older systems (iproute2 < 4.17):**
+```
+[WARN] Cannot exclude ICMP from WARP (old iproute2 version)
+[WARN] ICMP tunnel + WARP may not work properly on this system
+```
 
 **Check WARP status:**
 ```
 Server/Client menu → 6) Tests → 2) WARP status
 ```
 
+**Verify routing rules:**
+```bash
+# Should show separate TCP and UDP rules, NO ICMP rule
+ip rule show | grep icmptunnel
+```
+
+**Expected output:**
+```
+32765:  from all uidrange 995-995 ipproto tcp lookup 51820
+32766:  from all uidrange 995-995 ipproto udp lookup 51820
+```
+
 **Disable WARP:**
 ```
 Main Menu → 6) WARP/DNS core → 1) WARP Configuration → 4) Remove WARP rule
-Select proxy type: icmptunnel
+Select proxy type: icmp
 ```
 
 ### DNS Policy Routing
@@ -514,18 +552,77 @@ sudo journalctl -u icmptunnel-client -n 50
 
 **WARP not routing traffic:**
 ```bash
-# Check WARP interface
+# Check WARP interface status
 ip link show wgcf
 
-# Check routing rules
+# Check routing rules (should show TCP and UDP, NOT ICMP)
 ip rule show | grep icmptunnel
+# Expected: separate rules for ipproto tcp and ipproto udp
+
+# Verify no ICMP is being routed through WARP
+ip rule show | grep -E "uidrange.*icmptunnel" | grep -i icmp
+# Expected: no output (ICMP should NOT be in routing rules)
+
+# Check iproute2 version and ipproto support
+ip -V
+ip rule add help 2>&1 | grep ipproto
+# Should show ipproto in help output
 
 # Check WARP status
 sudo ~/paqet_tunnel/scripts/icmptunnel_warp_status.sh
 
-# Restart WARP
+# View detailed WARP configuration (with debug output)
+sudo ~/paqet_tunnel/scripts/icmptunnel_enable_warp_policy.sh server
+```
+
+**Tunnel freezes or times out with WARP enabled:**
+
+This typically means ICMP packets are being routed through WARP instead of direct:
+
+```bash
+# 1. Check if ipproto filtering is active
+ip rule show | grep icmptunnel
+# Should show: ipproto tcp and ipproto udp (NOT all protocols)
+
+# 2. If you see rules without ipproto, remove and re-apply WARP
+cd ~/paqet_tunnel
+./menu.sh
+# WARP Configuration → Remove WARP rule → icmp
+# WARP Configuration → Apply WARP rule → icmp
+
+# 3. Verify new rules have ipproto filtering
+ip rule show | grep icmptunnel
+
+# 4. Test tunnel
+curl -x socks5://127.0.0.1:1010 https://api.ipify.org
+# Should return WARP IP (104.28.x.x) without freezing
+```
+
+**Old iproute2 version (< 4.17):**
+
+If your system has iproute2 < 4.17, ipproto filtering is not supported and ICMP tunnel + WARP will not work together:
+
+```bash
+# Check version
+ip -V
+
+# Upgrade iproute2 (Ubuntu/Debian)
+sudo apt-get update
+sudo apt-get install --only-upgrade iproute2
+
+# Verify ipproto support after upgrade
+ip rule add help 2>&1 | grep ipproto
+```
+
+If upgrade is not possible:
+- Use ICMP tunnel **without** WARP, or
+- Use Paqet/WaterWall tunnel with WARP instead
+
+**Restart WARP interface:**
+```bash
 sudo wg-quick down wgcf
 sudo wg-quick up wgcf
+sudo systemctl restart icmptunnel-server
 ```
 
 ### DNS Policy Issues

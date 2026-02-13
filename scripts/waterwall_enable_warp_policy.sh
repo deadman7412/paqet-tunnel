@@ -49,24 +49,67 @@ except:
     port="$(awk -F= '/^listen_port=/{print $2; exit}' "${info_file}")"
   fi
   if [ -z "${port}" ]; then
-    echo "Warning: could not detect server listen port for iptables checks." >&2
+    echo "[WARN] Could not detect server listen port for iptables optimization." >&2
+    echo "[INFO] Skipping NOTRACK rules (not critical for functionality)." >&2
     return 0
   fi
 
+  echo
+  echo "[DEBUG] Configuring iptables optimization rules for port ${port}..."
+
+  # Detect nftables backend
+  local using_nftables="false"
+  if iptables -V 2>/dev/null | grep -qi nf_tables; then
+    using_nftables="true"
+    echo "[INFO] Detected nftables backend - NOTRACK rules may not be supported"
+  fi
+
+  # NOTRACK rules for performance (reduce connection tracking overhead)
+  echo "[DEBUG] Adding NOTRACK rule: PREROUTING (inbound to port ${port})..."
   while iptables -t raw -C PREROUTING -p tcp --dport "${port}" -m comment --comment waterwall-notrack-in -j NOTRACK 2>/dev/null; do
     iptables -t raw -D PREROUTING -p tcp --dport "${port}" -m comment --comment waterwall-notrack-in -j NOTRACK 2>/dev/null || true
   done
-  iptables -t raw -A PREROUTING -p tcp --dport "${port}" -m comment --comment waterwall-notrack-in -j NOTRACK 2>/dev/null || true
+  if iptables -t raw -A PREROUTING -p tcp --dport "${port}" -m comment --comment waterwall-notrack-in -j NOTRACK 2>&1; then
+    echo "[SUCCESS] NOTRACK PREROUTING rule added"
+  else
+    echo "[WARN] NOTRACK PREROUTING rule failed (expected on nftables systems)" >&2
+  fi
 
+  echo "[DEBUG] Adding NOTRACK rule: OUTPUT (outbound from port ${port})..."
   while iptables -t raw -C OUTPUT -p tcp --sport "${port}" -m comment --comment waterwall-notrack-out -j NOTRACK 2>/dev/null; do
     iptables -t raw -D OUTPUT -p tcp --sport "${port}" -m comment --comment waterwall-notrack-out -j NOTRACK 2>/dev/null || true
   done
-  iptables -t raw -A OUTPUT -p tcp --sport "${port}" -m comment --comment waterwall-notrack-out -j NOTRACK 2>/dev/null || true
+  if iptables -t raw -A OUTPUT -p tcp --sport "${port}" -m comment --comment waterwall-notrack-out -j NOTRACK 2>&1; then
+    echo "[SUCCESS] NOTRACK OUTPUT rule added"
+  else
+    echo "[WARN] NOTRACK OUTPUT rule failed (expected on nftables systems)" >&2
+  fi
 
+  # RST drop rule for TCP connection cleanup
+  echo "[DEBUG] Adding RST drop rule for port ${port}..."
   while iptables -t mangle -C OUTPUT -p tcp --sport "${port}" --tcp-flags RST RST -m comment --comment waterwall-rst-drop -j DROP 2>/dev/null; do
     iptables -t mangle -D OUTPUT -p tcp --sport "${port}" --tcp-flags RST RST -m comment --comment waterwall-rst-drop -j DROP 2>/dev/null || true
   done
-  iptables -t mangle -A OUTPUT -p tcp --sport "${port}" --tcp-flags RST RST -m comment --comment waterwall-rst-drop -j DROP 2>/dev/null || true
+  if iptables -t mangle -A OUTPUT -p tcp --sport "${port}" --tcp-flags RST RST -m comment --comment waterwall-rst-drop -j DROP 2>&1; then
+    echo "[SUCCESS] RST drop rule added"
+  else
+    echo "[WARN] RST drop rule failed" >&2
+  fi
+
+  # Verify rules
+  echo
+  echo "[DEBUG] Verifying iptables rules were added:"
+  echo "[DEBUG] raw table NOTRACK rules:"
+  iptables -t raw -L PREROUTING -n -v 2>/dev/null | grep -i "waterwall-notrack" | sed 's/^/  /' || echo "  (none found)"
+  iptables -t raw -L OUTPUT -n -v 2>/dev/null | grep -i "waterwall-notrack" | sed 's/^/  /' || echo "  (none found)"
+  echo "[DEBUG] mangle table RST drop rules:"
+  iptables -t mangle -L OUTPUT -n -v 2>/dev/null | grep -i "waterwall-rst" | sed 's/^/  /' || echo "  (none found)"
+
+  if [ "${using_nftables}" = "true" ]; then
+    echo
+    echo "[INFO] System uses nftables backend - iptables raw table may not work"
+    echo "[INFO] Service will work fine, but without NOTRACK optimization (slightly higher CPU usage)"
+  fi
 }
 
 if [ "$(id -u)" -ne 0 ]; then
