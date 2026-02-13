@@ -1303,6 +1303,8 @@ icmptunnel_server_menu() {
     echo -e "${GREEN}4)${NC} Service control (server)"
     echo -e "${GREEN}5)${NC} Show server info"
     echo -e "${GREEN}6)${NC} Tests & Diagnostics"
+    echo -e "${GREEN}7)${NC} Scheduled restart (cron)"
+    echo -e "${GREEN}8)${NC} Health check (auto-restart on failure)"
     echo
     echo
     echo -e "${GREEN}0)${NC} Back"
@@ -1352,6 +1354,22 @@ icmptunnel_server_menu() {
         ;;
       6)
         icmptunnel_server_test_menu
+        ;;
+      7)
+        if [ -x "${SCRIPTS_DIR}/icmptunnel_cron_restart_scheduler.sh" ]; then
+          run_action "${SCRIPTS_DIR}/icmptunnel_cron_restart_scheduler.sh" server
+        else
+          echo -e "${RED}Script not found or not executable:${NC} ${SCRIPTS_DIR}/icmptunnel_cron_restart_scheduler.sh" >&2
+        fi
+        pause
+        ;;
+      8)
+        if [ -x "${SCRIPTS_DIR}/icmptunnel_health_check_scheduler.sh" ]; then
+          run_action "${SCRIPTS_DIR}/icmptunnel_health_check_scheduler.sh" server
+        else
+          echo -e "${RED}Script not found or not executable:${NC} ${SCRIPTS_DIR}/icmptunnel_health_check_scheduler.sh" >&2
+        fi
+        pause
         ;;
       0)
         return 0
@@ -1444,6 +1462,8 @@ icmptunnel_client_menu() {
     echo -e "${GREEN}3)${NC} Remove systemd service (client)"
     echo -e "${GREEN}4)${NC} Service control (client)"
     echo -e "${GREEN}5)${NC} Tests & Diagnostics"
+    echo -e "${GREEN}6)${NC} Scheduled restart (cron)"
+    echo -e "${GREEN}7)${NC} Health check (auto-restart on failure)"
     echo
     echo
     echo -e "${GREEN}0)${NC} Back"
@@ -1485,6 +1505,22 @@ icmptunnel_client_menu() {
         ;;
       5)
         icmptunnel_client_test_menu
+        ;;
+      6)
+        if [ -x "${SCRIPTS_DIR}/icmptunnel_cron_restart_scheduler.sh" ]; then
+          run_action "${SCRIPTS_DIR}/icmptunnel_cron_restart_scheduler.sh" client
+        else
+          echo -e "${RED}Script not found or not executable:${NC} ${SCRIPTS_DIR}/icmptunnel_cron_restart_scheduler.sh" >&2
+        fi
+        pause
+        ;;
+      7)
+        if [ -x "${SCRIPTS_DIR}/icmptunnel_health_check_scheduler.sh" ]; then
+          run_action "${SCRIPTS_DIR}/icmptunnel_health_check_scheduler.sh" client
+        else
+          echo -e "${RED}Script not found or not executable:${NC} ${SCRIPTS_DIR}/icmptunnel_health_check_scheduler.sh" >&2
+        fi
+        pause
         ;;
       0)
         return 0
