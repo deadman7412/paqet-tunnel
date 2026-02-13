@@ -7,6 +7,7 @@ TABLE_ID=51820
 SERVER_POLICY_STATE_FILE="/etc/paqet-policy/settings.env"
 SSH_PROXY_SETTINGS_FILE="/etc/paqet-ssh-proxy/settings.env"
 WATERWALL_POLICY_STATE_FILE="/etc/waterwall-policy/settings.env"
+ICMPTUNNEL_POLICY_STATE_FILE="/etc/icmptunnel-policy/settings.env"
 
 case "${MODE}" in
   all|warp|dns) ;;
@@ -55,10 +56,12 @@ reconcile_warp() {
   local server_enabled=""
   local ssh_enabled=""
   local waterwall_enabled=""
+  local icmptunnel_enabled=""
 
   server_enabled="$(get_setting "${SERVER_POLICY_STATE_FILE}" "server_warp_enabled")"
   ssh_enabled="$(get_setting "${SSH_PROXY_SETTINGS_FILE}" "warp_enabled")"
   waterwall_enabled="$(get_setting "${WATERWALL_POLICY_STATE_FILE}" "waterwall_warp_enabled")"
+  icmptunnel_enabled="$(get_setting "${ICMPTUNNEL_POLICY_STATE_FILE}" "icmptunnel_warp_enabled")"
 
   if [ -z "${server_enabled}" ]; then
     if [ -f /etc/systemd/system/paqet-server.service.d/10-warp.conf ]; then
@@ -82,6 +85,17 @@ reconcile_warp() {
     fi
   fi
 
+  if [ -z "${icmptunnel_enabled}" ]; then
+    if [ -f /etc/systemd/system/icmptunnel-server.service.d/10-warp.conf ] || [ -f /etc/systemd/system/icmptunnel-client.service.d/10-warp.conf ]; then
+      icmptunnel_enabled="1"
+    elif id -u icmptunnel >/dev/null 2>&1; then
+      i_uid="$(id -u icmptunnel)"
+      if ip rule show | grep -Eq "uidrange ${i_uid}-${i_uid}.*lookup (${TABLE_ID}|wgcf)"; then
+        icmptunnel_enabled="1"
+      fi
+    fi
+  fi
+
   if ! ensure_warp_core_ready; then
     echo "WARP core is not ready. Skipping WARP binding reconciliation."
     return 0
@@ -101,16 +115,23 @@ reconcile_warp() {
     "${SCRIPT_DIR}/waterwall_enable_warp_policy.sh" server >/dev/null 2>&1 || true
     echo "Re-applied WARP binding for waterwall-direct-server."
   fi
+
+  if [ "${icmptunnel_enabled}" = "1" ] && [ -x "${SCRIPT_DIR}/icmptunnel_enable_warp_policy.sh" ]; then
+    "${SCRIPT_DIR}/icmptunnel_enable_warp_policy.sh" server >/dev/null 2>&1 || true
+    echo "Re-applied WARP binding for icmptunnel."
+  fi
 }
 
 reconcile_dns() {
   local server_enabled=""
   local ssh_enabled=""
   local waterwall_enabled=""
+  local icmptunnel_enabled=""
 
   server_enabled="$(get_setting "${SERVER_POLICY_STATE_FILE}" "server_dns_enabled")"
   ssh_enabled="$(get_setting "${SSH_PROXY_SETTINGS_FILE}" "dns_enabled")"
   waterwall_enabled="$(get_setting "${WATERWALL_POLICY_STATE_FILE}" "waterwall_dns_enabled")"
+  icmptunnel_enabled="$(get_setting "${ICMPTUNNEL_POLICY_STATE_FILE}" "icmptunnel_dns_enabled")"
 
   if [ -z "${server_enabled}" ]; then
     if iptables -t nat -S OUTPUT 2>/dev/null | grep -q "paqet-dns-policy"; then
@@ -121,6 +142,15 @@ reconcile_dns() {
   if [ -z "${waterwall_enabled}" ]; then
     if iptables -t nat -S OUTPUT 2>/dev/null | grep -q "waterwall-dns-policy"; then
       waterwall_enabled="1"
+    fi
+  fi
+
+  if [ -z "${icmptunnel_enabled}" ]; then
+    if id -u icmptunnel >/dev/null 2>&1; then
+      i_uid="$(id -u icmptunnel)"
+      if iptables -t nat -S OUTPUT 2>/dev/null | grep -q "owner-uid-match ${i_uid}"; then
+        icmptunnel_enabled="1"
+      fi
     fi
   fi
 
@@ -142,6 +172,11 @@ reconcile_dns() {
   if [ "${waterwall_enabled}" = "1" ] && [ -x "${SCRIPT_DIR}/waterwall_enable_dns_policy.sh" ]; then
     "${SCRIPT_DIR}/waterwall_enable_dns_policy.sh" >/dev/null 2>&1 || true
     echo "Re-applied DNS binding for waterwall-direct-server."
+  fi
+
+  if [ "${icmptunnel_enabled}" = "1" ] && [ -x "${SCRIPT_DIR}/icmptunnel_enable_dns_policy.sh" ]; then
+    "${SCRIPT_DIR}/icmptunnel_enable_dns_policy.sh" >/dev/null 2>&1 || true
+    echo "Re-applied DNS binding for icmptunnel."
   fi
 }
 

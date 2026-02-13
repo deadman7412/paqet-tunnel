@@ -2,29 +2,51 @@
 
 ## Main Menu
 
-- Paqet Tunnel
-- Waterwall Tunnel
+1. Paqet Tunnel
+2. WaterWall Tunnel
+3. Update Scripts (git pull)
+4. ICMP Tunnel
+5. SSH Proxy
+6. WARP/DNS core
+7. DNS blocklist
+8. Firewall (UFW)
+9. Uninstall / remove components
 
 ## Paqet Tunnel Menu
 
 - Install Paqet
 - Update Paqet
-- Update Scripts (git pull)
 - Server configuration
 - Client configuration
-- SSH proxy
-- WARP/DNS core
-- Uninstall / remove components
 
-## Waterwall Tunnel Menu
+## WaterWall Tunnel Menu
 
-- Install Waterwall
-- Update Waterwall
-- Direct Waterwall tunnel
-- Direct Waterwall tunnel -> Server menu
-- Direct Waterwall tunnel -> Client menu
-- Reverse Waterwall tunnel
-- Uninstall Waterwall
+- Install WaterWall
+- Update WaterWall
+- Direct WaterWall tunnel
+  - Server menu
+  - Client menu
+- Reverse WaterWall tunnel
+- Uninstall WaterWall
+
+## ICMP Tunnel Menu
+
+- Install ICMP Tunnel
+- Update ICMP Tunnel
+- Server menu
+  - Server setup
+  - Install systemd service
+  - Remove systemd service
+  - Service control
+  - Show server info
+  - Tests (diagnostic, WARP status, DNS status, logs)
+- Client menu
+  - Client setup
+  - Install systemd service
+  - Remove systemd service
+  - Service control
+  - Tests (diagnostic, connection test, WARP status, DNS status, logs)
+- Uninstall ICMP Tunnel
 
 ## Server Configuration Menu
 
@@ -81,9 +103,21 @@ Health logs:
 
 ## Uninstall Modes
 
-- Remove paqet only
+Available from `Main Menu -> 9) Uninstall / remove components`:
+
+- Remove Paqet only
+- Remove WaterWall only
+- Remove ICMP Tunnel only
 - Remove WARP core only
 - Remove DNS core only
 - Remove SSH proxy only
 - Remove SSH proxy + all SSH users
-- Full uninstall
+- Full uninstall (removes everything)
+
+**Important:** Uninstall operations:
+- Stop and disable systemd services
+- Remove binaries and configurations
+- Remove system users (if created for WARP/DNS)
+- Remove firewall rules
+- Remove WARP/DNS policy bindings
+- Remove state files and logs
