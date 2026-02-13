@@ -120,33 +120,68 @@ if [ "${ROLE}" = "server" ]; then
 
   remove_existing_icmptunnel_rules
 
-  # Add ICMP rule (protocol-based, not port-based)
+  # Add ICMP rule - UFW often doesn't support 'proto icmp', so use iptables
   if [ -n "${CLIENT_IP}" ]; then
-    echo "[INFO] Adding ICMP rule: allow from ${CLIENT_IP}..."
-    if ufw allow from "${CLIENT_IP}" proto icmp comment 'icmptunnel'; then
-      echo "[SUCCESS] Added UFW rule: allow ${CLIENT_IP} -> ICMP (icmptunnel server)."
+    echo "[INFO] Adding ICMP rule for client ${CLIENT_IP}..."
+
+    # Try UFW first (usually fails with ICMP)
+    if ufw allow from "${CLIENT_IP}" proto icmp comment 'icmptunnel' 2>/dev/null; then
+      echo "[SUCCESS] UFW: Allowed ICMP from ${CLIENT_IP}"
     else
-      echo "[ERROR] Failed to add ICMP rule. Trying alternative syntax..." >&2
-      # Try alternative syntax without 'proto'
-      if ufw allow from "${CLIENT_IP}" to any proto icmp comment 'icmptunnel'; then
-        echo "[SUCCESS] Added UFW rule with alternative syntax."
+      # UFW doesn't support ICMP protocol - use iptables directly
+      echo "[INFO] UFW doesn't support ICMP protocol - using iptables instead"
+
+      # Remove existing iptables ICMP rules for this IP
+      while iptables -C INPUT -s "${CLIENT_IP}" -p icmp -m comment --comment icmptunnel -j ACCEPT 2>/dev/null; do
+        iptables -D INPUT -s "${CLIENT_IP}" -p icmp -m comment --comment icmptunnel -j ACCEPT 2>/dev/null || true
+      done
+
+      # Add iptables ICMP rule
+      if iptables -I INPUT -s "${CLIENT_IP}" -p icmp -m comment --comment icmptunnel -j ACCEPT; then
+        echo "[SUCCESS] iptables: Allowed ICMP from ${CLIENT_IP}"
+
+        # Save iptables rules
+        if command -v netfilter-persistent >/dev/null 2>&1; then
+          netfilter-persistent save >/dev/null 2>&1 || true
+        elif [ -d /etc/iptables ]; then
+          iptables-save > /etc/iptables/rules.v4 2>/dev/null || true
+        fi
+
+        echo "[INFO] ICMP traffic from ${CLIENT_IP} is now allowed via iptables"
       else
-        echo "[ERROR] ICMP rule addition failed. You may need to add it manually:" >&2
-        echo "  sudo ufw allow from ${CLIENT_IP} proto icmp" >&2
+        echo "[ERROR] Failed to add iptables ICMP rule" >&2
+        echo "Manual command: sudo iptables -I INPUT -s ${CLIENT_IP} -p icmp -j ACCEPT" >&2
       fi
     fi
   else
-    echo "[WARN] No client IP provided. ICMP will be open to ALL IPs."
-    echo "[INFO] Adding ICMP rule: allow proto icmp..."
-    if ufw allow proto icmp comment 'icmptunnel'; then
-      echo "[SUCCESS] Added UFW rule: allow ICMP from ANY IP (icmptunnel server)."
+    echo "[WARN] No client IP provided. Opening ICMP from ALL IPs (not recommended)."
+    echo "[INFO] Adding ICMP rule: allow from anywhere..."
+
+    # Try UFW first
+    if ufw allow proto icmp comment 'icmptunnel' 2>/dev/null; then
+      echo "[SUCCESS] UFW: Allowed ICMP from anywhere"
     else
-      echo "[ERROR] Failed to add ICMP rule. Trying alternative syntax..." >&2
-      if ufw allow icmp comment 'icmptunnel'; then
-        echo "[SUCCESS] Added UFW rule with alternative syntax."
+      # Use iptables
+      echo "[INFO] UFW doesn't support ICMP protocol - using iptables instead"
+
+      # Remove existing rule
+      while iptables -C INPUT -p icmp -m comment --comment icmptunnel -j ACCEPT 2>/dev/null; do
+        iptables -D INPUT -p icmp -m comment --comment icmptunnel -j ACCEPT 2>/dev/null || true
+      done
+
+      # Add iptables rule
+      if iptables -I INPUT -p icmp -m comment --comment icmptunnel -j ACCEPT; then
+        echo "[SUCCESS] iptables: Allowed ICMP from anywhere"
+
+        # Save iptables rules
+        if command -v netfilter-persistent >/dev/null 2>&1; then
+          netfilter-persistent save >/dev/null 2>&1 || true
+        elif [ -d /etc/iptables ]; then
+          iptables-save > /etc/iptables/rules.v4 2>/dev/null || true
+        fi
       else
-        echo "[ERROR] ICMP rule addition failed. You may need to add it manually:" >&2
-        echo "  sudo ufw allow proto icmp" >&2
+        echo "[ERROR] Failed to add iptables ICMP rule" >&2
+        echo "Manual command: sudo iptables -I INPUT -p icmp -j ACCEPT" >&2
       fi
     fi
   fi
@@ -218,15 +253,34 @@ except:
   echo "[INFO] Removing existing icmptunnel rules..."
   remove_existing_icmptunnel_rules
   echo "[INFO] Adding outbound ICMP rule to ${SERVER_IP}..."
-  if ufw allow out to "${SERVER_IP}" proto icmp comment 'icmptunnel'; then
-    echo "[SUCCESS] Added UFW rule: allow out -> ${SERVER_IP} ICMP (icmptunnel client)."
+
+  # Try UFW first (usually fails with ICMP)
+  if ufw allow out to "${SERVER_IP}" proto icmp comment 'icmptunnel' 2>/dev/null; then
+    echo "[SUCCESS] UFW: Allowed outbound ICMP to ${SERVER_IP}"
   else
-    echo "[ERROR] Failed to add outbound ICMP rule. Trying alternative syntax..." >&2
-    if ufw allow out to "${SERVER_IP}" comment 'icmptunnel'; then
-      echo "[SUCCESS] Added UFW rule with alternative syntax (allows all protocols)."
+    # UFW doesn't support ICMP protocol - use iptables directly
+    echo "[INFO] UFW doesn't support ICMP protocol - using iptables instead"
+
+    # Remove existing iptables outbound ICMP rules for this IP
+    while iptables -C OUTPUT -d "${SERVER_IP}" -p icmp -m comment --comment icmptunnel -j ACCEPT 2>/dev/null; do
+      iptables -D OUTPUT -d "${SERVER_IP}" -p icmp -m comment --comment icmptunnel -j ACCEPT 2>/dev/null || true
+    done
+
+    # Add iptables outbound ICMP rule
+    if iptables -I OUTPUT -d "${SERVER_IP}" -p icmp -m comment --comment icmptunnel -j ACCEPT; then
+      echo "[SUCCESS] iptables: Allowed outbound ICMP to ${SERVER_IP}"
+
+      # Save iptables rules
+      if command -v netfilter-persistent >/dev/null 2>&1; then
+        netfilter-persistent save >/dev/null 2>&1 || true
+      elif [ -d /etc/iptables ]; then
+        iptables-save > /etc/iptables/rules.v4 2>/dev/null || true
+      fi
+
+      echo "[INFO] Outbound ICMP to ${SERVER_IP} is now allowed via iptables"
     else
-      echo "[ERROR] Outbound ICMP rule addition failed. You may need to add it manually:" >&2
-      echo "  sudo ufw allow out to ${SERVER_IP} proto icmp" >&2
+      echo "[ERROR] Failed to add iptables outbound ICMP rule" >&2
+      echo "Manual command: sudo iptables -I OUTPUT -d ${SERVER_IP} -p icmp -j ACCEPT" >&2
     fi
   fi
 
@@ -256,5 +310,32 @@ fi
 echo "[INFO] Enabling UFW..."
 ufw --force enable
 echo "[INFO] UFW enabled successfully."
+echo
+echo "========================================"
+echo "Firewall Configuration Complete"
+echo "========================================"
+echo
+if [ "${ROLE}" = "server" ]; then
+  echo "SERVER firewall configured for ICMP Tunnel:"
+  echo "  - SSH access: PROTECTED"
+  echo "  - ICMP protocol: ALLOWED from client IP (via iptables)"
+  echo "  - All other traffic: BLOCKED by default"
+elif [ "${ROLE}" = "client" ]; then
+  echo "CLIENT firewall configured for ICMP Tunnel:"
+  echo "  - SSH access: PROTECTED"
+  echo "  - Outbound ICMP: ALLOWED to server (via iptables)"
+  echo "  - SOCKS5 proxy: Port ${SOCKS_PORT:-1010}/tcp"
+  echo "  - All other incoming: BLOCKED by default"
+fi
+echo
+echo "NOTE: ICMP rules were added via iptables (not UFW)"
+echo "      because UFW doesn't support ICMP protocol."
+echo
+echo "To verify iptables ICMP rules:"
+echo "  sudo iptables -L INPUT -n -v | grep icmp"
+echo "  sudo iptables -L OUTPUT -n -v | grep icmp"
+echo
+echo "========================================"
+echo
 echo "[INFO] Current UFW status:"
 ufw status verbose
