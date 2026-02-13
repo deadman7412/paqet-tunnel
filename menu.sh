@@ -1269,10 +1269,10 @@ icmptunnel_server_test_menu() {
         pause
         ;;
       4)
-        if systemctl list-unit-files | grep -q "^icmptunnel-server.service"; then
-          journalctl -u icmptunnel-server.service -n 100 --no-pager || true
+        if [ -x "${SCRIPTS_DIR}/icmptunnel_logs_menu.sh" ]; then
+          run_action "${SCRIPTS_DIR}/icmptunnel_logs_menu.sh" server
         else
-          echo -e "${YELLOW}Service not installed.${NC}"
+          echo -e "${RED}Script not found or not executable:${NC} ${SCRIPTS_DIR}/icmptunnel_logs_menu.sh" >&2
         fi
         pause
         ;;
@@ -1411,10 +1411,10 @@ icmptunnel_client_test_menu() {
         pause
         ;;
       5)
-        if systemctl list-unit-files | grep -q "^icmptunnel-client.service"; then
-          journalctl -u icmptunnel-client.service -n 100 --no-pager || true
+        if [ -x "${SCRIPTS_DIR}/icmptunnel_logs_menu.sh" ]; then
+          run_action "${SCRIPTS_DIR}/icmptunnel_logs_menu.sh" client
         else
-          echo -e "${YELLOW}Service not installed.${NC}"
+          echo -e "${RED}Script not found or not executable:${NC} ${SCRIPTS_DIR}/icmptunnel_logs_menu.sh" >&2
         fi
         pause
         ;;

@@ -16,29 +16,27 @@ esac
 
 SERVICE_NAME="icmptunnel-${ROLE}"
 
+# Check if service exists
+if ! systemctl list-unit-files | grep -q "^${SERVICE_NAME}.service"; then
+  echo "Service not installed: ${SERVICE_NAME}" >&2
+  exit 1
+fi
+
 while true; do
   echo
-  echo "Service Control: ${SERVICE_NAME}"
-  echo "1) Start"
-  echo "2) Stop"
-  echo "3) Restart"
-  echo "4) Status"
-  echo "5) Reset failed (clear failure state)"
-  echo "6) Enable"
-  echo "7) Disable"
-  echo "8) Live logs (tail 20)"
+  echo "Service Logs: ${SERVICE_NAME}"
+  echo "1) Last 50 lines"
+  echo "2) Last 100 lines"
+  echo "3) Last 200 lines"
+  echo "4) Live logs (tail 20, follow)"
   echo "0) Back"
   read -r -p "Select an option: " action
 
   case "${action}" in
-    1) systemctl start "${SERVICE_NAME}.service" ;;
-    2) systemctl stop "${SERVICE_NAME}.service" ;;
-    3) systemctl restart "${SERVICE_NAME}.service" ;;
-    4) systemctl status "${SERVICE_NAME}.service" --no-pager ;;
-    5) systemctl reset-failed "${SERVICE_NAME}.service" ;;
-    6) systemctl enable "${SERVICE_NAME}.service" ;;
-    7) systemctl disable "${SERVICE_NAME}.service" ;;
-    8)
+    1) journalctl -u "${SERVICE_NAME}.service" -n 50 --no-pager ;;
+    2) journalctl -u "${SERVICE_NAME}.service" -n 100 --no-pager ;;
+    3) journalctl -u "${SERVICE_NAME}.service" -n 200 --no-pager ;;
+    4)
       echo
       echo "Press Ctrl+C to return to menu."
       echo
