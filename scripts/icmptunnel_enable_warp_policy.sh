@@ -135,35 +135,8 @@ if command -v nft >/dev/null 2>&1; then
   done < <(nft -a list chain inet mangle output 2>/dev/null | awk -v uid="${ICMPTUNNEL_UID}" '/skuid/ && /mark set/ && $0 ~ ("skuid " uid) {for(i=1;i<=NF;i++) if($i=="handle"){print $(i+1)}}')
 fi
 
-echo "WARP routing mode: uidrange-only (no MARK rules)."
-
-# ICMP-specific iptables NOTRACK rules (if server role)
-if [ "${ROLE}" = "server" ]; then
-  while iptables -t raw -C PREROUTING -p icmp -m comment --comment icmptunnel-notrack-in -j NOTRACK 2>/dev/null; do
-    iptables -t raw -D PREROUTING -p icmp -m comment --comment icmptunnel-notrack-in -j NOTRACK 2>/dev/null || true
-  done
-  iptables -t raw -A PREROUTING -p icmp -m comment --comment icmptunnel-notrack-in -j NOTRACK 2>/dev/null || true
-
-  while iptables -t raw -C OUTPUT -p icmp -m comment --comment icmptunnel-notrack-out -j NOTRACK 2>/dev/null; do
-    iptables -t raw -D OUTPUT -p icmp -m comment --comment icmptunnel-notrack-out -j NOTRACK 2>/dev/null || true
-  done
-  iptables -t raw -A OUTPUT -p icmp -m comment --comment icmptunnel-notrack-out -j NOTRACK 2>/dev/null || true
-fi
-
-if iptables -V 2>/dev/null | grep -qi nf_tables; then
-  if command -v nft >/dev/null 2>&1; then
-    nft list ruleset > /etc/nftables.conf || true
-    systemctl enable --now nftables >/dev/null 2>&1 || true
-  fi
-else
-  if command -v netfilter-persistent >/dev/null 2>&1; then
-    netfilter-persistent save || true
-  elif [ -d /etc/iptables ]; then
-    iptables-save > /etc/iptables/rules.v4 || true
-  elif command -v service >/dev/null 2>&1; then
-    service iptables save || true
-  fi
-fi
+echo "WARP routing mode: uidrange-only (no iptables rules - SSH approach)."
+echo "Note: ICMP NOTRACK rules skipped (not needed, causes nftables conflicts)."
 
 set_state "icmptunnel_warp_enabled" "1"
 

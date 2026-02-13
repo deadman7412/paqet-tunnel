@@ -42,14 +42,7 @@ while ip rule show | grep -Eq "uidrange ${ICMPTUNNEL_UID}-${ICMPTUNNEL_UID}"; do
   ip rule del uidrange "${ICMPTUNNEL_UID}-${ICMPTUNNEL_UID}" 2>/dev/null || true
 done
 
-# Remove iptables NOTRACK rules
-echo "Removing iptables NOTRACK rules..."
-while iptables -t raw -C PREROUTING -p icmp -m comment --comment icmptunnel-notrack-in -j NOTRACK 2>/dev/null; do
-  iptables -t raw -D PREROUTING -p icmp -m comment --comment icmptunnel-notrack-in -j NOTRACK 2>/dev/null || true
-done
-while iptables -t raw -C OUTPUT -p icmp -m comment --comment icmptunnel-notrack-out -j NOTRACK 2>/dev/null; do
-  iptables -t raw -D OUTPUT -p icmp -m comment --comment icmptunnel-notrack-out -j NOTRACK 2>/dev/null || true
-done
+echo "Note: No iptables cleanup needed (uidrange-only mode, SSH approach)."
 
 # Remove systemd drop-in
 DROPIN_DIR="/etc/systemd/system/${SERVICE_NAME}.service.d"
@@ -96,18 +89,7 @@ EOF
   fi
 fi
 
-# Save iptables
-if iptables -V 2>/dev/null | grep -qi nf_tables; then
-  if command -v nft >/dev/null 2>&1; then
-    nft list ruleset > /etc/nftables.conf || true
-  fi
-else
-  if command -v netfilter-persistent >/dev/null 2>&1; then
-    netfilter-persistent save || true
-  elif [ -d /etc/iptables ]; then
-    iptables-save > /etc/iptables/rules.v4 || true
-  fi
-fi
+# No iptables save needed (uidrange-only, no firewall changes)
 
 set_state "icmptunnel_warp_enabled" "0"
 
