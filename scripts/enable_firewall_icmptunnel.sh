@@ -122,12 +122,33 @@ if [ "${ROLE}" = "server" ]; then
 
   # Add ICMP rule (protocol-based, not port-based)
   if [ -n "${CLIENT_IP}" ]; then
-    ufw allow from "${CLIENT_IP}" proto icmp comment 'icmptunnel' >/dev/null 2>&1 || true
-    echo "Added UFW rule: allow ${CLIENT_IP} -> ICMP (icmptunnel server)."
+    echo "[INFO] Adding ICMP rule: allow from ${CLIENT_IP}..."
+    if ufw allow from "${CLIENT_IP}" proto icmp comment 'icmptunnel'; then
+      echo "[SUCCESS] Added UFW rule: allow ${CLIENT_IP} -> ICMP (icmptunnel server)."
+    else
+      echo "[ERROR] Failed to add ICMP rule. Trying alternative syntax..." >&2
+      # Try alternative syntax without 'proto'
+      if ufw allow from "${CLIENT_IP}" to any proto icmp comment 'icmptunnel'; then
+        echo "[SUCCESS] Added UFW rule with alternative syntax."
+      else
+        echo "[ERROR] ICMP rule addition failed. You may need to add it manually:" >&2
+        echo "  sudo ufw allow from ${CLIENT_IP} proto icmp" >&2
+      fi
+    fi
   else
     echo "[WARN] No client IP provided. ICMP will be open to ALL IPs."
-    ufw allow proto icmp comment 'icmptunnel' >/dev/null 2>&1 || true
-    echo "Added UFW rule: allow ICMP from ANY IP (icmptunnel server)."
+    echo "[INFO] Adding ICMP rule: allow proto icmp..."
+    if ufw allow proto icmp comment 'icmptunnel'; then
+      echo "[SUCCESS] Added UFW rule: allow ICMP from ANY IP (icmptunnel server)."
+    else
+      echo "[ERROR] Failed to add ICMP rule. Trying alternative syntax..." >&2
+      if ufw allow icmp comment 'icmptunnel'; then
+        echo "[SUCCESS] Added UFW rule with alternative syntax."
+      else
+        echo "[ERROR] ICMP rule addition failed. You may need to add it manually:" >&2
+        echo "  sudo ufw allow proto icmp" >&2
+      fi
+    fi
   fi
 else
   echo "[INFO] Configuring client firewall..."
@@ -196,9 +217,18 @@ except:
 
   echo "[INFO] Removing existing icmptunnel rules..."
   remove_existing_icmptunnel_rules
-  echo "[INFO] Adding outbound ICMP rule..."
-  ufw allow out to "${SERVER_IP}" proto icmp comment 'icmptunnel' >/dev/null 2>&1 || true
-  echo "[SUCCESS] Added UFW rule: allow out -> ${SERVER_IP} ICMP (icmptunnel client)."
+  echo "[INFO] Adding outbound ICMP rule to ${SERVER_IP}..."
+  if ufw allow out to "${SERVER_IP}" proto icmp comment 'icmptunnel'; then
+    echo "[SUCCESS] Added UFW rule: allow out -> ${SERVER_IP} ICMP (icmptunnel client)."
+  else
+    echo "[ERROR] Failed to add outbound ICMP rule. Trying alternative syntax..." >&2
+    if ufw allow out to "${SERVER_IP}" comment 'icmptunnel'; then
+      echo "[SUCCESS] Added UFW rule with alternative syntax (allows all protocols)."
+    else
+      echo "[ERROR] Outbound ICMP rule addition failed. You may need to add it manually:" >&2
+      echo "  sudo ufw allow out to ${SERVER_IP} proto icmp" >&2
+    fi
+  fi
 
   # Open SOCKS port for local users/apps to connect (if provided)
   echo "[INFO] Checking if SOCKS port should be opened..."
@@ -209,9 +239,12 @@ except:
         echo "[INFO] Skipped opening SOCKS port."
         ;;
       *)
-        echo "[INFO] Adding SOCKS port rule..."
-        ufw allow "${SOCKS_PORT}/tcp" comment 'icmptunnel-socks' >/dev/null 2>&1 || true
-        echo "[SUCCESS] Added UFW rule: allow inbound -> tcp/${SOCKS_PORT} (icmptunnel socks)."
+        echo "[INFO] Adding SOCKS port rule for tcp/${SOCKS_PORT}..."
+        if ufw allow "${SOCKS_PORT}/tcp" comment 'icmptunnel-socks'; then
+          echo "[SUCCESS] Added UFW rule: allow inbound -> tcp/${SOCKS_PORT} (icmptunnel socks)."
+        else
+          echo "[ERROR] Failed to add SOCKS port rule." >&2
+        fi
         ;;
     esac
   else
