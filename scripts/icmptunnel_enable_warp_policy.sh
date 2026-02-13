@@ -112,13 +112,38 @@ else
   echo "Note: ${SERVICE_NAME}.service not installed yet. WARP drop-in is prepared and will apply after service install."
 fi
 
+# Remove old uidrange rules
 while ip rule show | grep -Eq "uidrange ${ICMPTUNNEL_UID}-${ICMPTUNNEL_UID}.*lookup (${TABLE_ID}|wgcf)"; do
   ip rule del uidrange ${ICMPTUNNEL_UID}-${ICMPTUNNEL_UID} table ${TABLE_ID} 2>/dev/null || ip rule del uidrange ${ICMPTUNNEL_UID}-${ICMPTUNNEL_UID} table wgcf 2>/dev/null || true
 done
-if ip rule add uidrange ${ICMPTUNNEL_UID}-${ICMPTUNNEL_UID} table ${TABLE_ID} 2>/dev/null; then
-  echo "uidrange rule added for icmptunnel user (${ICMPTUNNEL_UID})."
+
+# Add uidrange rule that EXCLUDES ICMP protocol (only route TCP/UDP through WARP)
+# CRITICAL: ICMP echo replies must go direct, not through WARP!
+if command -v ip >/dev/null 2>&1 && ip rule add help 2>&1 | grep -q "ipproto"; then
+  # Modern iproute2 - can exclude ICMP
+  echo "Adding uidrange rule for TCP/UDP only (excluding ICMP)..."
+
+  # Route TCP through WARP
+  ip rule add uidrange ${ICMPTUNNEL_UID}-${ICMPTUNNEL_UID} ipproto tcp table ${TABLE_ID} 2>/dev/null || {
+    echo "Warning: Failed to add TCP rule" >&2
+  }
+
+  # Route UDP through WARP
+  ip rule add uidrange ${ICMPTUNNEL_UID}-${ICMPTUNNEL_UID} ipproto udp table ${TABLE_ID} 2>/dev/null || {
+    echo "Warning: Failed to add UDP rule" >&2
+  }
+
+  echo "WARP routing: TCP/UDP only (ICMP excluded to preserve tunnel replies)"
 else
-  echo "Warning: uidrange rule not supported or failed to add." >&2
+  # Fallback: old iproute2 doesn't support ipproto filter
+  echo "Warning: Cannot exclude ICMP from WARP (old iproute2 version)" >&2
+  echo "ICMP tunnel + WARP may not work properly on this system" >&2
+
+  if ip rule add uidrange ${ICMPTUNNEL_UID}-${ICMPTUNNEL_UID} table ${TABLE_ID} 2>/dev/null; then
+    echo "uidrange rule added for icmptunnel user (${ICMPTUNNEL_UID}) - ALL protocols"
+  else
+    echo "Warning: uidrange rule not supported or failed to add." >&2
+  fi
 fi
 
 while ip rule show | grep -Eq "fwmark (0x0*ca6c|0x0000ca6c|${MARK}).*lookup (${TABLE_ID}|wgcf)"; do
