@@ -70,15 +70,19 @@ run_action() {
 
 select_policy_proxy_type() {
   local proxy_type=""
-  read -r -p "Proxy type [paqet/ssh/waterwall/icmptunnel]: " proxy_type
+  read -r -p "Proxy type [paqet/ssh/waterwall/icmp]: " proxy_type
   proxy_type="$(echo "${proxy_type}" | tr '[:upper:]' '[:lower:]')"
+
+  # Accept both 'icmp' and 'icmptunnel' for compatibility
+  [ "${proxy_type}" = "icmp" ] && proxy_type="icmptunnel"
+
   case "${proxy_type}" in
     paqet|ssh|waterwall|icmptunnel)
       echo "${proxy_type}"
       return 0
       ;;
     *)
-      echo "Invalid proxy type. Use: paqet, ssh, waterwall, or icmptunnel." >&2
+      echo "Invalid proxy type. Use: paqet, ssh, waterwall, or icmp." >&2
       return 1
       ;;
   esac
@@ -92,8 +96,8 @@ warp_configuration_menu() {
     echo "------------------"
     echo -e "${GREEN}1)${NC} Install WARP core (wgcf)"
     echo -e "${GREEN}2)${NC} Uninstall WARP core (wgcf)"
-    echo -e "${GREEN}3)${NC} Apply WARP rule (proxy type: paqet/ssh/waterwall)"
-    echo -e "${GREEN}4)${NC} Remove WARP rule (proxy type: paqet/ssh/waterwall)"
+    echo -e "${GREEN}3)${NC} Apply WARP rule (proxy type: paqet/ssh/waterwall/icmp)"
+    echo -e "${GREEN}4)${NC} Remove WARP rule (proxy type: paqet/ssh/waterwall/icmp)"
     echo -e "${GREEN}5)${NC} WARP status"
     echo -e "${GREEN}6)${NC} Test WARP"
     echo -e "${GREEN}7)${NC} Show WARP config for 3x-ui"
@@ -234,8 +238,8 @@ dns_configuration_menu() {
     echo "-----------------"
     echo -e "${GREEN}1)${NC} Install DNS policy core"
     echo -e "${GREEN}2)${NC} Uninstall DNS policy core"
-    echo -e "${GREEN}3)${NC} Apply DNS rule (proxy type: paqet/ssh/waterwall)"
-    echo -e "${GREEN}4)${NC} Remove DNS rule (proxy type: paqet/ssh/waterwall)"
+    echo -e "${GREEN}3)${NC} Apply DNS rule (proxy type: paqet/ssh/waterwall/icmp)"
+    echo -e "${GREEN}4)${NC} Remove DNS rule (proxy type: paqet/ssh/waterwall/icmp)"
     echo -e "${GREEN}5)${NC} Update DNS policy list now"
     echo -e "${GREEN}6)${NC} DNS policy status"
     echo -e "${GREEN}7)${NC} Reconcile DNS bindings"
