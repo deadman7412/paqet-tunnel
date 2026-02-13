@@ -107,8 +107,7 @@ while true; do
       else
         echo "[INFO] Scheduled restart was not enabled"
       fi
-      read -r -p "Press Enter to continue..."
-      continue
+      exit 0
       ;;
     10)
       if [ -f "${LOG_FILE}" ]; then
@@ -157,5 +156,5 @@ CRON
   echo
   echo "Monitor logs with: tail -f ${LOG_FILE}"
 
-  read -r -p "Press Enter to continue..."
+  exit 0
 done
