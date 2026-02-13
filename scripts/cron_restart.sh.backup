@@ -12,10 +12,8 @@ case "${ROLE}" in
 esac
 
 SERVICE_NAME="paqet-${ROLE}"
+
 CRON_FILE="/etc/cron.d/paqet-restart-${SERVICE_NAME}"
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-RESTART_SCRIPT="${SCRIPT_DIR}/paqet_cron_restart.sh"
-LOG_FILE="/var/log/paqet-cron-${ROLE}.log"
 
 while true; do
   echo
@@ -53,18 +51,10 @@ while true; do
   esac
 
   cat <<CRON > "${CRON_FILE}"
-# Paqet Tunnel Scheduled Restart for ${SERVICE_NAME}
-# Smart restart with protection against infinite loops
-${SCHEDULE} root ${RESTART_SCRIPT} ${ROLE} >> ${LOG_FILE} 2>&1
+${SCHEDULE} root /bin/systemctl restart ${SERVICE_NAME}.service
 CRON
   chmod 644 "${CRON_FILE}"
   echo "Installed cron job: ${SCHEDULE}"
-  echo "Log file: ${LOG_FILE}"
-  echo
-  echo "Protection features enabled:"
-  echo "  - Cooldown: 2 minutes between restarts"
-  echo "  - Limit: Maximum 5 restarts per hour"
-  echo "  - Coordination: Respects health check restart limits"
   exit 0
 
 done

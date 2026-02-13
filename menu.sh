@@ -11,6 +11,7 @@ GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
 CYAN='\033[0;36m'
+DIM='\033[2m'
 NC='\033[0m'
 
 banner() {
@@ -54,6 +55,87 @@ tarball_present() {
 pause() {
   echo
   read -r -p "$(printf "${YELLOW}Press Enter to return to menu...${NC} ")" _
+}
+
+# === STATUS INDICATOR HELPERS ===
+get_schedule_description() {
+  local schedule="$1"
+  case "${schedule}" in
+    "*/2 * * * *") echo "Every 2 minutes" ;;
+    "*/5 * * * *") echo "Every 5 minutes" ;;
+    "*/10 * * * *") echo "Every 10 minutes" ;;
+    "*/30 * * * *") echo "Every 30 minutes" ;;
+    "0 * * * *") echo "Every 1 hour" ;;
+    "0 */2 * * *") echo "Every 2 hours" ;;
+    "0 */4 * * *") echo "Every 4 hours" ;;
+    "0 */6 * * *") echo "Every 6 hours" ;;
+    "0 */8 * * *") echo "Every 8 hours" ;;
+    "0 */12 * * *") echo "Every 12 hours" ;;
+    "0 0 * * *") echo "Every 24 hours" ;;
+    *) echo "Custom schedule" ;;
+  esac
+}
+
+get_cron_status() {
+  local system="$1"  # "paqet", "icmptunnel", or "waterwall-direct"
+  local role="$2"    # "server" or "client"
+  local cron_file=""
+
+  case "${system}" in
+    paqet)
+      cron_file="/etc/cron.d/paqet-restart-paqet-${role}"
+      ;;
+    icmptunnel)
+      cron_file="/etc/cron.d/icmptunnel-restart-icmptunnel-${role}"
+      ;;
+    waterwall-direct)
+      cron_file="/etc/cron.d/waterwall-restart-waterwall-direct-${role}"
+      ;;
+  esac
+
+  if [ -f "${cron_file}" ]; then
+    local schedule
+    schedule="$(grep -oE '^\S+\s+\S+\s+\S+\s+\S+\s+\S+' "${cron_file}" 2>/dev/null | head -n 1 | awk '{print $1,$2,$3,$4,$5}')"
+    if [ -n "${schedule}" ]; then
+      local desc
+      desc="$(get_schedule_description "${schedule}")"
+      echo -e "${CYAN}[${desc}]${NC}"
+      return
+    fi
+  fi
+
+  echo -e "${DIM}[Not configured]${NC}"
+}
+
+get_health_status() {
+  local system="$1"  # "paqet", "icmptunnel", or "waterwall-direct"
+  local role="$2"    # "server" or "client"
+  local cron_file=""
+
+  case "${system}" in
+    paqet)
+      cron_file="/etc/cron.d/paqet-health-paqet-${role}"
+      ;;
+    icmptunnel)
+      cron_file="/etc/cron.d/icmptunnel-health-icmptunnel-${role}"
+      ;;
+    waterwall-direct)
+      cron_file="/etc/cron.d/waterwall-health-waterwall-direct-${role}"
+      ;;
+  esac
+
+  if [ -f "${cron_file}" ]; then
+    local schedule
+    schedule="$(grep -oE '^\S+\s+\S+\s+\S+\s+\S+\s+\S+' "${cron_file}" 2>/dev/null | head -n 1 | awk '{print $1,$2,$3,$4,$5}')"
+    if [ -n "${schedule}" ]; then
+      local desc
+      desc="$(get_schedule_description "${schedule}")"
+      echo -e "${CYAN}[${desc}]${NC}"
+      return
+    fi
+  fi
+
+  echo -e "${DIM}[Not configured]${NC}"
 }
 
 ensure_executable_scripts() {
@@ -380,10 +462,10 @@ server_menu() {
     echo -e "${GREEN}4)${NC} Remove iptable rules"
     echo -e "${GREEN}5)${NC} Remove systemd service"
     echo -e "${GREEN}6)${NC} Service control"
-    echo -e "${GREEN}7)${NC} Restart scheduler"
+    echo -e "${GREEN}7)${NC} Restart scheduler $(get_cron_status 'paqet' 'server')"
     echo -e "${GREEN}8)${NC} Show server info"
     echo -e "${GREEN}9)${NC} Change MTU"
-    echo -e "${GREEN}10)${NC} Health check"
+    echo -e "${GREEN}10)${NC} Health check $(get_health_status 'paqet' 'server')"
     echo -e "${GREEN}11)${NC} Health logs"
     echo -e "${GREEN}12)${NC} Repair networking stack"
     echo
@@ -513,10 +595,10 @@ client_menu() {
     echo -e "${GREEN}3)${NC} Install systemd service"
     echo -e "${GREEN}5)${NC} Remove systemd service"
     echo -e "${GREEN}6)${NC} Service control"
-    echo -e "${GREEN}7)${NC} Restart scheduler"
+    echo -e "${GREEN}7)${NC} Restart scheduler $(get_cron_status 'paqet' 'client')"
     echo -e "${GREEN}8)${NC} Test connection"
     echo -e "${GREEN}9)${NC} Change MTU"
-    echo -e "${GREEN}10)${NC} Health check"
+    echo -e "${GREEN}10)${NC} Health check $(get_health_status 'paqet' 'client')"
     echo -e "${GREEN}11)${NC} Health logs"
     echo -e "${GREEN}12)${NC} Repair networking stack"
     echo
@@ -959,6 +1041,8 @@ waterwall_direct_server_menu() {
     echo -e "${GREEN}4)${NC} Service control (server)"
     echo -e "${GREEN}5)${NC} Show server info"
     echo -e "${GREEN}6)${NC} Tests & Diagnostics"
+    echo -e "${GREEN}7)${NC} Scheduled restart (cron) $(get_cron_status 'waterwall-direct' 'server')"
+    echo -e "${GREEN}8)${NC} Health check (auto-restart on failure) $(get_health_status 'waterwall-direct' 'server')"
     echo
     echo
     echo -e "${GREEN}0)${NC} Back"
@@ -1008,6 +1092,22 @@ waterwall_direct_server_menu() {
         ;;
       6)
         waterwall_direct_server_test_menu
+        ;;
+      7)
+        if [ -x "${SCRIPTS_DIR}/waterwall_cron_restart_scheduler.sh" ]; then
+          run_action "${SCRIPTS_DIR}/waterwall_cron_restart_scheduler.sh" server
+        else
+          echo -e "${RED}Script not found or not executable:${NC} ${SCRIPTS_DIR}/waterwall_cron_restart_scheduler.sh" >&2
+        fi
+        pause
+        ;;
+      8)
+        if [ -x "${SCRIPTS_DIR}/waterwall_health_check_scheduler.sh" ]; then
+          run_action "${SCRIPTS_DIR}/waterwall_health_check_scheduler.sh" server
+        else
+          echo -e "${RED}Script not found or not executable:${NC} ${SCRIPTS_DIR}/waterwall_health_check_scheduler.sh" >&2
+        fi
+        pause
         ;;
       0)
         return 0
@@ -1074,6 +1174,8 @@ waterwall_direct_client_menu() {
     echo -e "${GREEN}4)${NC} Service control (client)"
     echo -e "${GREEN}5)${NC} Tests & Diagnostics"
     echo -e "${GREEN}6)${NC} Show ports for configuration"
+    echo -e "${GREEN}7)${NC} Scheduled restart (cron) $(get_cron_status 'waterwall-direct' 'client')"
+    echo -e "${GREEN}8)${NC} Health check (auto-restart on failure) $(get_health_status 'waterwall-direct' 'client')"
     echo
     echo
     echo -e "${GREEN}0)${NC} Back"
@@ -1121,6 +1223,22 @@ waterwall_direct_client_menu() {
           run_action "${SCRIPTS_DIR}/waterwall_show_ports.sh"
         else
           echo -e "${RED}Script not found or not executable:${NC} ${SCRIPTS_DIR}/waterwall_show_ports.sh" >&2
+        fi
+        pause
+        ;;
+      7)
+        if [ -x "${SCRIPTS_DIR}/waterwall_cron_restart_scheduler.sh" ]; then
+          run_action "${SCRIPTS_DIR}/waterwall_cron_restart_scheduler.sh" client
+        else
+          echo -e "${RED}Script not found or not executable:${NC} ${SCRIPTS_DIR}/waterwall_cron_restart_scheduler.sh" >&2
+        fi
+        pause
+        ;;
+      8)
+        if [ -x "${SCRIPTS_DIR}/waterwall_health_check_scheduler.sh" ]; then
+          run_action "${SCRIPTS_DIR}/waterwall_health_check_scheduler.sh" client
+        else
+          echo -e "${RED}Script not found or not executable:${NC} ${SCRIPTS_DIR}/waterwall_health_check_scheduler.sh" >&2
         fi
         pause
         ;;
