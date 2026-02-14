@@ -336,6 +336,7 @@ dns_configuration_menu() {
     echo -e "${GREEN}5)${NC} Update DNS policy list now"
     echo -e "${GREEN}6)${NC} DNS policy status"
     echo -e "${GREEN}7)${NC} Reconcile DNS bindings"
+    echo -e "${GREEN}8)${NC} Debug SSH proxy DNS routing"
     echo
     echo
     echo -e "${GREEN}0)${NC} Back to main menu"
@@ -447,6 +448,14 @@ dns_configuration_menu() {
           run_action "${SCRIPTS_DIR}/reconcile_policy_bindings.sh" dns
         else
           echo -e "${RED}Script not found or not executable:${NC} ${SCRIPTS_DIR}/reconcile_policy_bindings.sh" >&2
+        fi
+        pause
+        ;;
+      8)
+        if [ -x "${SCRIPTS_DIR}/ssh_proxy_debug_dns.sh" ]; then
+          run_action "${SCRIPTS_DIR}/ssh_proxy_debug_dns.sh"
+        else
+          echo -e "${RED}Script not found or not executable:${NC} ${SCRIPTS_DIR}/ssh_proxy_debug_dns.sh" >&2
         fi
         pause
         ;;

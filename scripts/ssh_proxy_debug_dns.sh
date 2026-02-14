@@ -41,6 +41,17 @@ if [ -f "${DNSMASQ_BLOCK_CONF}" ]; then
   if [ -f "${META_FILE}" ]; then
     echo "  Last update info:"
     cat "${META_FILE}" | sed 's/^/    /'
+
+    # Suggest lighter categories if using "all"
+    CATEGORY="$(grep '^category=' "${META_FILE}" 2>/dev/null | cut -d= -f2 || echo "unknown")"
+    if [ "${CATEGORY}" = "all" ] && [ "${DOMAINS}" -gt 100000 ]; then
+      echo
+      echo -e "  ${YELLOW}[OPTIMIZATION TIP]${NC} You're using 'all' category (${DOMAINS} domains)"
+      echo "  Consider lighter options:"
+      echo "    - 'ads': Only block ads/tracking (much smaller)"
+      echo "    - 'proxy': Only block proxy-related domains"
+      echo "  Change: DNS Configuration -> Update DNS policy list now"
+    fi
   fi
 else
   echo -e "${RED}[ERROR]${NC} DNS policy core is NOT installed"
