@@ -138,6 +138,17 @@ get_health_status() {
   echo -e "${DIM}[Not configured]${NC}"
 }
 
+get_bbr_status() {
+  local current_cc=""
+  current_cc="$(sysctl -n net.ipv4.tcp_congestion_control 2>/dev/null || echo "unknown")"
+
+  if [ "${current_cc}" = "bbr" ]; then
+    echo -e "${GREEN}[Enabled]${NC}"
+  else
+    echo -e "${DIM}[Disabled]${NC}"
+  fi
+}
+
 ensure_executable_scripts() {
   chmod +x "${SCRIPTS_DIR}"/*.sh 2>/dev/null || true
 }
@@ -762,6 +773,57 @@ ssh_proxy_menu() {
           run_action "${SCRIPTS_DIR}/ssh_proxy_create_simple_credentials.sh"
         else
           echo -e "${YELLOW}Not implemented yet:${NC} ${SCRIPTS_DIR}/ssh_proxy_create_simple_credentials.sh"
+        fi
+        pause
+        ;;
+      0)
+        return 0
+        ;;
+      *)
+        echo -e "${RED}Invalid option:${NC} ${choice}" >&2
+        pause
+        ;;
+    esac
+  done
+}
+
+bbr_menu() {
+  while true; do
+    clear
+    banner
+    echo -e "${BLUE}BBR Congestion Control ${NC}$(get_bbr_status)"
+    echo "-----------------------"
+    echo -e "${GREEN}1)${NC} Check BBR status"
+    echo -e "${GREEN}2)${NC} Enable BBR"
+    echo -e "${GREEN}3)${NC} Disable BBR"
+    echo
+    echo
+    echo -e "${GREEN}0)${NC} Back to main menu"
+    echo
+    read -r -p "Select an option: " choice
+
+    case "${choice}" in
+      1)
+        if [ -x "${SCRIPTS_DIR}/check_bbr_status.sh" ]; then
+          run_action "${SCRIPTS_DIR}/check_bbr_status.sh"
+        else
+          echo -e "${RED}Script not found or not executable:${NC} ${SCRIPTS_DIR}/check_bbr_status.sh" >&2
+        fi
+        pause
+        ;;
+      2)
+        if [ -x "${SCRIPTS_DIR}/enable_bbr.sh" ]; then
+          run_action "${SCRIPTS_DIR}/enable_bbr.sh"
+        else
+          echo -e "${RED}Script not found or not executable:${NC} ${SCRIPTS_DIR}/enable_bbr.sh" >&2
+        fi
+        pause
+        ;;
+      3)
+        if [ -x "${SCRIPTS_DIR}/disable_bbr.sh" ]; then
+          run_action "${SCRIPTS_DIR}/disable_bbr.sh"
+        else
+          echo -e "${RED}Script not found or not executable:${NC} ${SCRIPTS_DIR}/disable_bbr.sh" >&2
         fi
         pause
         ;;
@@ -1792,6 +1854,7 @@ while true; do
   echo -e "${GREEN}6)${NC} WARP Configuration"
   echo -e "${GREEN}7)${NC} DNS Configuration"
   echo -e "${GREEN}8)${NC} Firewall (UFW)"
+  echo -e "${GREEN}9)${NC} BBR Congestion Control $(get_bbr_status)"
   echo
   echo
   echo -e "${GREEN}0)${NC} Exit"
@@ -1827,6 +1890,9 @@ while true; do
       ;;
     8)
       firewall_menu
+      ;;
+    9)
+      bbr_menu
       ;;
     0)
       echo -e "${GREEN}Goodbye.${NC}"
