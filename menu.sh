@@ -337,6 +337,7 @@ dns_configuration_menu() {
     echo -e "${GREEN}6)${NC} DNS policy status"
     echo -e "${GREEN}7)${NC} Reconcile DNS bindings"
     echo -e "${GREEN}8)${NC} Debug SSH proxy DNS routing"
+    echo -e "${GREEN}11)${NC} Diagnose iptables/nftables system"
     echo
     echo -e "${BLUE}Advanced (SSH Proxy):${NC}"
     echo -e "${GREEN}9)${NC} Block DNS bypass (DoH/DoT) for SSH proxy"
@@ -476,6 +477,14 @@ dns_configuration_menu() {
           run_action "${SCRIPTS_DIR}/ssh_proxy_unblock_dns_bypass.sh"
         else
           echo -e "${RED}Script not found or not executable:${NC} ${SCRIPTS_DIR}/ssh_proxy_unblock_dns_bypass.sh" >&2
+        fi
+        pause
+        ;;
+      11)
+        if [ -x "${SCRIPTS_DIR}/diagnose_iptables_nftables.sh" ]; then
+          run_action "${SCRIPTS_DIR}/diagnose_iptables_nftables.sh"
+        else
+          echo -e "${RED}Script not found or not executable:${NC} ${SCRIPTS_DIR}/diagnose_iptables_nftables.sh" >&2
         fi
         pause
         ;;
