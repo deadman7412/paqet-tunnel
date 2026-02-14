@@ -317,6 +317,7 @@ ssh_proxy_wait_for_port_listen() {
 ssh_proxy_remove_ufw_port_if_active() {
   local port="$1"
   local -a rules=()
+  local ssh_ports=""
 
   if ! command -v ufw >/dev/null 2>&1; then
     return 0
@@ -326,6 +327,21 @@ ssh_proxy_remove_ufw_port_if_active() {
     return 0
   fi
 
+  # CRITICAL: Never remove SSH ports from sshd_config
+  ssh_ports="$(grep -Rsh '^[[:space:]]*Port[[:space:]]\+[0-9]\+' /etc/ssh/sshd_config /etc/ssh/sshd_config.d/*.conf 2>/dev/null | awk '{print $2}' | sort -u || true)"
+  if [ -z "${ssh_ports}" ]; then
+    ssh_ports="22"
+  fi
+
+  # Check if port is an SSH port - if so, refuse to remove it
+  for ssh_port in ${ssh_ports}; do
+    if [ "${port}" = "${ssh_port}" ]; then
+      echo "[WARN] Refusing to remove port ${port}: it is configured as SSH port in sshd_config" >&2
+      return 0
+    fi
+  done
+
+  # Only remove rules with 'paqet-ssh-proxy' comment and matching port
   mapfile -t rules < <(ufw status numbered 2>/dev/null | awk -v p="${port}/tcp" '/paqet-ssh-proxy/ && $0 ~ p { if (match($0, /^\[[[:space:]]*[0-9]+]/)) { n=substr($0, RSTART+1, RLENGTH-2); gsub(/[[:space:]]/, "", n); print n } }')
   if [ "${#rules[@]}" -eq 0 ]; then
     return 0

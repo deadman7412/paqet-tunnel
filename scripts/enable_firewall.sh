@@ -72,23 +72,29 @@ if ! command -v ufw >/dev/null 2>&1; then
 fi
 
 # Set safe defaults
+echo "[INFO] Setting UFW default policies..."
 ufw default deny incoming
 ufw default allow outgoing
+echo "[INFO] Allowing loopback interface..."
 ufw allow in on lo comment 'paqet-loopback' || true
 
-# Detect SSH ports from sshd config
-SSH_PORTS="$(grep -Rsh '^[[:space:]]*Port[[:space:]]\+[0-9]\+' /etc/ssh/sshd_config /etc/ssh/sshd_config.d/*.conf 2>/dev/null | awk '{print $2}' | sort -u)"
+# Detect SSH ports from sshd config - CRITICAL for preventing lockout
+SSH_PORTS="$(grep -Rsh '^[[:space:]]*Port[[:space:]]\+[0-9]\+' /etc/ssh/sshd_config /etc/ssh/sshd_config.d/*.conf 2>/dev/null | awk '{print $2}' | sort -u || true)"
 if [ -z "${SSH_PORTS}" ]; then
   SSH_PORTS="22"
 fi
 
-echo "SSH ports detected: ${SSH_PORTS}"
-echo "Adding SSH allow rules to UFW..."
+echo "[INFO] SSH ports detected: ${SSH_PORTS}"
+echo "[INFO] Adding SSH allow rules to UFW (CRITICAL - prevents lockout)..."
 for p in ${SSH_PORTS}; do
-  if ! ufw status | grep -qE "\\b${p}/tcp\\b.*ALLOW IN"; then
+  if ! ufw status 2>/dev/null | grep -qE "\\b${p}/tcp\\b.*ALLOW IN"; then
+    echo "[INFO] Opening SSH port ${p}/tcp..."
     ufw allow "${p}/tcp" comment 'paqet-ssh' || true
+  else
+    echo "[INFO] SSH port ${p}/tcp already open."
   fi
 done
+echo "[INFO] SSH protection configured."
 
 if [ "${ROLE}" = "server" ]; then
   read -r -p "Client public IPv4 (required): " CLIENT_IP
@@ -120,5 +126,26 @@ else
   fi
 fi
 
+echo "[INFO] Enabling UFW..."
 ufw --force enable
+echo "[INFO] UFW enabled successfully."
+echo ""
+echo "========================================"
+echo "Firewall Configuration Complete"
+echo "========================================"
+echo ""
+if [ "${ROLE}" = "server" ]; then
+  echo "SERVER firewall configured for Paqet:"
+  echo "  - SSH access: PROTECTED (ports: ${SSH_PORTS})"
+  echo "  - Paqet tunnel: ALLOWED from ${CLIENT_IP} on port ${PORT}/tcp"
+  echo "  - All other traffic: BLOCKED by default"
+else
+  echo "CLIENT firewall configured for Paqet:"
+  echo "  - SSH access: PROTECTED (ports: ${SSH_PORTS})"
+  echo "  - Outbound to server: ALLOWED to ${SERVER_IP}:${PORT}/tcp"
+  echo "  - All other incoming: BLOCKED by default"
+fi
+echo ""
+echo "========================================"
+echo ""
 ufw status verbose
