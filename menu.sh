@@ -774,6 +774,9 @@ ssh_proxy_menu() {
     echo -e "${GREEN}3)${NC} Remove SSH proxy user"
     echo -e "${GREEN}4)${NC} List SSH proxy users"
     echo -e "${GREEN}5)${NC} Show simple SSH credentials"
+    echo -e "${GREEN}6)${NC} Enable IP-based blocking (Iranian IPs)"
+    echo -e "${GREEN}7)${NC} Disable IP-based blocking"
+    echo -e "${GREEN}8)${NC} Update IP blocklist"
     echo
     echo
     echo -e "${GREEN}0)${NC} Back to main menu"
@@ -818,6 +821,30 @@ ssh_proxy_menu() {
           run_action "${SCRIPTS_DIR}/ssh_proxy_create_simple_credentials.sh"
         else
           echo -e "${YELLOW}Not implemented yet:${NC} ${SCRIPTS_DIR}/ssh_proxy_create_simple_credentials.sh"
+        fi
+        pause
+        ;;
+      6)
+        if [ -x "${SCRIPTS_DIR}/ssh_proxy_enable_ip_blocking.sh" ]; then
+          run_action "${SCRIPTS_DIR}/ssh_proxy_enable_ip_blocking.sh"
+        else
+          echo -e "${RED}Script not found or not executable:${NC} ${SCRIPTS_DIR}/ssh_proxy_enable_ip_blocking.sh" >&2
+        fi
+        pause
+        ;;
+      7)
+        if [ -x "${SCRIPTS_DIR}/ssh_proxy_disable_ip_blocking.sh" ]; then
+          run_action "${SCRIPTS_DIR}/ssh_proxy_disable_ip_blocking.sh"
+        else
+          echo -e "${RED}Script not found or not executable:${NC} ${SCRIPTS_DIR}/ssh_proxy_disable_ip_blocking.sh" >&2
+        fi
+        pause
+        ;;
+      8)
+        if [ -x "${SCRIPTS_DIR}/ssh_proxy_update_ip_blocklist.sh" ]; then
+          run_action "${SCRIPTS_DIR}/ssh_proxy_update_ip_blocklist.sh"
+        else
+          echo -e "${RED}Script not found or not executable:${NC} ${SCRIPTS_DIR}/ssh_proxy_update_ip_blocklist.sh" >&2
         fi
         pause
         ;;
