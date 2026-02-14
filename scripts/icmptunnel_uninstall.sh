@@ -47,7 +47,7 @@ fi
 # Remove UFW rules
 if command -v ufw >/dev/null 2>&1; then
   echo "Removing UFW rules..."
-  local -a rules=()
+  declare -a rules=()
   mapfile -t rules < <(ufw status numbered 2>/dev/null | awk '/icmptunnel/ { if (match($0, /^\[[[:space:]]*[0-9]+]/)) { n=substr($0, RSTART+1, RLENGTH-2); gsub(/[[:space:]]/, "", n); print n } }')
   if [ "${#rules[@]}" -gt 0 ]; then
     for ((i=${#rules[@]}-1; i>=0; i--)); do
