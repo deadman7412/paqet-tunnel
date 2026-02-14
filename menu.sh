@@ -338,6 +338,10 @@ dns_configuration_menu() {
     echo -e "${GREEN}7)${NC} Reconcile DNS bindings"
     echo -e "${GREEN}8)${NC} Debug SSH proxy DNS routing"
     echo
+    echo -e "${BLUE}Advanced (SSH Proxy):${NC}"
+    echo -e "${GREEN}9)${NC} Block DNS bypass (DoH/DoT) for SSH proxy"
+    echo -e "${GREEN}10)${NC} Unblock DNS bypass for SSH proxy"
+    echo
     echo
     echo -e "${GREEN}0)${NC} Back to main menu"
     echo
@@ -456,6 +460,22 @@ dns_configuration_menu() {
           run_action "${SCRIPTS_DIR}/ssh_proxy_debug_dns.sh"
         else
           echo -e "${RED}Script not found or not executable:${NC} ${SCRIPTS_DIR}/ssh_proxy_debug_dns.sh" >&2
+        fi
+        pause
+        ;;
+      9)
+        if [ -x "${SCRIPTS_DIR}/ssh_proxy_block_dns_bypass.sh" ]; then
+          run_action "${SCRIPTS_DIR}/ssh_proxy_block_dns_bypass.sh"
+        else
+          echo -e "${RED}Script not found or not executable:${NC} ${SCRIPTS_DIR}/ssh_proxy_block_dns_bypass.sh" >&2
+        fi
+        pause
+        ;;
+      10)
+        if [ -x "${SCRIPTS_DIR}/ssh_proxy_unblock_dns_bypass.sh" ]; then
+          run_action "${SCRIPTS_DIR}/ssh_proxy_unblock_dns_bypass.sh"
+        else
+          echo -e "${RED}Script not found or not executable:${NC} ${SCRIPTS_DIR}/ssh_proxy_unblock_dns_bypass.sh" >&2
         fi
         pause
         ;;
