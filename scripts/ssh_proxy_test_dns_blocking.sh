@@ -65,11 +65,11 @@ test_http_connection() {
   local curl_exit_code=0
 
   # Test HTTP connection as the SSH proxy user
-  result="$(sudo -u "${user}" curl -s -o /dev/null -w "%{http_code}" --connect-timeout 3 --max-time 5 "${url}" 2>/dev/null || echo "FAILED")"
+  result="$(sudo -u "${user}" curl -s -o /dev/null -w "%{http_code}" --connect-timeout 3 --max-time 5 "${url}" 2>/dev/null)"
   curl_exit_code=$?
 
-  # Check if connection failed (000, FAILED, or non-zero exit code)
-  if [ "${result}" = "000" ] || [ "${result}" = "FAILED" ] || [ "${curl_exit_code}" -ne 0 ] || [[ "${result}" =~ ^0+$ ]]; then
+  # Check if connection failed (curl exit code != 0 or result is empty/000)
+  if [ $curl_exit_code -ne 0 ] || [ -z "${result}" ] || [ "${result}" = "000" ]; then
     # Connection failed
     if [ "${expected_blocked}" = "1" ]; then
       echo -e "  ${GREEN}[PASS]${NC} ${url} → connection failed (blocked as expected)"
@@ -94,25 +94,41 @@ monitor_dns_queries() {
   local user="$1"
   local domain="$2"
 
-  echo -e "${BLUE}[INFO]${NC} Monitoring dnsmasq logs (press Ctrl+C to stop)..."
-  echo -e "${BLUE}[INFO]${NC} Testing ${domain} as user ${user}..."
+  echo -e "${BLUE}[INFO]${NC} Monitoring dnsmasq logs..."
+  echo "Watch for queries from this test, then press Ctrl+C to stop."
   echo
+  echo "Showing last 20 dnsmasq log entries, then live monitoring:"
+  echo "================================================================"
 
-  # Start monitoring in background
-  sudo journalctl -u dnsmasq -f --no-hostname -n 0 &
-  local monitor_pid=$!
+  # Show recent logs first
+  sudo journalctl -u dnsmasq -n 20 --no-pager 2>/dev/null || echo "No recent logs"
 
-  # Give journalctl time to start
-  sleep 1
+  echo "================================================================"
+  echo "Starting live monitoring... (Press Ctrl+C when done)"
+  echo "================================================================"
 
-  # Trigger DNS query
-  sudo -u "${user}" nslookup "${domain}" >/dev/null 2>&1 || true
+  # Start live monitoring
+  (
+    sudo journalctl -u dnsmasq -f --no-hostname 2>/dev/null &
+    local monitor_pid=$!
 
-  # Wait a bit for logs
+    # Wait for user to press Ctrl+C
+    wait $monitor_pid
+  ) &
+  local bg_pid=$!
+
+  # Give time to start
   sleep 2
 
-  # Stop monitoring
-  kill "${monitor_pid}" 2>/dev/null || true
+  echo
+  echo "Triggering test DNS query for ${domain} as user ${user}..."
+  sudo -u "${user}" nslookup "${domain}" 2>&1 | head -5
+
+  echo
+  echo "Press Ctrl+C to stop monitoring and return to menu..."
+
+  # Wait for user interrupt
+  wait $bg_pid 2>/dev/null || true
 }
 
 main() {
