@@ -17,6 +17,17 @@ NFT_TABLE="filter"
 remove_blocking_rules() {
   echo -e "${BLUE}[INFO]${NC} Removing IP blocking rules..."
 
+  # Check if table and chain exist
+  if ! nft list table ip "${NFT_TABLE}" >/dev/null 2>&1; then
+    echo -e "${YELLOW}[INFO]${NC} Table 'ip ${NFT_TABLE}' doesn't exist, nothing to remove"
+    return 0
+  fi
+
+  if ! nft list chain ip "${NFT_TABLE}" OUTPUT >/dev/null 2>&1; then
+    echo -e "${YELLOW}[INFO]${NC} Chain OUTPUT doesn't exist, nothing to remove"
+    return 0
+  fi
+
   local removed=0
 
   # Find and remove all rules with our comment pattern
@@ -42,10 +53,33 @@ remove_blocking_rules() {
 remove_nftables_set() {
   echo -e "${BLUE}[INFO]${NC} Removing nftables IP set..."
 
-  if nft delete set ip "${NFT_TABLE}" "${NFTABLES_SET_NAME}" 2>/dev/null; then
+  # Check if table exists first
+  if ! nft list table ip "${NFT_TABLE}" >/dev/null 2>&1; then
+    echo -e "${YELLOW}[INFO]${NC} Table 'ip ${NFT_TABLE}' doesn't exist, nothing to remove"
+    return 0
+  fi
+
+  # Check if set exists
+  if ! nft list set ip "${NFT_TABLE}" "${NFTABLES_SET_NAME}" >/dev/null 2>&1; then
+    echo -e "${YELLOW}[INFO]${NC} Set ${NFTABLES_SET_NAME} not found (already removed or never created)"
+    return 0
+  fi
+
+  # Try to delete the set
+  local error_output
+  if error_output=$(nft delete set ip "${NFT_TABLE}" "${NFTABLES_SET_NAME}" 2>&1); then
     echo -e "${GREEN}[OK]${NC} Removed nftables set: ${NFTABLES_SET_NAME}"
   else
-    echo -e "${YELLOW}[INFO]${NC} Set ${NFTABLES_SET_NAME} not found"
+    # Check if error is due to set being in use
+    if echo "${error_output}" | grep -q "in use"; then
+      echo -e "${YELLOW}[WARN]${NC} Set is still in use by rules, flushing elements instead"
+      # Flush the set instead of deleting it
+      if nft flush set ip "${NFT_TABLE}" "${NFTABLES_SET_NAME}" 2>/dev/null; then
+        echo -e "${GREEN}[OK]${NC} Flushed nftables set: ${NFTABLES_SET_NAME}"
+      fi
+    else
+      echo -e "${YELLOW}[WARN]${NC} Could not remove set: ${error_output}"
+    fi
   fi
 }
 
@@ -57,6 +91,7 @@ persist_rules() {
   else
     echo -e "${YELLOW}[WARN]${NC} Failed to persist changes"
   fi
+  return 0
 }
 
 main() {
