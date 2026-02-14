@@ -131,7 +131,7 @@ while IFS= read -r user; do
   echo "  User: ${user} (UID: ${uid})"
 
   # Check for UDP redirect rule
-  if iptables -t nat -S OUTPUT 2>/dev/null | grep -q "uid-owner ${uid}.*dport 53.*udp.*REDIRECT.*${DNS_PORT}"; then
+  if iptables -t nat -S OUTPUT 2>/dev/null | grep -q "uid-owner ${uid}.*udp.*dport 53.*REDIRECT.*${DNS_PORT}"; then
     echo -e "    ${GREEN}[OK]${NC} UDP DNS redirect rule exists"
     RULE_COUNT=$((RULE_COUNT + 1))
   else
@@ -139,7 +139,7 @@ while IFS= read -r user; do
   fi
 
   # Check for TCP redirect rule
-  if iptables -t nat -S OUTPUT 2>/dev/null | grep -q "uid-owner ${uid}.*dport 53.*tcp.*REDIRECT.*${DNS_PORT}"; then
+  if iptables -t nat -S OUTPUT 2>/dev/null | grep -q "uid-owner ${uid}.*tcp.*dport 53.*REDIRECT.*${DNS_PORT}"; then
     echo -e "    ${GREEN}[OK]${NC} TCP DNS redirect rule exists"
     RULE_COUNT=$((RULE_COUNT + 1))
   else

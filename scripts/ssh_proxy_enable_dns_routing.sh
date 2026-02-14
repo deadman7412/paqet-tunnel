@@ -68,13 +68,13 @@ ensure_uid_dns_rules() {
 
   # Verify rules were added
   debug_log "Verifying rules were added..."
-  if iptables -t nat -S OUTPUT 2>/dev/null | grep -q "uid-owner ${uid}.*dport 53.*udp.*REDIRECT.*${DNS_PORT}"; then
+  if iptables -t nat -S OUTPUT 2>/dev/null | grep -q "uid-owner ${uid}.*udp.*dport 53.*REDIRECT.*${DNS_PORT}"; then
     debug_log "UDP rule verified in iptables"
   else
     echo -e "${YELLOW}[WARN]${NC} UDP rule not found in iptables after adding!" >&2
   fi
 
-  if iptables -t nat -S OUTPUT 2>/dev/null | grep -q "uid-owner ${uid}.*dport 53.*tcp.*REDIRECT.*${DNS_PORT}"; then
+  if iptables -t nat -S OUTPUT 2>/dev/null | grep -q "uid-owner ${uid}.*tcp.*dport 53.*REDIRECT.*${DNS_PORT}"; then
     debug_log "TCP rule verified in iptables"
   else
     echo -e "${YELLOW}[WARN]${NC} TCP rule not found in iptables after adding!" >&2
