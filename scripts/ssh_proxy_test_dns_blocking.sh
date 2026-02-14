@@ -62,11 +62,14 @@ test_http_connection() {
   local url="$2"
   local expected_blocked="$3"
   local result=""
+  local curl_exit_code=0
 
   # Test HTTP connection as the SSH proxy user
-  result="$(sudo -u "${user}" curl -s -o /dev/null -w "%{http_code}" --connect-timeout 3 --max-time 5 "${url}" 2>&1 || echo "000")"
+  result="$(sudo -u "${user}" curl -s -o /dev/null -w "%{http_code}" --connect-timeout 3 --max-time 5 "${url}" 2>/dev/null || echo "FAILED")"
+  curl_exit_code=$?
 
-  if [ "${result}" = "000" ]; then
+  # Check if connection failed (000, FAILED, or non-zero exit code)
+  if [ "${result}" = "000" ] || [ "${result}" = "FAILED" ] || [ "${curl_exit_code}" -ne 0 ] || [[ "${result}" =~ ^0+$ ]]; then
     # Connection failed
     if [ "${expected_blocked}" = "1" ]; then
       echo -e "  ${GREEN}[PASS]${NC} ${url} → connection failed (blocked as expected)"
@@ -76,7 +79,7 @@ test_http_connection() {
       return 1
     fi
   else
-    # Connection succeeded
+    # Connection succeeded (got HTTP response code)
     if [ "${expected_blocked}" = "0" ]; then
       echo -e "  ${GREEN}[PASS]${NC} ${url} → HTTP ${result} (allowed as expected)"
       return 0
